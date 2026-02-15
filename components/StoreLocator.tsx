@@ -1,348 +1,242 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
 
-// Store data type (same as main version)
 interface Store {
   id: string;
   name: string;
   address: string;
-  city: string;
-  province: string;
-  postalCode: string;
   phone: string;
+  email: string;
+  hours: string;
   coordinates: {
     lat: number;
     lng: number;
   };
-  hours: {
-    weekday: string;
-    saturday: string;
-    sunday: string;
-  };
-  services: string[];
-  entrance?: string;
-  parking?: string;
 }
 
-// Sample store data
 const STORES: Store[] = [
   {
     id: '1',
-    name: 'Sparkport Gateway',
-    address: 'Shop 12, Gateway Shopping Centre, Umhlanga',
-    city: 'Durban',
-    province: 'KwaZulu-Natal',
-    postalCode: '4320',
-    phone: '031 566 1234',
-    coordinates: { lat: -29.7303, lng: 31.0672 },
-    hours: {
-      weekday: '08:00 - 20:00',
-      saturday: '08:00 - 18:00',
-      sunday: '09:00 - 15:00',
-    },
-    services: ['Prescriptions', 'Medical Aid', 'Vaccinations', 'Health Screening'],
-    entrance: 'Main entrance, Level 1',
-    parking: 'Free parking for 1 hour',
+    name: 'Sparkport Quality Street',
+    address: '315 Quality Street, Jacobs, Durban, 4052',
+    phone: '(031) 461-3760',
+    email: 'scriptsqs@sparkport.co.za',
+    hours: 'Mon-Thu: 9AM-5:30PM • Fri: 9AM-5:30PM • Sat: 9AM-2PM • Sun: Closed',
+    coordinates: { lat: -29.8854, lng: 30.9838 },
   },
-  // Add more stores here
+  {
+    id: '2',
+    name: 'Sparkport Musgrave',
+    address: '77 Musgrave Rd, Musgrave, Berea, 4001',
+    phone: '(031) 201-8121',
+    email: 'clinic.musgrave@sparkport.co.za',
+    hours: 'Mon-Thu: 8AM-6PM • Fri: 8AM-6PM • Sat: 8AM-2PM • Sun: Closed',
+    coordinates: { lat: -29.8389, lng: 30.9987 },
+  },
+  {
+    id: '3',
+    name: 'Sparkport Warner Beach',
+    address: '125 Kingsway St, Warner Beach, Kingsburgh, 4126',
+    phone: '(031) 916-6550',
+    email: 'warnerbeach@sparkport.co.za',
+    hours: 'Mon-Thu: 8:30AM-5:30PM • Fri: 8:30AM-5:30PM • Sat: 9AM-2PM • Sun: Closed',
+    coordinates: { lat: -30.0850, lng: 30.8567 },
+  },
+  {
+    id: '4',
+    name: 'Sparkport Chatsworth',
+    address: 'Shop 3, Ayesha Centre, 50 Tranquil St, Chatsworth, 4092',
+    phone: '(031) 401-0010',
+    email: 'chatsdispensary@sparkport.co.za',
+    hours: 'Mon-Sun: 9AM-8PM • Fri: 9AM-6PM',
+    coordinates: { lat: -29.9197, lng: 30.8970 },
+  },
+  {
+    id: '5',
+    name: 'Sparkport Umlazi',
+    address: 'Shop 4 Ithala Centre, Existing Main Road, Umlazi, 4031',
+    phone: '(031) 906-8118',
+    email: 'umlazidisp@sparkport.co.za',
+    hours: 'Mon-Thu: 9AM-6PM • Fri: 9AM-5PM • Sat: 9AM-2PM • Sun: Closed',
+    coordinates: { lat: -29.9589, lng: 30.8841 },
+  },
+  {
+    id: '6',
+    name: 'Sparkport Pietermaritzburg',
+    address: '553 Dr Chota Motala Rd, Raisethorpe, PMB, 3201',
+    phone: '(033) 397-0099',
+    email: 'dispensary@sparkport.net',
+    hours: 'Mon-Sat: 9AM-8PM • Sun: 10AM-6PM',
+    coordinates: { lat: -29.6186, lng: 30.3802 },
+  },
+  {
+    id: '7',
+    name: 'Sparkport Overport',
+    address: 'Corner Moses Kotane & Randles Road, Durban, 4091',
+    phone: '(031) 207-1011',
+    email: 'dispensary@sparkport.co.za',
+    hours: 'Mon-Thu: 8AM-10PM • Fri: 8AM-10PM • Sat: 8AM-10PM • Sun: 9AM-10PM',
+    coordinates: { lat: -29.8765, lng: 31.0131 },
+  },
+  {
+    id: '8',
+    name: 'Sparkport City Centre',
+    address: 'Corner Yusuf Dadoo & Anton Lembede St, Durban, 4001',
+    phone: '(031) 304-9767',
+    email: 'wholesale@sparkport.co.za',
+    hours: 'Mon-Thu: 7:30AM-7:30PM • Fri: 7:30AM-7:30PM • Sat: 7:30AM-7PM • Sun: 9AM-4PM',
+    coordinates: { lat: -29.8587, lng: 31.0295 },
+  },
 ];
 
-export default function StoreLocatorSimple() {
+export default function StoreLocator() {
+  const [selectedStore, setSelectedStore] = useState<Store>(STORES[0]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [expandedStore, setExpandedStore] = useState<string | null>(null);
 
-  // Filter stores
-  const filteredStores = useMemo(() => {
-    if (!searchQuery) return STORES;
+  const filteredStores = STORES.filter(store =>
+    store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    store.address.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-    const query = searchQuery.toLowerCase();
-    return STORES.filter(
-      (store) =>
-        store.name.toLowerCase().includes(query) ||
-        store.address.toLowerCase().includes(query) ||
-        store.city.toLowerCase().includes(query)
-    );
-  }, [searchQuery]);
-
-  const handleGetDirections = (store: Store) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${store.coordinates.lat},${store.coordinates.lng}`;
-    window.open(url, '_blank');
-  };
-
-  const getStaticMapUrl = (store: Store) => {
-    // Using OpenStreetMap static map (free, no API key needed)
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${store.coordinates.lng - 0.01},${store.coordinates.lat - 0.01},${store.coordinates.lng + 0.01},${store.coordinates.lat + 0.01}&layer=mapnik&marker=${store.coordinates.lat},${store.coordinates.lng}`;
+  const getMapUrl = (store: Store) => {
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${store.coordinates.lng - 0.02},${store.coordinates.lat - 0.02},${store.coordinates.lng + 0.02},${store.coordinates.lat + 0.02}&layer=mapnik&marker=${store.coordinates.lat},${store.coordinates.lng}`;
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Top Bar */}
-      <div className="bg-white border-b border-neutral-200 py-6 px-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-extrabold text-[#184363] mb-2">Store Locator</h1>
-          <p className="text-neutral-600">Find your nearest Sparkport pharmacy</p>
-        </div>
-      </div>
+    <div className="flex items-center justify-center min-h-screen py-4 lg:py-8 px-2 lg:px-4">
+      <div className="w-full max-w-full lg:max-w-275">
+        
+        {/* Main White Container */}
+        <div className="bg-white rounded-3xl lg:rounded-[2.5rem] shadow-2xl overflow-hidden mt-0 lg:-mt-[15%]">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 lg:px-8 py-6">
+            <h1 className="text-2xl lg:text-3xl font-bold! text-[#009eb9]">Find a Sparkport Store</h1>
+            <button className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+              <svg className="w-5 h-5 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+          </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto py-8 px-6">
-        {/* Search Bar */}
-        <div className="mb-8">
-          <div className="relative max-w-2xl">
-            <svg
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+          {/* Search Bar - ONLY Store Name Search */}
+          <div className="px-6 lg:px-8 py-5 border-b border-neutral-200">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for a store by name or location"
-              className="w-full pl-12 pr-4 py-4 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent text-lg"
+              placeholder="Search by store name or location..."
+              className="w-full px-4 py-3 text-sm text-neutral-600 bg-white border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0066cc]/20"
             />
           </div>
-        </div>
 
-        {/* Results Count */}
-        <div className="mb-6">
-          <p className="text-neutral-600">
-            {filteredStores.length} {filteredStores.length === 1 ? 'store' : 'stores'} found
-          </p>
-        </div>
+          {/* Split Layout: LEFT = Store List, RIGHT = Map - EXACTLY 50/50 on desktop, stacked on mobile */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 min-h-100 lg:h-125">
+            
+            {/* LEFT: Scrollable Store List */}
+            <div 
+              className="bg-white overflow-y-auto"
+              style={{ 
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+            >
+              <style jsx>{`
+                div::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              
+              {filteredStores.map((store) => (
+                <div
+                  key={store.id}
+                  className={`p-4 lg:p-6 border-b border-neutral-100 cursor-pointer transition-all ${
+                    selectedStore.id === store.id
+                      ? 'bg-neutral-50'
+                      : 'hover:bg-neutral-50/50'
+                  }`}
+                  onClick={() => setSelectedStore(store)}
+                >
+                  {/* Store Name */}
+                  <h3 className="text-base font-bold! text-neutral-600 mb-3">
+                    {store.name}
+                  </h3>
 
-        {/* Store Grid */}
-        {filteredStores.length === 0 ? (
-          <div className="bg-white rounded-xl p-12 text-center">
-            <svg
-              className="w-16 h-16 text-neutral-300 mx-auto mb-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-neutral-500 text-lg">No stores found matching your search.</p>
-            <button
-              onClick={() => setSearchQuery('')}
-              className="mt-4 text-[#009eb9] hover:text-[#184363] font-semibold"
-            >
-              Clear search
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredStores.map((store) => (
-              <div
-                key={store.id}
-                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
-              >
-                {/* Map Preview */}
-                <div className="h-48 bg-neutral-200 relative">
-                  <iframe
-                    src={getStaticMapUrl(store)}
-                    className="w-full h-full border-0"
-                    title={`Map of ${store.name}`}
-                  />
-                  <div className="absolute top-3 right-3">
-                    <button
-                      onClick={() => handleGetDirections(store)}
-                      className="bg-white px-4 py-2 rounded-lg shadow-md hover:bg-neutral-50 transition-colors flex items-center gap-2 font-semibold text-sm"
+                  {/* Address */}
+                  <div className="flex items-start gap-2 mb-3">
+                    <svg className="w-4 h-4 mt-0.5 shrink-0 text-neutral-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-xs text-neutral-600 uppercase tracking-wide leading-relaxed">
+                      {store.address}
+                    </p>
+                  </div>
+
+                  {/* Phone Number & Email - INLINE */}
+                  <div className="flex flex-wrap items-center gap-4">
+                    <a
+                      href={`tel:${store.phone.replace(/[^0-9]/g, '')}`}
+                      className="flex items-center gap-2 text-xs text-[#009eb9] hover:text-[#0052a3] font-bold"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <svg
-                        className="w-4 h-4 text-[#009eb9]"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                        />
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                       </svg>
-                      Directions
-                    </button>
+                      {store.phone}
+                    </a>
+
+                    <a
+                      href={`mailto:${store.email}`}
+                      className="flex items-center gap-2 text-xs text-[#009eb9] hover:text-[#0052a3] font-bold"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                      </svg>
+                      Email
+                    </a>
                   </div>
                 </div>
+              ))}
+            </div>
 
-                {/* Store Info */}
-                <div className="p-6">
-                  <h3 className="text-2xl font-extrabold text-[#184363] mb-3">{store.name}</h3>
-                  
-                  <div className="space-y-3 mb-4">
-                    {/* Address */}
-                    <div className="flex items-start gap-3">
-                      <svg
-                        className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
+            {/* RIGHT: Map - Hidden on mobile, shown on desktop */}
+            <div className="hidden lg:block relative bg-neutral-100">
+              <iframe
+                key={selectedStore.id}
+                src={getMapUrl(selectedStore)}
+                className="w-full h-full"
+                title="Store Map"
+                style={{ border: 0 }}
+              />
+
+              {/* Bottom Left Card - ONLY Store Name & Hours */}
+              <div className="absolute bottom-4 lg:bottom-8 left-4 lg:left-8 bg-white rounded-2xl shadow-2xl overflow-hidden w-72 lg:w-85">
+                <div className="p-4 lg:p-6">
+                  {/* Store Name */}
+                  <h3 className="text-lg lg:text-xl font-extrabold! text-neutral-600 mb-2">
+                    {selectedStore.name}
+                  </h3>
+
+                  {/* Opening Hours */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg className="w-4 h-4 text-neutral-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                       </svg>
-                      <p className="text-neutral-600">{store.address}</p>
+                      <span className="text-sm font-bold text-neutral-700">Opening Hours</span>
                     </div>
-
-                    {/* Phone */}
-                    <div className="flex items-center gap-3">
-                      <svg
-                        className="w-5 h-5 text-[#009eb9] shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                      <a
-                        href={`tel:${store.phone}`}
-                        className="text-[#009eb9] hover:text-[#184363] font-semibold"
-                      >
-                        {store.phone}
-                      </a>
-                    </div>
-
-                    {/* Entrance */}
-                    {store.entrance && (
-                      <div className="flex items-start gap-3">
-                        <svg
-                          className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-                          />
-                        </svg>
-                        <div>
-                          <p className="text-xs font-semibold text-neutral-700 mb-0.5">Entrance</p>
-                          <p className="text-sm text-neutral-600">{store.entrance}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Parking */}
-                    {store.parking && (
-                      <div className="flex items-start gap-3">
-                        <svg
-                          className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                          />
-                        </svg>
-                        <div>
-                          <p className="text-xs font-semibold text-neutral-700 mb-0.5">Parking</p>
-                          <p className="text-sm text-neutral-600">{store.parking}</p>
-                        </div>
-                      </div>
-                    )}
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      {selectedStore.hours}
+                    </p>
                   </div>
-
-                  {/* Expandable Details */}
-                  <button
-                    onClick={() => setExpandedStore(expandedStore === store.id ? null : store.id)}
-                    className="w-full flex items-center justify-between py-3 border-t border-neutral-200 text-[#009eb9] hover:text-[#184363] font-semibold transition-colors"
-                  >
-                    <span>View more details</span>
-                    <svg
-                      className={`w-5 h-5 transition-transform ${
-                        expandedStore === store.id ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {/* Expanded Content */}
-                  {expandedStore === store.id && (
-                    <div className="pt-4 space-y-4 border-t border-neutral-200">
-                      {/* Hours */}
-                      <div>
-                        <p className="text-sm font-bold text-neutral-700 mb-2">Trading Hours</p>
-                        <div className="space-y-1 text-sm text-neutral-600">
-                          <div className="flex justify-between">
-                            <span>Monday - Friday</span>
-                            <span className="font-semibold">{store.hours.weekday}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Saturday</span>
-                            <span className="font-semibold">{store.hours.saturday}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Sunday</span>
-                            <span className="font-semibold">{store.hours.sunday}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Services */}
-                      <div>
-                        <p className="text-sm font-bold text-neutral-700 mb-2">Services</p>
-                        <div className="flex flex-wrap gap-2">
-                          {store.services.map((service, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1.5 bg-[#009eb9]/10 text-[#009eb9] text-xs font-semibold rounded-full"
-                            >
-                              {service}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

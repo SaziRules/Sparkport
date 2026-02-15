@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 import { usePathname } from 'next/navigation';
 import "./globals.css";
 import KlaasHeader from "@/components/KlaasHeader";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -26,6 +27,7 @@ export default function RootLayout({
         
         {/* FULL-BLEED HEADER */}
         <KlaasHeader />
+        <Analytics />
 
         {/* CONSTRAINED PAGE CONTENT - full width on /account */}
         <main className={isAccountPage ? "mx-auto max-w-full px-0" : "mx-auto max-w-385 px-6"}>

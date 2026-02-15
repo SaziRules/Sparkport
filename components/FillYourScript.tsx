@@ -161,7 +161,7 @@ export default function FillYourScript() {
 
   return (
     <div className="min-h-screen bg-transparent mt-10 py-8 lg:py-12">
-      <div className="mx-auto max-w-7xl px-2 lg:px-0">
+      <div className="mx-auto max-w-full px-2 lg:px-0">
         
         {/* 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
