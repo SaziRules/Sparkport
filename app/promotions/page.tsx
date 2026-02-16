@@ -130,7 +130,7 @@ export default function PromotionsPage() {
       <div className="fixed inset-0 -z-10 bg-white/80" />
 
       {/* Page content */}
-      <main className="relative py-12 lg:py-16 px-4 lg:px-1">
+      <main className="relative py-12 lg:py-16 px-4 lg:px-6">
         <div className="max-w-full mx-auto">
           
           {/* Hero Section */}
@@ -283,18 +283,20 @@ export default function PromotionsPage() {
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative"
                     >
                       {/* Sale Badge */}
-                      <div className="absolute top-4 left-4 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full z-10">
+                      <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full z-10">
                         Sale
                       </div>
 
                       {/* Product Image */}
-                      <div className="relative bg-white p-8 overflow-hidden">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-40 object-contain group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
+                      <a href={`/product/${product.id}`} className="block">
+                        <div className="relative bg-white p-8 overflow-hidden">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-full h-40 object-contain group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      </a>
 
                       {/* Product Info */}
                       <div className="p-6 pt-4 border-t border-neutral-100">
@@ -308,9 +310,11 @@ export default function PromotionsPage() {
                           ))}
                         </div>
 
-                        <h3 className="text-base font-bold! text-[#184363] mb-0.5 min-h-12">
-                          {product.name}
-                        </h3>
+                        <a href={`/product/${product.id}`} className="block">
+                          <h3 className="text-base font-bold! text-[#184363] mb-0.5 min-h-12 hover:text-[#009eb9] transition-colors">
+                            {product.name}
+                          </h3>
+                        </a>
                         
                         {/* Pricing */}
                         <div className="flex items-baseline gap-2 mb-4">
@@ -352,18 +356,18 @@ export default function PromotionsPage() {
                     >
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 relative">
                         {/* Sale Badge */}
-                        <div className="absolute top-4 left-4 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full">
+                        <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full">
                           Sale
                         </div>
 
                         {/* Product Image */}
-                        <div className="w-full sm:w-40 shrink-0 pt-8 sm:pt-0">
+                        <a href={`/product/${product.id}`} className="w-full sm:w-40 shrink-0 pt-8 sm:pt-0 block">
                           <img
                             src={product.image}
                             alt={product.name}
                             className="w-full h-32 object-contain"
                           />
-                        </div>
+                        </a>
 
                         {/* Product Info */}
                         <div className="flex-1">
@@ -377,9 +381,11 @@ export default function PromotionsPage() {
                             ))}
                           </div>
 
-                          <h3 className="text-lg font-bold! text-[#184363] mb-3">
-                            {product.name}
-                          </h3>
+                          <a href={`/product/${product.id}`} className="block">
+                            <h3 className="text-lg font-bold! text-[#184363] mb-3 hover:text-[#009eb9] transition-colors">
+                              {product.name}
+                            </h3>
+                          </a>
                           
                           {/* Pricing */}
                           <div className="flex items-baseline gap-2">

@@ -108,7 +108,7 @@ export default function StoreLocator() {
       <div className="w-full max-w-full lg:max-w-275">
         
         {/* Main White Container */}
-        <div className="bg-white rounded-3xl lg:rounded-[2.5rem] shadow-2xl overflow-hidden mt-0 lg:-mt-[15%]">
+        <div className="bg-white rounded-3xl lg:rounded-[2.5rem] shadow-2xl overflow-hidden mt-0 lg:-mt-[5%]">
           
           {/* Header */}
           <div className="flex items-center justify-between px-6 lg:px-8 py-6">
