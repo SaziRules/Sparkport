@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // Copy of your products from PromotionsPage
 const SALE_PRODUCTS = [
@@ -95,6 +96,22 @@ export default function ProductDetailPage({ productId }: ProductDetailPageProps)
   console.log('ProductDetailPage - Received ID:', productId, 'Type:', typeof productId);
   console.log('Looking for product with id:', productId);
   console.log('Available product IDs:', SALE_PRODUCTS.map(p => p.id));
+
+  const searchParams = useSearchParams();
+  const origin = searchParams.get('from');
+
+  const originMap = {
+  promotions: {
+    label: 'Promotions',
+    href: '/promotions'
+  },
+  shop: {
+    label: 'Shop',
+    href: '/shop'
+  }
+};
+
+const breadcrumb = originMap[origin as keyof typeof originMap] || originMap.shop;
   
   const product = SALE_PRODUCTS.find(p => {
     console.log(`Comparing ${p.id} === ${productId}:`, p.id === productId);
@@ -153,7 +170,12 @@ export default function ProductDetailPage({ productId }: ProductDetailPageProps)
             <svg className="w-3.5 h-3.5 text-neutral-300" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
-            <a href="/promotions" className="text-neutral-500 hover:text-[#009eb9] transition-colors duration-200">Promotions</a>
+            <a
+  href={breadcrumb.href}
+  className="text-neutral-500 hover:text-[#009eb9] transition-colors duration-200"
+>
+  {breadcrumb.label}
+</a>
             <svg className="w-3.5 h-3.5 text-neutral-300" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>

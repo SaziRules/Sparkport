@@ -1,22 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { submitPrescriptionNoAuth } from '@/lib/supabase/prescriptions';
 
 interface FormData {
-  // Step 1: Personal Details
   firstName: string;
   lastName: string;
+  email: string;
   whatsappNumber: string;
   idNumber: string;
   dateOfBirth: string;
   preferredContact: string;
-  
-  // Step 2: Prescription
   prescriptionFile: File | null;
-  
-  // Step 3: Delivery/Collection
   deliveryMethod: 'collection' | 'delivery';
   collectionStore: string;
   streetAddress: string;
@@ -25,8 +22,6 @@ interface FormData {
   province: string;
   postalCode: string;
   country: string;
-  
-  // Step 4: Medical & Payment
   additionalNotes: string;
   paymentType: string;
   medicalAidProvider: string;
@@ -38,10 +33,13 @@ interface FormData {
 }
 
 export default function FillYourScript() {
+  const router = useRouter();
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
+    email: '',
     whatsappNumber: '',
     idNumber: '',
     dateOfBirth: '',
@@ -67,6 +65,8 @@ export default function FillYourScript() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [filePreview, setFilePreview] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string>('');
 
   const totalSteps = 5;
 
@@ -78,12 +78,45 @@ export default function FillYourScript() {
     'Sparkport Pharmacy Warner Beach - 125 Kingsway St, Warner Beach, eManzimtoti, 4126',
   ];
 
+  // Parse South African ID number to extract date of birth
+  const parseIdNumber = (idNumber: string) => {
+    if (idNumber.length >= 6) {
+      const year = idNumber.substring(0, 2);
+      const month = idNumber.substring(2, 4);
+      const day = idNumber.substring(4, 6);
+      
+      // Determine century (if year > current year's last 2 digits, it's 1900s, else 2000s)
+      const currentYear = new Date().getFullYear();
+      const currentYearShort = currentYear % 100;
+      const yearNum = parseInt(year);
+      const fullYear = yearNum > currentYearShort ? `19${year}` : `20${year}`;
+      
+      // Validate month and day
+      const monthNum = parseInt(month);
+      const dayNum = parseInt(day);
+      
+      if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+        return `${fullYear}-${month}-${day}`;
+      }
+    }
+    return '';
+  };
+
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+    
+    // Auto-populate DOB from ID number
+    if (field === 'idNumber' && typeof value === 'string') {
+      const dob = parseIdNumber(value);
+      if (dob && !formData.dateOfBirth) {
+        setFormData(prev => ({ ...prev, dateOfBirth: dob }));
+      }
+    }
+    
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+    if (submitError) setSubmitError('');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,7 +128,6 @@ export default function FillYourScript() {
       }
       handleInputChange('prescriptionFile', file);
       
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setFilePreview(reader.result as string);
@@ -113,6 +145,9 @@ export default function FillYourScript() {
       if (!formData.whatsappNumber.trim()) newErrors.whatsappNumber = 'WhatsApp number is required';
       if (!formData.idNumber.trim()) newErrors.idNumber = 'ID number is required';
       if (formData.idNumber.length !== 13) newErrors.idNumber = 'ID number must be 13 characters';
+      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address';
+      }
     }
 
     if (step === 2) {
@@ -144,18 +179,36 @@ export default function FillYourScript() {
   const nextStep = () => {
     if (validateStep(currentStep)) {
       setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const prevStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSubmit = () => {
-    if (validateStep(currentStep)) {
-      console.log('Form submitted:', formData);
-      // Here you would send to your backend
-      alert('Prescription submitted successfully! We will contact you soon.');
+  const handleSubmit = async () => {
+    if (!validateStep(currentStep)) return;
+
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      const result = await submitPrescriptionNoAuth(formData, formData.email);
+
+      if (result.success) {
+        router.push(
+          `/prescription-success?number=${result.prescriptionNumber}&email=${encodeURIComponent(formData.email)}&phone=${encodeURIComponent(formData.whatsappNumber)}`
+        );
+      } else {
+        setSubmitError(result.error || 'Failed to submit prescription. Please try again.');
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+      setSubmitError('An unexpected error occurred. Please try again.');
+      setIsSubmitting(false);
     }
   };
 
@@ -163,15 +216,13 @@ export default function FillYourScript() {
     <div className="min-h-screen bg-transparent mt-10 py-8 lg:py-12">
       <div className="mx-auto max-w-full px-2 lg:px-0">
         
-        {/* 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
           
-          {/* Left Column: Header & Progress - Sticky on Desktop */}
+          {/* Left Column: Header & Progress */}
           <div className="lg:col-span-4 lg:sticky lg:top-8 lg:self-start">
             
-            {/* Header */}
             <div className="mb-6">
-              <h1 className="text-3xl lg:text-6xl font-extrabold! text-[#184363] mb-3">
+              <h1 className="text-3xl lg:text-6xl font-extrabold text-[#184363] mb-3">
                 Fill Your Script Online
               </h1>
               <p className="text-neutral-600 text-sm lg:text-base">
@@ -181,7 +232,7 @@ export default function FillYourScript() {
 
             {/* Progress Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-xs font-bold! text-neutral-700 mb-4 uppercase tracking-wide">
+              <h3 className="text-xs font-bold text-neutral-700 mb-4 uppercase tracking-wide">
                 Progress
               </h3>
               
@@ -218,7 +269,6 @@ export default function FillYourScript() {
                 ))}
               </div>
 
-              {/* Progress Bar */}
               <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-[#009eb9] transition-all duration-500"
@@ -230,7 +280,6 @@ export default function FillYourScript() {
               </p>
             </div>
 
-            {/* Help Section - Desktop Only */}
             <div className="hidden lg:block mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
               <div className="flex gap-3">
                 <svg className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -249,14 +298,30 @@ export default function FillYourScript() {
           {/* Right Column: Form */}
           <div className="lg:col-span-8">
             
+            {/* Error Alert */}
+            {submitError && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
+                <div className="flex gap-3">
+                  <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="text-sm text-red-800">
+                    <p className="font-semibold mb-1">Submission Error</p>
+                    <p>{submitError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Form Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6 lg:p-8 mb-6">
               
               {/* Step 1: Personal Details */}
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold! text-[#184363] mb-6">Personal Details</h2>
+                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Personal Details</h2>
                   
+                  {/* Name fields - side by side */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -291,41 +356,61 @@ export default function FillYourScript() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                      WhatsApp Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.whatsappNumber}
-                      onChange={(e) => handleInputChange('whatsappNumber', e.target.value)}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                        errors.whatsappNumber ? 'border-red-500' : 'border-neutral-300'
-                      }`}
-                      placeholder="e.g., 0821234567"
-                    />
-                    {errors.whatsappNumber && <p className="text-red-500 text-sm mt-1">{errors.whatsappNumber}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                      ID Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.idNumber}
-                      onChange={(e) => handleInputChange('idNumber', e.target.value.slice(0, 13))}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                        errors.idNumber ? 'border-red-500' : 'border-neutral-300'
-                      }`}
-                      placeholder="13-digit ID number"
-                      maxLength={13}
-                    />
-                    <p className="text-sm text-neutral-500 mt-1">{formData.idNumber.length} of 13 characters</p>
-                    {errors.idNumber && <p className="text-red-500 text-sm mt-1">{errors.idNumber}</p>}
-                  </div>
-
+                  {/* Email + WhatsApp on same line */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                        Email (for tracking)
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                          errors.email ? 'border-red-500' : 'border-neutral-300'
+                        }`}
+                        placeholder="your@email.com"
+                      />
+                      {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                        WhatsApp Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.whatsappNumber}
+                        onChange={(e) => handleInputChange('whatsappNumber', e.target.value)}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                          errors.whatsappNumber ? 'border-red-500' : 'border-neutral-300'
+                        }`}
+                        placeholder="e.g., 0821234567"
+                      />
+                      {errors.whatsappNumber && <p className="text-red-500 text-sm mt-1">{errors.whatsappNumber}</p>}
+                    </div>
+                  </div>
+
+                  {/* ID Number + DOB on same line */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                        ID Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.idNumber}
+                        onChange={(e) => handleInputChange('idNumber', e.target.value.slice(0, 13))}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                          errors.idNumber ? 'border-red-500' : 'border-neutral-300'
+                        }`}
+                        placeholder="13-digit ID number"
+                        maxLength={13}
+                      />
+                      <p className="text-sm text-neutral-500 mt-1">{formData.idNumber.length} of 13 characters</p>
+                      {errors.idNumber && <p className="text-red-500 text-sm mt-1">{errors.idNumber}</p>}
+                    </div>
+
                     <div>
                       <label className="block text-sm font-semibold text-neutral-700 mb-2">
                         Date of Birth
@@ -336,23 +421,25 @@ export default function FillYourScript() {
                         onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                         className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
                       />
+                      <p className="text-xs text-neutral-500 mt-1">Auto-filled from ID number</p>
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                        Preferred Contact
-                      </label>
-                      <select
-                        value={formData.preferredContact}
-                        onChange={(e) => handleInputChange('preferredContact', e.target.value)}
-                        className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
-                      >
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="email">Email</option>
-                        <option value="phone">Phone Call</option>
-                        <option value="sms">SMS</option>
-                      </select>
-                    </div>
+                  {/* Preferred Contact */}
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                      Preferred Contact Method
+                    </label>
+                    <select
+                      value={formData.preferredContact}
+                      onChange={(e) => handleInputChange('preferredContact', e.target.value)}
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="email">Email</option>
+                      <option value="phone">Phone Call</option>
+                      <option value="sms">SMS</option>
+                    </select>
                   </div>
                 </div>
               )}
@@ -360,7 +447,7 @@ export default function FillYourScript() {
               {/* Step 2: Upload Prescription */}
               {currentStep === 2 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold! text-[#184363] mb-6">Upload Your Prescription</h2>
+                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Upload Your Prescription</h2>
                   
                   <div className="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-[#009eb9] transition-colors">
                     <div className="mb-4">
@@ -435,10 +522,10 @@ export default function FillYourScript() {
               {/* Step 3: Delivery/Collection */}
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold! text-[#184363] mb-6">Delivery or Collection?</h2>
+                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Delivery or Collection?</h2>
                   
                   <div>
-                    <label className="block text-sm font-semibold! text-neutral-700 mb-3">
+                    <label className="block text-sm font-semibold text-neutral-700 mb-3">
                       Select Preferred Method
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -478,7 +565,7 @@ export default function FillYourScript() {
                               <div className="w-3 h-3 rounded-full bg-[#009eb9]" />
                             )}
                           </div>
-                          <span className="font-semibold! text-neutral-700">Delivery</span>
+                          <span className="font-semibold text-neutral-700">Delivery</span>
                         </div>
                       </button>
                     </div>
@@ -518,7 +605,7 @@ export default function FillYourScript() {
                   {formData.deliveryMethod === 'delivery' && (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                        <label className="block text-sm font-semibold text-neutral-700 mb-2">
                           Street Address <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -534,7 +621,7 @@ export default function FillYourScript() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                        <label className="block text-sm font-semibold text-neutral-700 mb-2">
                           Address Line 2 (Optional)
                         </label>
                         <input
@@ -548,7 +635,7 @@ export default function FillYourScript() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                          <label className="block text-sm font-semibold text-neutral-700 mb-2">
                             City <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -564,7 +651,7 @@ export default function FillYourScript() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                          <label className="block text-sm font-semibold text-neutral-700 mb-2">
                             Province <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -582,7 +669,7 @@ export default function FillYourScript() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                          <label className="block text-sm font-semibold text-neutral-700 mb-2">
                             Postal Code <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -618,10 +705,10 @@ export default function FillYourScript() {
               {/* Step 4: Medical & Payment Info */}
               {currentStep === 4 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold! text-[#184363] mb-6">Additional Information</h2>
+                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Additional Information</h2>
                   
                   <div>
-                    <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
                       Payment Type
                     </label>
                     <select
@@ -636,37 +723,38 @@ export default function FillYourScript() {
                     </select>
                   </div>
 
-                  {/* Medical Aid Fields - Show only if Medical Aid selected */}
                   {formData.paymentType === 'medical-aid' && (
                     <div className="space-y-4 border-l-4 border-[#009eb9] pl-4">
-                      <div>
-                        <label className="block text-sm font-semibold! text-neutral-700 mb-2">
-                          Medical Aid Provider
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.medicalAidProvider}
-                          onChange={(e) => handleInputChange('medicalAidProvider', e.target.value)}
-                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
-                          placeholder="e.g., Discovery, Bonitas, Medshield"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                            Medical Aid Provider
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.medicalAidProvider}
+                            onChange={(e) => handleInputChange('medicalAidProvider', e.target.value)}
+                            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                            placeholder="e.g., Discovery, Bonitas, Medshield"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                            Medical Aid Number
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.medicalAidNumber}
+                            onChange={(e) => handleInputChange('medicalAidNumber', e.target.value)}
+                            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                            placeholder="Membership number"
+                          />
+                        </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold! text-neutral-700 mb-2">
-                          Medical Aid Number
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.medicalAidNumber}
-                          onChange={(e) => handleInputChange('medicalAidNumber', e.target.value)}
-                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
-                          placeholder="Membership number"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                        <label className="block text-sm font-semibold text-neutral-700 mb-2">
                           Dependant Code
                         </label>
                         <input
@@ -681,7 +769,7 @@ export default function FillYourScript() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-semibold! text-neutral-700 mb-3">
+                    <label className="block text-sm font-semibold text-neutral-700 mb-3">
                       Replace with generics?
                     </label>
                     <div className="flex gap-4">
@@ -709,7 +797,7 @@ export default function FillYourScript() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold! text-neutral-700 mb-3">
+                    <label className="block text-sm font-semibold text-neutral-700 mb-3">
                       Do you have any allergies?
                     </label>
                     <div className="flex gap-4">
@@ -738,7 +826,7 @@ export default function FillYourScript() {
 
                   {formData.hasAllergies && (
                     <div>
-                      <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
                         Please specify your allergies <span className="text-red-500">*</span>
                       </label>
                       <textarea
@@ -755,7 +843,7 @@ export default function FillYourScript() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-semibold! text-neutral-700 mb-2">
+                    <label className="block text-sm font-semibold text-neutral-700 mb-2">
                       Additional Notes
                     </label>
                     <textarea
@@ -772,23 +860,29 @@ export default function FillYourScript() {
               {/* Step 5: Review & Submit */}
               {currentStep === 5 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold! text-[#184363] mb-6">Review Your Information</h2>
+                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Review Your Information</h2>
                   
                   <div className="space-y-4">
                     <div className="bg-neutral-50 rounded-lg p-4">
-                      <h3 className="font-bold! text-neutral-700 mb-3">Personal Details</h3>
+                      <h3 className="font-bold text-neutral-700 mb-3">Personal Details</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-neutral-500">Name</p>
-                          <p className="font-semibold! text-neutral-700">{formData.firstName} {formData.lastName}</p>
+                          <p className="font-semibold text-neutral-700">{formData.firstName} {formData.lastName}</p>
                         </div>
                         <div>
                           <p className="text-neutral-500">WhatsApp</p>
-                          <p className="font-semibold! text-neutral-700">{formData.whatsappNumber}</p>
+                          <p className="font-semibold text-neutral-700">{formData.whatsappNumber}</p>
                         </div>
+                        {formData.email && (
+                          <div>
+                            <p className="text-neutral-500">Email</p>
+                            <p className="font-semibold text-neutral-700">{formData.email}</p>
+                          </div>
+                        )}
                         <div>
                           <p className="text-neutral-500">ID Number</p>
-                          <p className="font-semibold! text-neutral-700">{formData.idNumber}</p>
+                          <p className="font-semibold text-neutral-700">{formData.idNumber}</p>
                         </div>
                         <div>
                           <p className="text-neutral-500">Contact Method</p>
@@ -798,12 +892,12 @@ export default function FillYourScript() {
                     </div>
 
                     <div className="bg-neutral-50 rounded-lg p-4">
-                      <h3 className="font-bold! text-neutral-700 mb-3">Prescription</h3>
+                      <h3 className="font-bold text-neutral-700 mb-3">Prescription</h3>
                       <p className="text-sm text-neutral-600">{formData.prescriptionFile?.name}</p>
                     </div>
 
                     <div className="bg-neutral-50 rounded-lg p-4">
-                      <h3 className="font-bold! text-neutral-700 mb-3">
+                      <h3 className="font-bold text-neutral-700 mb-3">
                         {formData.deliveryMethod === 'collection' ? 'Collection' : 'Delivery'} Details
                       </h3>
                       {formData.deliveryMethod === 'collection' ? (
@@ -819,14 +913,13 @@ export default function FillYourScript() {
                     </div>
 
                     <div className="bg-neutral-50 rounded-lg p-4">
-                      <h3 className="font-bold! text-neutral-700 mb-3">Additional Information</h3>
+                      <h3 className="font-bold text-neutral-700 mb-3">Additional Information</h3>
                       <div className="text-sm space-y-2">
                         <p><span className="text-neutral-500">Payment:</span> <span className="font-semibold text-neutral-700 capitalize">{formData.paymentType.replace('-', ' ')}</span></p>
-                        {formData.paymentType === 'medical-aid' && (
+                        {formData.paymentType === 'medical-aid' && formData.medicalAidProvider && (
                           <>
-                            <p><span className="text-neutral-500">Medical Aid Provider:</span> <span className="font-semibold text-neutral-700">{formData.medicalAidProvider || 'Not provided'}</span></p>
-                            <p><span className="text-neutral-500">Medical Aid Number:</span> <span className="font-semibold text-neutral-700">{formData.medicalAidNumber || 'Not provided'}</span></p>
-                            <p><span className="text-neutral-500">Dependant Code:</span> <span className="font-semibold text-neutral-700">{formData.dependantCode || 'Not provided'}</span></p>
+                            <p><span className="text-neutral-500">Medical Aid:</span> <span className="font-semibold text-neutral-700">{formData.medicalAidProvider}</span></p>
+                            {formData.medicalAidNumber && <p><span className="text-neutral-500">Member Number:</span> <span className="font-semibold text-neutral-700">{formData.medicalAidNumber}</span></p>}
                           </>
                         )}
                         <p><span className="text-neutral-500">Generics:</span> <span className="font-semibold text-neutral-700">{formData.replaceWithGenerics ? 'Yes' : 'No'}</span></p>
@@ -862,7 +955,8 @@ export default function FillYourScript() {
               {currentStep > 1 ? (
                 <button
                   onClick={prevStep}
-                  className="px-6 py-3 text-[#009eb9] font-semibold rounded-lg hover:bg-neutral-100 transition-colors flex items-center gap-2"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 text-[#009eb9] font-semibold rounded-lg hover:bg-neutral-100 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -876,7 +970,8 @@ export default function FillYourScript() {
               {currentStep < totalSteps ? (
                 <button
                   onClick={nextStep}
-                  className="ml-auto px-8 py-3 bg-[#009eb9] text-white font-semibold rounded-lg hover:bg-[#184363] transition-colors flex items-center gap-2"
+                  disabled={isSubmitting}
+                  className="ml-auto px-8 py-3 bg-[#009eb9] text-white font-semibold rounded-lg hover:bg-[#184363] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next Step
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -886,14 +981,22 @@ export default function FillYourScript() {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  className="ml-auto px-8 py-3 bg-[#009eb9] text-white font-semibold rounded-lg hover:bg-[#184363] transition-colors"
+                  disabled={isSubmitting}
+                  className="ml-auto px-8 py-3 bg-[#009eb9] text-white font-semibold rounded-lg hover:bg-[#184363] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
                 >
-                  Submit Prescription
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Prescription'
+                  )}
                 </button>
               )}
             </div>
 
-            {/* Help Section - Mobile Only */}
+            {/* Help Section - Mobile */}
             <div className="lg:hidden mt-8 text-center">
               <p className="text-neutral-600 mb-2">Need help?</p>
               <Link href="/contact" className="text-[#009eb9] font-semibold hover:text-[#184363] transition-colors">

@@ -98,14 +98,14 @@ export default function SparkportHeader() {
             {/* Main Navigation */}
             <div className="flex items-center">
               <Link 
-                href="/" 
+                href="/shop" 
                 onMouseEnter={() => setIsShopMenuOpen(true)}
                 onMouseLeave={() => setIsShopMenuOpen(false)}
                 className="h-14 flex items-center px-6 bg-[#f0f7f7] text-[#184363] text-sm font-medium hover:bg-[#007a94] hover:text-white transition-colors"
               >
                 Shop
               </Link>
-              <Link href="/promotions" className="h-14 flex items-center px-6 bg-[#009eb9] text-white text-sm font-medium hover:bg-[#007a94] transition-colors">
+              <Link href="/shop/promotions" className="h-14 flex items-center px-6 bg-[#009eb9] text-white text-sm font-medium hover:bg-[#007a94] transition-colors">
                 Promotions
               </Link>
               <div className="flex items-center gap-8 ml-8">
