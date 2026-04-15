@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 interface ImageBannerProps {
   image: string;
   link: string;
@@ -20,10 +22,12 @@ export default function ImageBanner({
           href={link}
           className={`block relative overflow-hidden rounded-2xl group ${height} shadow-lg hover:shadow-xl transition-shadow`}
         >
-          <img
+          <Image
             src={image}
             alt={alt}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            fill
+            sizes="100vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
           />
         </a>
       </div>

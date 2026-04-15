@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
@@ -9,7 +11,7 @@ export default function Footer() {
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (email && acceptedTerms) {
-      console.log('Subscribing:', email);
+      // TODO: Wire to newsletter service (Mailchimp / WordPress)
       setEmail('');
       setAcceptedTerms(false);
     }
@@ -19,15 +21,17 @@ export default function Footer() {
     <footer className="bg-[#2c2c2c] text-white">
       
       {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-12">
+      <div className="max-w-full mx-auto px-4 lg:px-6 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           
           {/* Left Column - Newsletter */}
           <div className="lg:col-span-4">
-            <img 
-              src="https://sparkport.co.za/wp-content/uploads/SP-Logo-01.png" 
+            <Image
+              src="https://sparkport.co.za/wp-content/uploads/SP-Logo-01.png"
               alt="Sparkport"
-              className="h-14 mb-6"
+              width={160}
+              height={56}
+              className="h-14 w-auto mb-6"
             />
             <p className="text-neutral-300! mb-6">
               Stay tuned for latest updates and new features
@@ -77,29 +81,29 @@ export default function Footer() {
               <h3 className="text-white font-semibold mb-4">Information</h3>
               <ul className="space-y-2.5">
                 <li>
-                  <a href="/health-care-services" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/health-care-services" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Health Care Services
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="/shipping-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/shipping-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Shipping policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="/privacy-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/privacy-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="/store-locator" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Store Locater
-                  </a>
+                  <Link href="/store-locator" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                    Store Locator
+                  </Link>
                 </li>
                 <li>
-                  <a href="/terms-conditions" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/terms-conditions" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Terms & Conditions
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -109,19 +113,19 @@ export default function Footer() {
               <h3 className="text-white font-semibold mb-4">Account details</h3>
               <ul className="space-y-2.5">
                 <li>
-                  <a href="/my-account/orders" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/my-account/orders" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Orders
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="/my-account/returns" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/my-account/returns" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Returns
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="/my-account/lost-password" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/my-account/lost-password" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Lost password
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -185,7 +189,7 @@ export default function Footer() {
 
       {/* Bottom Copyright Bar */}
       <div className="border-t border-neutral-700">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
+        <div className="max-w-full mx-auto px-4 lg:px-6 py-4">
           <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
             
             <p className="text-neutral-400! text-xs text-center lg:text-left">
@@ -193,8 +197,8 @@ export default function Footer() {
             </p>
 
             <div className="flex items-center gap-3">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-6" />
-              <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" alt="Mastercard" className="h-6" />
+              <Image src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" width={48} height={24} className="h-6 w-auto" />
+              <Image src="https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" alt="Mastercard" width={48} height={24} className="h-6 w-auto" />
               <div className="px-2 py-1 bg-white text-black text-xs font-semibold">
                 PAYGATE
               </div>

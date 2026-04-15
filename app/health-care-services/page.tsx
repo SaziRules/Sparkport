@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 
 const SERVICES = [
   'Family Planning',
@@ -100,10 +101,12 @@ export default function HealthCareServicesPage() {
               
               {/* Image */}
               <div className="relative h-64 lg:h-auto">
-                <img 
+                <Image
                   src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80"
                   alt="Vitality Health Check"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
                 />
               </div>
 
@@ -253,10 +256,12 @@ export default function HealthCareServicesPage() {
 
               {/* Image - RIGHT */}
               <div className="lg:w-100 h-64 lg:h-auto">
-                <img 
+                <Image
                   src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=1200&q=90"
                   alt="Healthcare Professional"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
                 />
               </div>
             </div>
@@ -317,10 +322,12 @@ export default function HealthCareServicesPage() {
 
               {/* Image */}
               <div className="relative h-64 lg:h-auto order-1 lg:order-2">
-                <img 
+                <Image
                   src="https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&q=80"
                   alt="Clinic Services"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
                 />
               </div>
             </div>
@@ -332,10 +339,12 @@ export default function HealthCareServicesPage() {
               
               {/* Image */}
               <div className="relative h-64 lg:h-auto">
-                <img 
+                <Image
                   src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&q=80"
                   alt="Generic Insurance"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
                 />
               </div>
 
@@ -436,10 +445,12 @@ export default function HealthCareServicesPage() {
 
               {/* Image */}
               <div className="relative h-64 lg:h-auto order-1 lg:order-2">
-                <img 
+                <Image
                   src="https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&q=80"
                   alt="Blister Packaging"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
                 />
               </div>
             </div>

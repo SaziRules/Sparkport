@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 // Sample product data - replace with actual WooCommerce API data
 const PRODUCTS = {
@@ -140,8 +141,8 @@ export default function FeaturedProducts() {
   const currentProducts = PRODUCTS[activeTab];
 
   return (
-    <section className="py-12 lg:py-16 px-4 lg:px-2">
-      <div className="max-full mx-auto">
+    <section className="py-12 lg:py-16 px-4 lg:px-6">
+      <div className="max-w-full mx-auto">
         
         {/* Section Header */}
         <div className="text-center mb-8">
@@ -213,11 +214,13 @@ export default function FeaturedProducts() {
               </div>
 
               {/* Product Image */}
-              <div className="relative bg-white p-6 overflow-hidden">
-                <img
+              <div className="relative bg-white p-6 h-52 overflow-hidden">
+                <Image
                   src={product.image}
                   alt={product.name}
-                  className="w-full h-40 object-contain group-hover:scale-105 transition-transform duration-300"
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-contain p-6 group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
 
@@ -265,7 +268,7 @@ export default function FeaturedProducts() {
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
                     </svg>
-                    Add
+                    Add to basket
                   </button>
                 </div>
               </div>
@@ -276,7 +279,7 @@ export default function FeaturedProducts() {
         {/* View All Products CTA */}
         <div className="text-center">
           <a
-            href="/promotions"
+            href="/shop"
             className="inline-flex items-center gap-2 px-8 py-4 bg-[#184363] text-white font-bold! rounded-xl hover:bg-[#009eb9] transition-colors shadow-lg hover:shadow-xl"
           >
             View All Products

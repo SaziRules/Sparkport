@@ -58,14 +58,12 @@ export default function SignUp() {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      console.log('Sign up:', formData);
-      // Handle sign up logic here
+      // TODO: Wire to app/auth/actions.ts signUp
     }
   };
 
-  const handleSocialSignUp = (provider: string) => {
-    console.log(`Sign up with ${provider}`);
-    // Handle social sign up logic here
+  const handleSocialSignUp = (_provider: string) => {
+    // TODO: Wire to app/auth/actions.ts signInWithGoogle / signInWithFacebook
   };
 
   return (

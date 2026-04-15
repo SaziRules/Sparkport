@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import Image from 'next/image';
+
 const BLOG_POSTS = [
   {
     id: 1,
@@ -45,8 +48,8 @@ const BLOG_POSTS = [
 
 export default function BlogPreview() {
   return (
-    <section className="py-12 lg:py-16 px-4 lg:px-6 bg-neutral-50 mb-[5%]">
-      <div className="max-w-7xl mx-auto">
+    <section className="py-12 lg:py-16 px-4 lg:px-6 bg-neutral-50">
+      <div className="max-w-full mx-auto">
         
         {/* Section Header */}
         <div className="flex items-end justify-between mb-10">
@@ -58,7 +61,7 @@ export default function BlogPreview() {
               Expert advice and tips from our healthcare professionals
             </p>
           </div>
-          <a
+          <Link
             href="/blog"
             className="hidden lg:inline-flex items-center gap-2 text-[#009eb9] font-semibold! hover:gap-3 transition-all"
           >
@@ -66,23 +69,25 @@ export default function BlogPreview() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
-          </a>
+          </Link>
         </div>
 
         {/* Blog Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {BLOG_POSTS.map((post) => (
-            <a
+            <Link
               key={post.id}
               href={post.link}
               className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all group"
             >
               {/* Image */}
               <div className="relative h-48 overflow-hidden bg-neutral-100">
-                <img
+                <Image
                   src={post.image}
                   alt={post.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-cover group-hover:scale-110 transition-transform duration-500"
                 />
                 {/* Category Badge */}
                 <div className="absolute top-3 left-3 px-3 py-1 bg-[#009eb9] text-white text-xs font-bold! rounded-full">
@@ -122,13 +127,13 @@ export default function BlogPreview() {
                   </svg>
                 </div>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
 
         {/* Mobile View All Button */}
         <div className="text-center lg:hidden">
-          <a
+          <Link
             href="/blog"
             className="inline-flex items-center gap-2 px-8 py-4 bg-[#184363] text-white font-bold! rounded-xl hover:bg-[#009eb9] transition-colors shadow-md"
           >
@@ -136,7 +141,7 @@ export default function BlogPreview() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
-          </a>
+          </Link>
         </div>
 
       </div>

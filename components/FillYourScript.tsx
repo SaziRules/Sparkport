@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { submitPrescriptionNoAuth } from '@/lib/supabase/prescriptions';
 
 interface FormData {
+  // Personal Details
   firstName: string;
   lastName: string;
   email: string;
@@ -13,23 +14,43 @@ interface FormData {
   idNumber: string;
   dateOfBirth: string;
   preferredContact: string;
+  
+  // Prescription File
   prescriptionFile: File | null;
+  
+  // Doctor Information (NEW - REQUIRED)
+  doctorName: string;
+  doctorPracticeNumber: string;
+  prescriptionDate: string;
+  
+  // Chronic Medication (NEW)
+  isChronic: boolean;
+  chronicRepeats: string;
+  
+  // Delivery/Collection
   deliveryMethod: 'collection' | 'delivery';
-  collectionStore: string;
+  preferredPharmacyId: string;  // CHANGED from collectionStore - now UUID
+  collectionStore: string;  // Store name for submission
+  
+  // Delivery Address
   streetAddress: string;
   addressLine2: string;
   city: string;
   province: string;
   postalCode: string;
   country: string;
-  additionalNotes: string;
+  
+  // Medical & Payment
   paymentType: string;
   medicalAidProvider: string;
   medicalAidNumber: string;
   dependantCode: string;
+  
+  // Additional
   replaceWithGenerics: boolean;
   hasAllergies: boolean;
   allergyDetails: string;
+  additionalNotes: string;
 }
 
 export default function FillYourScript() {
@@ -45,8 +66,19 @@ export default function FillYourScript() {
     dateOfBirth: '',
     preferredContact: 'whatsapp',
     prescriptionFile: null,
+    
+    // NEW: Doctor fields
+    doctorName: '',
+    doctorPracticeNumber: '',
+    prescriptionDate: '',
+    
+    // NEW: Chronic fields
+    isChronic: false,
+    chronicRepeats: '',
+    
     deliveryMethod: 'collection',
-    collectionStore: '',
+    preferredPharmacyId: '',  // CHANGED from collectionStore
+    collectionStore: '',  // Store name
     streetAddress: '',
     addressLine2: '',
     city: '',
@@ -70,12 +102,48 @@ export default function FillYourScript() {
 
   const totalSteps = 5;
 
+  // REPLACE YOUR PHARMACY IDS WITH REAL ONES FROM: SELECT id, name, street_address FROM pharmacies;
   const stores = [
-    'Sparkport Overport - 382 Corner Moses Kotane & Randles Road, Durban, 4091',
-    'Sparkport 454 - Anton Lembede Street, Durban Central, 4000',
-    'Sparkport Quality Street - 315 Quality Street, Jacobs, Durban',
-    'Sparkport Musgrave - 77 Musgrave Rd, Musgrave, Berea, 4001',
-    'Sparkport Pharmacy Warner Beach - 125 Kingsway St, Warner Beach, eManzimtoti, 4126',
+    {
+      id: '3fcdc50f-68c0-4d31-8fa0-3267d1e3e735',  // Sparkport 454
+      name: 'Sparkport City Centre',
+      address: 'Anton Lembede Street, Durban Central, 4000'
+    },
+    {
+      id: '9ddae420-d72f-45c1-8926-740814a9efc0',  // Sparkport Chatsworth
+      name: 'Sparkport Chatsworth',
+      address: 'Chatsworth Centre, Chatsworth'
+    },
+    {
+      id: 'd6809ab9-de13-4482-9080-c753a12e1e42',  // Sparkport Musgrave
+      name: 'Sparkport Musgrave',
+      address: '77 Musgrave Rd, Musgrave, Berea, 4001'
+    },
+    {
+      id: '126dbab5-4f82-4e3f-adc8-877f793dfa22',  // Sparkport Overport
+      name: 'Sparkport Overport',
+      address: '382 Corner Moses Kotane & Randles Road, Durban, 4091'
+    },
+    {
+      id: '5939cf00-f967-4019-aec3-e3d235452cf1',  // Sparkport Pietermaritzburg
+      name: 'Sparkport Pietermaritzburg',
+      address: 'Pietermaritzburg'
+    },
+    {
+      id: '700ee74f-961d-4aa3-bad2-0aae5dff4e9e',  // Sparkport Quality Street
+      name: 'Sparkport Quality Street',
+      address: '315 Quality Street, Jacobs, Durban'
+    },
+    {
+      id: '61a59c23-db1a-4f0d-90b5-3e189a3a4246',  // Sparkport Umlazi
+      name: 'Sparkport Umlazi',
+      address: 'Umlazi'
+    },
+    {
+      id: '75bafc2e-2ada-4730-819c-d8d892336384',  // Sparkport Warner Beach
+      name: 'Sparkport Pharmacy Warner Beach',
+      address: '125 Kingsway St, Warner Beach, eManzimtoti, 4126'
+    }
   ];
 
   // Parse South African ID number to extract date of birth
@@ -85,13 +153,11 @@ export default function FillYourScript() {
       const month = idNumber.substring(2, 4);
       const day = idNumber.substring(4, 6);
       
-      // Determine century (if year > current year's last 2 digits, it's 1900s, else 2000s)
       const currentYear = new Date().getFullYear();
       const currentYearShort = currentYear % 100;
       const yearNum = parseInt(year);
       const fullYear = yearNum > currentYearShort ? `19${year}` : `20${year}`;
       
-      // Validate month and day
       const monthNum = parseInt(month);
       const dayNum = parseInt(day);
       
@@ -105,7 +171,6 @@ export default function FillYourScript() {
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Auto-populate DOB from ID number
     if (field === 'idNumber' && typeof value === 'string') {
       const dob = parseIdNumber(value);
       if (dob && !formData.dateOfBirth) {
@@ -152,11 +217,13 @@ export default function FillYourScript() {
 
     if (step === 2) {
       if (!formData.prescriptionFile) newErrors.prescriptionFile = 'Please upload your prescription';
+      if (!formData.doctorName.trim()) newErrors.doctorName = 'Doctor name is required';
+      if (!formData.prescriptionDate) newErrors.prescriptionDate = 'Prescription date is required';
     }
 
     if (step === 3) {
-      if (formData.deliveryMethod === 'collection' && !formData.collectionStore) {
-        newErrors.collectionStore = 'Please select a collection store';
+      if (formData.deliveryMethod === 'collection' && !formData.preferredPharmacyId) {
+        newErrors.preferredPharmacyId = 'Please select a collection store';
       }
       if (formData.deliveryMethod === 'delivery') {
         if (!formData.streetAddress.trim()) newErrors.streetAddress = 'Street address is required';
@@ -321,7 +388,6 @@ export default function FillYourScript() {
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-[#184363] mb-6">Personal Details</h2>
                   
-                  {/* Name fields - side by side */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -356,7 +422,6 @@ export default function FillYourScript() {
                     </div>
                   </div>
 
-                  {/* Email + WhatsApp on same line */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -391,7 +456,6 @@ export default function FillYourScript() {
                     </div>
                   </div>
 
-                  {/* ID Number + DOB on same line */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -425,7 +489,6 @@ export default function FillYourScript() {
                     </div>
                   </div>
 
-                  {/* Preferred Contact */}
                   <div>
                     <label className="block text-sm font-semibold text-neutral-700 mb-2">
                       Preferred Contact Method
@@ -444,10 +507,10 @@ export default function FillYourScript() {
                 </div>
               )}
 
-              {/* Step 2: Upload Prescription */}
+              {/* Step 2: Upload Prescription + Doctor Info + Chronic */}
               {currentStep === 2 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Upload Your Prescription</h2>
+                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Prescription Details</h2>
                   
                   <div className="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-[#009eb9] transition-colors">
                     <div className="mb-4">
@@ -516,6 +579,110 @@ export default function FillYourScript() {
                       </div>
                     </div>
                   </div>
+
+                  {/* NEW: Doctor Information */}
+                  <div className="border-t border-neutral-200 pt-6">
+                    <h3 className="text-lg font-bold text-[#184363] mb-4">Doctor Information</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                          Doctor&apos;s Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.doctorName}
+                          onChange={(e) => handleInputChange('doctorName', e.target.value)}
+                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                            errors.doctorName ? 'border-red-500' : 'border-neutral-300'
+                          }`}
+                          placeholder="Dr. John Smith"
+                        />
+                        {errors.doctorName && <p className="text-red-500 text-sm mt-1">{errors.doctorName}</p>}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                          Practice Number
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.doctorPracticeNumber}
+                          onChange={(e) => handleInputChange('doctorPracticeNumber', e.target.value)}
+                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                          placeholder="MP123456"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                        Prescription Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.prescriptionDate}
+                        onChange={(e) => handleInputChange('prescriptionDate', e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                          errors.prescriptionDate ? 'border-red-500' : 'border-neutral-300'
+                        }`}
+                      />
+                      <p className="text-xs text-neutral-500 mt-1">When did the doctor issue this prescription?</p>
+                      {errors.prescriptionDate && <p className="text-red-500 text-sm mt-1">{errors.prescriptionDate}</p>}
+                    </div>
+                  </div>
+
+                  {/* NEW: Chronic Medication */}
+                  <div className="border-t border-neutral-200 pt-6">
+                    <h3 className="text-lg font-bold text-[#184363] mb-4">Medication Type</h3>
+                    
+                    <div>
+                      <label className="block text-sm font-semibold text-neutral-700 mb-3">
+                        Is this chronic medication?
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="chronic"
+                            checked={formData.isChronic === true}
+                            onChange={() => handleInputChange('isChronic', true)}
+                            className="w-4 h-4 text-[#009eb9]"
+                          />
+                          <span className="text-neutral-700">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="chronic"
+                            checked={formData.isChronic === false}
+                            onChange={() => handleInputChange('isChronic', false)}
+                            className="w-4 h-4 text-[#009eb9]"
+                          />
+                          <span className="text-neutral-700">No (Acute)</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {formData.isChronic && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                          Number of Repeats
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="12"
+                          value={formData.chronicRepeats}
+                          onChange={(e) => handleInputChange('chronicRepeats', e.target.value)}
+                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                          placeholder="e.g., 5"
+                        />
+                        <p className="text-xs text-neutral-500 mt-1">How many repeats are left on this prescription?</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -579,26 +746,32 @@ export default function FillYourScript() {
                       <div className="space-y-3">
                         {stores.map((store) => (
                           <label
-                            key={store}
+                            key={store.id}
                             className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                              formData.collectionStore === store
+                              formData.preferredPharmacyId === store.id
                                 ? 'border-[#009eb9] bg-[#009eb9]/5'
                                 : 'border-neutral-300 hover:border-neutral-400'
                             }`}
                           >
                             <input
                               type="radio"
-                              name="collectionStore"
-                              value={store}
-                              checked={formData.collectionStore === store}
-                              onChange={(e) => handleInputChange('collectionStore', e.target.value)}
+                              name="preferredPharmacyId"
+                              value={store.id}
+                              checked={formData.preferredPharmacyId === store.id}
+                              onChange={(e) => {
+                                handleInputChange('preferredPharmacyId', e.target.value);
+                                handleInputChange('collectionStore', store.name);
+                              }}
                               className="mt-1"
                             />
-                            <span className="text-sm text-neutral-700">{store}</span>
+                            <div className="text-sm">
+                              <p className="font-semibold text-neutral-700">{store.name}</p>
+                              <p className="text-neutral-600">{store.address}</p>
+                            </div>
                           </label>
                         ))}
                       </div>
-                      {errors.collectionStore && <p className="text-red-500 text-sm mt-2">{errors.collectionStore}</p>}
+                      {errors.preferredPharmacyId && <p className="text-red-500 text-sm mt-2">{errors.preferredPharmacyId}</p>}
                     </div>
                   )}
 
@@ -892,8 +1065,16 @@ export default function FillYourScript() {
                     </div>
 
                     <div className="bg-neutral-50 rounded-lg p-4">
-                      <h3 className="font-bold text-neutral-700 mb-3">Prescription</h3>
-                      <p className="text-sm text-neutral-600">{formData.prescriptionFile?.name}</p>
+                      <h3 className="font-bold text-neutral-700 mb-3">Prescription Details</h3>
+                      <div className="text-sm space-y-2">
+                        <p><span className="text-neutral-500">File:</span> <span className="font-semibold text-neutral-700">{formData.prescriptionFile?.name}</span></p>
+                        <p><span className="text-neutral-500">Doctor:</span> <span className="font-semibold text-neutral-700">{formData.doctorName}</span></p>
+                        {formData.doctorPracticeNumber && (
+                          <p><span className="text-neutral-500">Practice Number:</span> <span className="font-semibold text-neutral-700">{formData.doctorPracticeNumber}</span></p>
+                        )}
+                        <p><span className="text-neutral-500">Prescription Date:</span> <span className="font-semibold text-neutral-700">{formData.prescriptionDate}</span></p>
+                        <p><span className="text-neutral-500">Type:</span> <span className="font-semibold text-neutral-700">{formData.isChronic ? `Chronic (${formData.chronicRepeats || '0'} repeats)` : 'Acute'}</span></p>
+                      </div>
                     </div>
 
                     <div className="bg-neutral-50 rounded-lg p-4">
@@ -901,7 +1082,19 @@ export default function FillYourScript() {
                         {formData.deliveryMethod === 'collection' ? 'Collection' : 'Delivery'} Details
                       </h3>
                       {formData.deliveryMethod === 'collection' ? (
-                        <p className="text-sm text-neutral-600">{formData.collectionStore}</p>
+                        <div className="text-sm">
+                          {(() => {
+                            const selected = stores.find(s => s.id === formData.preferredPharmacyId);
+                            return selected ? (
+                              <>
+                                <p className="font-semibold text-neutral-700">{selected.name}</p>
+                                <p className="text-neutral-600">{selected.address}</p>
+                              </>
+                            ) : (
+                              <p className="text-red-500">No pharmacy selected</p>
+                            );
+                          })()}
+                        </div>
                       ) : (
                         <div className="text-sm text-neutral-600">
                           <p>{formData.streetAddress}</p>

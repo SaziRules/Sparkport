@@ -10,9 +10,9 @@
   --foreground: #111827;
 
   /* Brand */
-  --brand-primary: #2fb68e;
-  --brand-primary-dark: #166c55;
-  --brand-soft: #e7f6f0;
+  --brand-primary: #009eb9;
+  --brand-primary-dark: #184363;
+  --brand-soft: #e8f5f7;
 
   /* Neutrals */
   --neutral-900: #111827;
@@ -76,47 +76,13 @@ p {
   max-width: 1540px;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1.5rem;  /* 24px */
-  padding-right: 1.5rem; /* 24px */
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
-/* Add this to your global CSS file (e.g., globals.css or app.css) */
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Optional: Add this for smoother scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Custom scrollbar styling (optional - premium touch) */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #009eb9;
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #007a8f;
-}
-
-/* Add this to your global CSS file (e.g., globals.css or app.css) */
+/* =========================
+   ANIMATIONS
+========================= */
 
 @keyframes fadeIn {
   from {
@@ -140,12 +106,10 @@ html {
   }
 }
 
-/* Optional: Add this for smoother scrolling */
-html {
-  scroll-behavior: smooth;
-}
+/* =========================
+   SCROLLBAR
+========================= */
 
-/* Custom scrollbar styling (optional - premium touch) */
 ::-webkit-scrollbar {
   width: 10px;
 }

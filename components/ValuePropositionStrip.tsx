@@ -51,7 +51,7 @@ export default function ValuePropositionStrip() {
 
   return (
     <section className="py-8 lg:py-12 px-4 lg:px-6 ">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 lg:gap-8">
           {valueProps.map((prop, index) => (
             <div

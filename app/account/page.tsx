@@ -1,101 +1,172 @@
+// app/account/page.tsx (UPDATED - Clears fields & redirects to dashboard)
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { signUp, signIn, signInWithGoogle, signInWithFacebook } from '@/app/auth/actions';
 
 type AuthMode = 'signin' | 'signup';
 
+const initialFormData = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  password: '',
+  confirmPassword: '',
+  agreeToTerms: false,
+  receiveMarketing: false,
+};
+
 export default function AuthPageSplit() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/account/dashboard'; // ← Dashboard redirect
+  
   const [mode, setMode] = useState<AuthMode>('signin');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    agreeToTerms: false,
-    receiveMarketing: false,
+    ...initialFormData,
+    email: searchParams.get('email') || '',  // Pre-fill from prescription success
+    phone: searchParams.get('phone') || '',  // Pre-fill from prescription success
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Password validation
-  const validatePassword = (password: string) => {
-    return {
-      length: password.length >= 8,
-      numeric: /\d/.test(password),
-      alpha: /[a-zA-Z]/.test(password),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-    };
-  };
-
-  const passwordRequirements = validatePassword(formData.password);
+  const [submitError, setSubmitError] = useState<string>('');
+  const [submitSuccess, setSubmitSuccess] = useState<string>('');
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+    setSubmitError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Clear form helper
+  const clearForm = () => {
+    setFormData(initialFormData);
+    setErrors({});
+    setSubmitError('');
+    setSubmitSuccess('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
+    setSubmitSuccess('');
     
     const newErrors: Record<string, string> = {};
     
     if (mode === 'signup') {
+      // Validation
       if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
       if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
       if (!formData.email.trim()) newErrors.email = 'Email is required';
       if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
       if (!formData.password) newErrors.password = 'Password is required';
+      if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
       }
       if (!formData.agreeToTerms) {
         newErrors.agreeToTerms = 'You must agree to the terms and conditions';
       }
+      
+      setErrors(newErrors);
+      
+      if (Object.keys(newErrors).length === 0) {
+        startTransition(async () => {
+          const result = await signUp({
+            email: formData.email,
+            password: formData.password,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formData.phone,
+            receiveMarketing: formData.receiveMarketing,
+          });
+
+          if (result.success) {
+            clearForm(); // ← Clear form on success
+            
+            if (result.needsEmailVerification) {
+              setSubmitSuccess('Account created! Please check your email to verify your account.');
+            } else {
+              setSubmitSuccess('Account created successfully! Redirecting to dashboard...');
+              setTimeout(() => {
+                router.push(returnTo);
+                router.refresh();
+              }, 1500);
+            }
+          } else {
+            setSubmitError(result.error || 'Failed to create account');
+          }
+        });
+      }
     } else {
+      // Sign in validation
       if (!formData.email.trim()) newErrors.email = 'Email is required';
       if (!formData.password) newErrors.password = 'Password is required';
-    }
-    
-    setErrors(newErrors);
-    
-    if (Object.keys(newErrors).length === 0) {
-      console.log('Form submitted:', { mode, formData });
-      // Add your authentication logic here
+      
+      setErrors(newErrors);
+      
+      if (Object.keys(newErrors).length === 0) {
+        startTransition(async () => {
+          const result = await signIn({
+            email: formData.email,
+            password: formData.password,
+          });
+
+          if (result.success) {
+            clearForm(); // ← Clear form on success
+            setSubmitSuccess('Signed in successfully! Redirecting to dashboard...');
+            setTimeout(() => {
+              router.push(returnTo);
+              router.refresh();
+            }, 1000);
+          } else {
+            setSubmitError(result.error || 'Failed to sign in');
+          }
+        });
+      }
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    console.log(`Sign in with ${provider}`);
-    // Add your social login logic here
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    startTransition(async () => {
+      try {
+        if (provider === 'google') {
+          await signInWithGoogle();
+        } else {
+          await signInWithFacebook();
+        }
+      } catch (error) {
+        setSubmitError('Failed to sign in with ' + provider);
+      }
+    });
   };
 
   return (
-    <div className="min-h-screen w-full flex m-0 p-0">{/* Added w-full, m-0, p-0 to ensure no spacing */}
+    <div className="min-h-screen w-full flex m-0 p-0">
       
-      {/* Left Column: Lifestyle Image - Edge to Edge */}
+      {/* Left Column: Lifestyle Image */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-linear-to-br from-[#184363] to-[#009eb9] overflow-hidden">
-        {/* Background Image */}
         <div className="absolute inset-0 bg-[url('/images/categories/brain-boost.jpg')] bg-cover bg-center">
-          {/* Overlay */}
           <div className="absolute inset-0 bg-linear-to-br from-[#009eb9]/70 to-white/50" />
         </div>
         
-        {/* Content on image */}
-        <div className="relative z-10 flex flex-col justify-center -mt-78  items-center w-full px-12 text-white">
+        <div className="relative z-10 flex flex-col justify-center items-center w-full px-12 text-white">
           <div className="max-w-md">
-            <h2 className="text-7xl font-extrabold! mb-6">
+            <h2 className="text-7xl font-extrabold mb-6">
               Welcome to Sparkport
             </h2>
-            <p className="text-xl text-white/90! mb-8">
+            <p className="text-xl text-white/90 mb-8">
               Your trusted partner in health and wellness. Access your orders, wishlist, and personalized recommendations.
             </p>
             <div className="space-y-4">
@@ -123,10 +194,21 @@ export default function AuthPageSplit() {
       </div>
 
       {/* Right Column: Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 bg-white overflow-y-auto">{/* Added overflow-y-auto for scrolling */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 bg-white overflow-y-auto">
         <div className="w-full max-w-xl">
           
-         
+          {/* Success/Error Messages */}
+          {submitSuccess && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800 text-sm">{submitSuccess}</p>
+            </div>
+          )}
+          
+          {submitError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm">{submitError}</p>
+            </div>
+          )}
 
           {mode === 'signup' ? (
             /* Sign Up Form */
@@ -149,7 +231,8 @@ export default function AuthPageSplit() {
                       type="text"
                       value={formData.firstName}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                      disabled={isPending}
+                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                         errors.firstName ? 'border-red-500' : 'border-neutral-300'
                       }`}
                       placeholder="First name"
@@ -165,7 +248,8 @@ export default function AuthPageSplit() {
                       type="text"
                       value={formData.lastName}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                      disabled={isPending}
+                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                         errors.lastName ? 'border-red-500' : 'border-neutral-300'
                       }`}
                       placeholder="Last name"
@@ -184,7 +268,8 @@ export default function AuthPageSplit() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                      disabled={isPending}
+                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                         errors.phone ? 'border-red-500' : 'border-neutral-300'
                       }`}
                       placeholder="0821234567"
@@ -200,7 +285,8 @@ export default function AuthPageSplit() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                      disabled={isPending}
+                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                         errors.email ? 'border-red-500' : 'border-neutral-300'
                       }`}
                       placeholder="your@email.com"
@@ -220,7 +306,8 @@ export default function AuthPageSplit() {
                         type={showPassword ? 'text' : 'password'}
                         value={formData.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
-                        className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                        disabled={isPending}
+                        className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                           errors.password ? 'border-red-500' : 'border-neutral-300'
                         }`}
                         placeholder="Password"
@@ -229,6 +316,7 @@ export default function AuthPageSplit() {
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                        disabled={isPending}
                       >
                         {showPassword ? (
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -242,6 +330,7 @@ export default function AuthPageSplit() {
                         )}
                       </button>
                     </div>
+                    {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
                   </div>
 
                   <div>
@@ -253,7 +342,8 @@ export default function AuthPageSplit() {
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={formData.confirmPassword}
                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                        className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                        disabled={isPending}
+                        className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                           errors.confirmPassword ? 'border-red-500' : 'border-neutral-300'
                         }`}
                         placeholder="Confirm password"
@@ -262,6 +352,7 @@ export default function AuthPageSplit() {
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                        disabled={isPending}
                       >
                         {showConfirmPassword ? (
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -279,8 +370,6 @@ export default function AuthPageSplit() {
                   </div>
                 </div>
 
-                
-
                 {/* Checkboxes */}
                 <div className="space-y-3">
                   <label className="flex items-start gap-3 cursor-pointer">
@@ -288,6 +377,7 @@ export default function AuthPageSplit() {
                       type="checkbox"
                       checked={formData.receiveMarketing}
                       onChange={(e) => handleInputChange('receiveMarketing', e.target.checked)}
+                      disabled={isPending}
                       className="mt-1 w-4 h-4 text-[#009eb9] rounded"
                     />
                     <span className="text-sm text-neutral-700">
@@ -300,6 +390,7 @@ export default function AuthPageSplit() {
                       type="checkbox"
                       checked={formData.agreeToTerms}
                       onChange={(e) => handleInputChange('agreeToTerms', e.target.checked)}
+                      disabled={isPending}
                       className="mt-1 w-4 h-4 text-[#009eb9] rounded"
                     />
                     <span className="text-sm text-neutral-700">
@@ -319,9 +410,20 @@ export default function AuthPageSplit() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full bg-[#009eb9] text-white font-bold py-4 rounded-full hover:bg-[#184363] transition-colors text-lg"
+                  disabled={isPending}
+                  className="w-full bg-[#009eb9] text-white font-bold py-4 rounded-full hover:bg-[#184363] transition-colors text-lg disabled:bg-neutral-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Sign Up
+                  {isPending ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Creating account...
+                    </>
+                  ) : (
+                    'Sign Up'
+                  )}
                 </button>
               </form>
 
@@ -330,8 +432,12 @@ export default function AuthPageSplit() {
                 <p className="text-neutral-600">
                   Already have an account?{' '}
                   <button
-                    onClick={() => setMode('signin')}
-                    className="text-[#009eb9] font-bold hover:text-[#184363] transition-colors"
+                    onClick={() => {
+                      setMode('signin');
+                      clearForm();
+                    }}
+                    disabled={isPending}
+                    className="text-[#009eb9] font-bold hover:text-[#184363] transition-colors disabled:opacity-50"
                   >
                     Sign in
                   </button>
@@ -352,7 +458,8 @@ export default function AuthPageSplit() {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <button
                   onClick={() => handleSocialLogin('google')}
-                  className="flex items-center justify-center gap-3 px-4 py-3.5 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
+                  disabled={isPending}
+                  className="flex items-center justify-center gap-3 px-4 py-3.5 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -365,7 +472,8 @@ export default function AuthPageSplit() {
 
                 <button
                   onClick={() => handleSocialLogin('facebook')}
-                  className="flex items-center justify-center gap-3 px-4 py-3.5 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
+                  disabled={isPending}
+                  className="flex items-center justify-center gap-3 px-4 py-3.5 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -386,16 +494,17 @@ export default function AuthPageSplit() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                    Email address / Cellphone number
+                    Email address
                   </label>
                   <input
-                    type="text"
+                    type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                    disabled={isPending}
+                    className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                       errors.email ? 'border-red-500' : 'border-neutral-300'
                     }`}
-                    placeholder="Enter your email or phone"
+                    placeholder="Enter your email"
                   />
                   {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                 </div>
@@ -409,7 +518,8 @@ export default function AuthPageSplit() {
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
-                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                      disabled={isPending}
+                      className={`w-full px-4 py-3.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] disabled:bg-neutral-100 ${
                         errors.password ? 'border-red-500' : 'border-neutral-300'
                       }`}
                       placeholder="Enter your password"
@@ -418,6 +528,7 @@ export default function AuthPageSplit() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                      disabled={isPending}
                     >
                       {showPassword ? (
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -436,26 +547,30 @@ export default function AuthPageSplit() {
 
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 text-[#009eb9] rounded" />
+                    <input type="checkbox" className="w-4 h-4 text-[#009eb9] rounded" disabled={isPending} />
                     <span className="text-sm text-neutral-700">Remember me</span>
                   </label>
-                  <Link href="/forgot-password" className="text-sm font-semibold text-[#009eb9] hover:text-[#184363] transition-colors">
+                  <Link href="/auth/forgot-password" className="text-sm font-semibold text-[#009eb9] hover:text-[#184363] transition-colors">
                     Forgot password?
                   </Link>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-[#009eb9] text-white font-bold py-4 rounded-full hover:bg-[#184363] transition-colors text-lg"
+                  disabled={isPending}
+                  className="w-full bg-[#009eb9] text-white font-bold py-4 rounded-full hover:bg-[#184363] transition-colors text-lg disabled:bg-neutral-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Sign in
-                </button>
-
-                <button
-                  type="button"
-                  className="w-full border-2 border-neutral-300 text-neutral-700 font-semibold py-3.5 rounded-full hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
-                >
-                  Sign in with OTP
+                  {isPending ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign in'
+                  )}
                 </button>
               </form>
 
@@ -464,8 +579,12 @@ export default function AuthPageSplit() {
                 <p className="text-neutral-600">
                   New to Sparkport?{' '}
                   <button
-                    onClick={() => setMode('signup')}
-                    className="text-[#009eb9] font-bold hover:text-[#184363] transition-colors"
+                    onClick={() => {
+                      setMode('signup');
+                      clearForm();
+                    }}
+                    disabled={isPending}
+                    className="text-[#009eb9] font-bold hover:text-[#184363] transition-colors disabled:opacity-50"
                   >
                     Create an account
                   </button>

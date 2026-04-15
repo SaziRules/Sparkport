@@ -1,6 +1,7 @@
 'use client';
 
 import RewardsRegistrationForm from '@/components/RewardsRegistrationForm';
+import Image from 'next/image';
 
 const BENEFITS = [
   {
@@ -113,10 +114,13 @@ export default function SparkportRewardsPage() {
           <div className="relative -mx-4 lg:-mx-6 mb-16 overflow-hidden rounded-none lg:rounded-2xl">
             {/* Hero Background */}
             <div className="absolute inset-0">
-              <img 
+              <Image
                 src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1600&q=90"
                 alt="Sparkport Rewards Hero"
-                className="w-full h-full object-cover"
+                fill
+                sizes="100vw"
+                className="object-cover"
+                priority
               />
               {/* Gradient Overlay */}
               <div className="absolute inset-0 bg-linear-to-br from-[#184363]/95 to-[#009eb9]/65" />
@@ -207,7 +211,7 @@ export default function SparkportRewardsPage() {
             <div className="mt-12 text-center">
               <div className="inline-block p-6 bg-white/20 backdrop-blur-sm rounded-xl">
                 <p className="text-lg font-semibold! text-white! mb-2">
-                  💡 Pro Tip: Save your member number in your phone contacts for easy access!
+                  Pro Tip: Save your member number in your phone contacts for easy access!
                 </p>
               </div>
             </div>

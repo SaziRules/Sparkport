@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
 import BlogGrid from '@/components/BlogGrid';
+
+export const metadata: Metadata = {
+  title: 'Health & Wellness Blog | Sparkport Pharmacy',
+  description: 'Expert health advice, pharmacy tips, and wellness insights from the team at Sparkport Pharmacy in Durban.',
+};
 
 export default function BlogPage() {
   return (

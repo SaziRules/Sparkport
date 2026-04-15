@@ -5,10 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import CategoryMegaMenu from './CategoryMegaMenu';
 import ShopMegaMenu from './ShopMegaMenu';
+import { useCart } from '@/contexts/CartContext';
 
 export default function SparkportHeader() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isShopMenuOpen, setIsShopMenuOpen] = useState(false);
+  const { count: cartCount } = useCart();
 
   return (
     <header className="w-full relative">
@@ -159,7 +161,7 @@ export default function SparkportHeader() {
                 </svg>
                 <span className="text-xs font-medium">Basket</span>
                 <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 bg-[#009eb9] text-white text-[10px] font-bold rounded-full">
-                  0
+                  {cartCount}
                 </span>
               </Link>
             </div>

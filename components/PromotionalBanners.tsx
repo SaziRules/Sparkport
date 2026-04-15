@@ -1,28 +1,34 @@
 'use client';
 
+import Image from 'next/image';
+import Link from 'next/link';
+
 export default function PromotionalBanners() {
   return (
     <section className="py-12 lg:py-16 px-4 lg:px-6">
       <div className="max-w-full mx-auto space-y-6">
         
         {/* Large Hero Banner - Surgical/Medical Supplies */}
-        <a
+        <Link
           href="/surgical-catalogue"
           className="block relative overflow-hidden rounded-3xl group h-75 lg:h-87.5 shadow-xl hover:shadow-2xl transition-shadow"
         >
           {/* Background Image - Pre-designed banner */}
-          <img
+          <Image
             src="https://sparkport.co.za/wp-content/uploads/SURGICAL-BANNER.png"
             alt="Surgical Supplies Banner"
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            fill
+            sizes="100vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
+            priority
           />
-        </a>
+        </Link>
 
         {/* Two Side-by-Side Banners */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* Flu Season Banner - Left */}
-          <a
+          <Link
             href="/flu-protection-guide"
             className="relative overflow-hidden rounded-3xl group h-70 shadow-lg hover:shadow-xl transition-shadow"
           >
@@ -51,19 +57,16 @@ export default function PromotionalBanners() {
               </h3>
               
               <div className="inline-flex items-center gap-2 text-white font-semibold! group-hover:gap-3 transition-all">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clipRule="evenodd" />
-                </svg>
-                Download Free Guide
+                Read the Guide
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>
             </div>
-          </a>
+          </Link>
 
           {/* Healthcare Services Banner - Right */}
-          <a
+          <Link
             href="/health-care-services"
             className="relative overflow-hidden rounded-3xl group h-70 shadow-lg hover:shadow-xl transition-shadow"
           >
@@ -98,7 +101,7 @@ export default function PromotionalBanners() {
                 </svg>
               </div>
             </div>
-          </a>
+          </Link>
 
         </div>
 

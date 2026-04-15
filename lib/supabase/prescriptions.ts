@@ -2,29 +2,50 @@ import { supabase } from './client';
 import { uploadPrescriptionImage } from './storage';
 
 interface PrescriptionFormData {
+  // Personal Details
   firstName: string;
   lastName: string;
+  email: string;
   whatsappNumber: string;
   idNumber: string;
   dateOfBirth: string;
   preferredContact: string;
+  
+  // Prescription File
   prescriptionFile: File | null;
+  
+  // Doctor Information (NEW)
+  doctorName: string;
+  doctorPracticeNumber: string;
+  prescriptionDate: string;
+  
+  // Chronic Medication (NEW)
+  isChronic: boolean;
+  chronicRepeats: string;
+  
+  // Delivery/Collection
   deliveryMethod: 'collection' | 'delivery';
-  collectionStore: string;
+  preferredPharmacyId: string;  // CHANGED from collectionStore - now UUID
+  
+  // Delivery Address
   streetAddress: string;
   addressLine2: string;
   city: string;
   province: string;
   postalCode: string;
   country: string;
-  additionalNotes: string;
+  
+  // Medical & Payment
   paymentType: string;
   medicalAidProvider: string;
   medicalAidNumber: string;
   dependantCode: string;
+  
+  // Additional
   replaceWithGenerics: boolean;
   hasAllergies: boolean;
   allergyDetails: string;
+  additionalNotes: string;
 }
 
 interface SubmissionResult {
@@ -45,47 +66,16 @@ function mapPaymentType(paymentType: string): 'pending' | 'paid' | 'medical_aid'
 /**
  * Build special instructions from form data
  */
-function buildSpecialInstructions(formData: PrescriptionFormData, collectionStoreName?: string): string {
+function buildSpecialInstructions(formData: PrescriptionFormData): string {
   const instructions = [
     formData.additionalNotes,
     formData.replaceWithGenerics ? 'Replace with generics where possible' : 'Do not replace with generics',
     formData.hasAllergies ? `ALLERGIES: ${formData.allergyDetails}` : null,
     formData.dependantCode ? `Medical Aid Dependant: ${formData.dependantCode}` : null,
     `Preferred contact method: ${formData.preferredContact}`,
-    collectionStoreName ? `Collection Store: ${collectionStoreName}` : null,
   ].filter(Boolean);
 
   return instructions.join(' | ');
-}
-
-/**
- * Get pharmacy ID from database by name
- * Returns null if pharmacies table doesn't exist or store not found
- */
-async function getPharmacyId(storeName: string): Promise<string | null> {
-  try {
-    // Extract just the pharmacy name (before the " - " separator)
-    // e.g., "Sparkport Overport - 382 Corner..." -> "Sparkport Overport"
-    const pharmacyName = storeName.split(' - ')[0].trim();
-    
-    const { data, error } = await supabase
-      .from('pharmacies')
-      .select('id')
-      .eq('is_active', true)
-      .ilike('name', `%${pharmacyName}%`)
-      .single();
-
-    if (error) {
-      // Table doesn't exist or query failed - this is OK, we'll save store name in special_instructions
-      console.warn('Pharmacy lookup skipped:', error.message);
-      return null;
-    }
-
-    return data?.id || null;
-  } catch (error) {
-    console.warn('Pharmacy lookup failed:', error);
-    return null;
-  }
 }
 
 /**
@@ -109,8 +99,22 @@ export async function submitPrescriptionNoAuth(
       };
     }
 
+    // Validate required fields
+    if (!formData.doctorName?.trim()) {
+      return {
+        success: false,
+        error: 'Doctor name is required',
+      };
+    }
+
+    if (!formData.prescriptionDate) {
+      return {
+        success: false,
+        error: 'Prescription date is required',
+      };
+    }
+
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
-    const today = new Date().toISOString().split('T')[0];
 
     // Step 1: Update user profile if logged in AND medical aid info provided
     if (user && formData.paymentType === 'medical-aid' && formData.medicalAidProvider) {
@@ -160,35 +164,48 @@ export async function submitPrescriptionNoAuth(
       }
     }
 
-    // Step 3: Get pharmacy ID if collection method
-    let pharmacyId: string | null = null;
-    let collectionStoreName: string | null = null;
-    if (formData.deliveryMethod === 'collection' && formData.collectionStore) {
-      collectionStoreName = formData.collectionStore;
-      pharmacyId = await getPharmacyId(formData.collectionStore);
-      if (!pharmacyId) {
-        console.log('Pharmacy ID not found, will save store name in special_instructions');
-      }
-    }
-
-    // Step 4: Create prescription record (WITH OR WITHOUT user_id)
+    // Step 3: Create prescription record (WITH OR WITHOUT user_id)
     const prescriptionData: any = {
-      user_id: user?.id || null, // NULL for anonymous submissions
+      // User & Contact
+      user_id: user?.id || null,
       is_anonymous: isAnonymous,
-      contact_email: email || null, // For matching when user signs up
+      contact_email: email || formData.email || null,
+      
+      // Patient Info
       patient_name: fullName,
       patient_id_number: formData.idNumber || null,
       patient_phone: formData.whatsappNumber,
-      doctor_name: 'Not provided',
-      doctor_practice_number: null,
-      prescription_date: today,
-      is_chronic: false,
+      
+      // Doctor Info (NEW - now properly mapped)
+      doctor_name: formData.doctorName.trim(),
+      doctor_practice_number: formData.doctorPracticeNumber?.trim() || null,
+      
+      // Prescription Details (NEW - now properly mapped)
+      prescription_date: formData.prescriptionDate,
+      is_chronic: formData.isChronic,
+      chronic_repeats_remaining: formData.isChronic 
+        ? parseInt(formData.chronicRepeats) || 0 
+        : null,
+      
+      // Pharmacy (FIXED - now uses UUID directly)
+      preferred_pharmacy_id: formData.preferredPharmacyId || null,
+      collection_pharmacy_id: formData.deliveryMethod === 'collection' 
+        ? formData.preferredPharmacyId 
+        : null,
+      
+      // Delivery
       delivery_method: formData.deliveryMethod,
-      collection_pharmacy_id: pharmacyId,
       delivery_address_id: deliveryAddressId,
-      special_instructions: buildSpecialInstructions(formData, collectionStoreName || undefined),
+      
+      // Instructions
+      special_instructions: buildSpecialInstructions(formData),
+      
+      // Payment
       medical_aid_claim: formData.paymentType === 'medical-aid',
       payment_status: mapPaymentType(formData.paymentType),
+      
+      // Status
+      status: 'submitted',
     };
 
     const { data: prescriptionRecord, error: prescriptionError } = await supabase
@@ -208,7 +225,7 @@ export async function submitPrescriptionNoAuth(
       };
     }
 
-    // Step 5: Upload prescription image
+    // Step 4: Upload prescription image
     // For anonymous users, use prescription ID as temporary user ID
     const uploadUserId = user?.id || `anonymous-${prescriptionRecord.id}`;
     
@@ -231,7 +248,7 @@ export async function submitPrescriptionNoAuth(
       };
     }
 
-    // Step 6: Create notification ONLY if user is logged in
+    // Step 5: Create notification ONLY if user is logged in
     if (user) {
       await supabase.from('notifications').insert({
         user_id: user.id,
@@ -291,10 +308,6 @@ export async function matchAnonymousPrescriptions(
 
     const count = matchedPrescriptions?.length || 0;
     
-    if (count > 0) {
-      console.log(`✅ Matched ${count} prescription(s) to user ${userId}`);
-    }
-
     return { 
       success: true, 
       count 

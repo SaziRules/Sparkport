@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -53,25 +53,10 @@ export default function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       ref={menuRef}
-      className="absolute left-0 right-0 top-full bg-white shadow-2xl border-t border-neutral-200 z-50"
-      style={{
-        animation: 'slideUpFade 0.4s ease-out forwards'
-      }}
+      className="absolute left-0 right-0 top-full bg-white shadow-2xl border-t border-neutral-200 z-50 animate-[fadeIn_0.4s_ease-out_forwards]"
     >
-      <style jsx>{`
-        @keyframes slideUpFade {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
 
       <div className="mx-auto max-w-385 px-6 py-8">
         

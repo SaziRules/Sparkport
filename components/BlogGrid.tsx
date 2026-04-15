@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface BlogPost {
   id: string;
@@ -122,10 +123,12 @@ export default function BlogGrid() {
                 
                 {/* Image */}
                 <div className="relative h-56 lg:h-64 overflow-hidden">
-                  <img
+                  <Image
                     src={post.image}
                     alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   
                   {/* Date Badge */}

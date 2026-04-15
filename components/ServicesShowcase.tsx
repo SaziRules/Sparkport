@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 export default function ServicesShowcase() {
   const services = [
     {
@@ -38,7 +40,7 @@ export default function ServicesShowcase() {
 
   return (
     <section className="py-12 lg:py-16 px-4 lg:px-6 bg-neutral-50 mt-2">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         
         {/* Section Header */}
         <div className="text-center mb-10">
@@ -53,7 +55,7 @@ export default function ServicesShowcase() {
         {/* Services Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {services.map((service, index) => (
-            <a
+            <Link
               key={index}
               href={service.link}
               className="group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 h-100"
@@ -95,7 +97,7 @@ export default function ServicesShowcase() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -113,7 +115,7 @@ export default function ServicesShowcase() {
                 <p className="font-bold! text-[#184363]">Call us: 031 123 4567</p>
               </div>
             </div>
-            <a
+            <Link
               href="/store-locator"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#184363] text-white font-semibold! rounded-lg hover:bg-[#009eb9] transition-colors"
             >
@@ -122,7 +124,7 @@ export default function ServicesShowcase() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               Find Your Nearest Store
-            </a>
+            </Link>
           </div>
         </div>
 

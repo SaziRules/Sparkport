@@ -26,14 +26,12 @@ export default function SignIn() {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      console.log('Sign in:', { email, password, isOTP });
-      // Handle sign in logic here
+      // TODO: Wire to app/auth/actions.ts signIn
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    console.log(`Sign in with ${provider}`);
-    // Handle social login logic here
+  const handleSocialLogin = (_provider: string) => {
+    // TODO: Wire to app/auth/actions.ts signInWithGoogle / signInWithFacebook
   };
 
   return (

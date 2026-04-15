@@ -1,3 +1,10 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Events | Sparkport Pharmacy',
+  description: 'Stay up to date with health events, screenings, and community initiatives from Sparkport Pharmacy.',
+};
+
 export default function EventsPage() {
     return (
         <div className="relative min-h-screen">

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
 
 // Copy of your products from PromotionsPage
 const SALE_PRODUCTS = [
@@ -92,46 +94,27 @@ interface ProductDetailPageProps {
 }
 
 export default function ProductDetailPage({ productId }: ProductDetailPageProps) {
-  // Debug logging
-  console.log('ProductDetailPage - Received ID:', productId, 'Type:', typeof productId);
-  console.log('Looking for product with id:', productId);
-  console.log('Available product IDs:', SALE_PRODUCTS.map(p => p.id));
-
   const searchParams = useSearchParams();
   const origin = searchParams.get('from');
 
   const originMap = {
-  promotions: {
-    label: 'Promotions',
-    href: '/promotions'
-  },
-  shop: {
-    label: 'Shop',
-    href: '/shop'
-  }
-};
+    promotions: { label: 'Promotions', href: '/shop/promotions' },
+    shop: { label: 'Shop', href: '/shop' },
+  };
 
-const breadcrumb = originMap[origin as keyof typeof originMap] || originMap.shop;
-  
-  const product = SALE_PRODUCTS.find(p => {
-    console.log(`Comparing ${p.id} === ${productId}:`, p.id === productId);
-    return p.id === productId;
-  });
-  
-  console.log('Found product:', product);
+  const breadcrumb = originMap[origin as keyof typeof originMap] || originMap.shop;
+
+  const product = SALE_PRODUCTS.find(p => p.id === productId);
   
   if (!product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold! text-[#184363] mb-2">Product Not Found</h1>
-          <p className="text-neutral-600 mb-4">Looking for product ID: <strong>{productId}</strong> (type: {typeof productId})</p>
-          <p className="text-sm text-neutral-500 mb-6">
-            Available IDs: {SALE_PRODUCTS.map(p => p.id).join(', ')}
-          </p>
-          <a href="/promotions" className="px-6 py-3 bg-[#009eb9] text-white font-semibold! rounded-lg hover:bg-[#007a8f] transition-colors inline-block">
-            Back to Promotions
-          </a>
+          <p className="text-neutral-600 mb-6">This product may no longer be available.</p>
+          <Link href="/shop" className="px-6 py-3 bg-[#009eb9] text-white font-semibold! rounded-lg hover:bg-[#007a8f] transition-colors inline-block">
+            Back to Shop
+          </Link>
         </div>
       </div>
     );
@@ -166,16 +149,16 @@ const breadcrumb = originMap[origin as keyof typeof originMap] || originMap.shop
       <div className="bg-white/80 backdrop-blur-sm border-b border-neutral-100 sticky top-0 z-40">
         <div className="max-w-full mx-auto px-4 lg:px-6 py-4">
           <nav className="flex items-center gap-2 text-sm flex-wrap">
-            <a href="/" className="text-neutral-500 hover:text-[#009eb9] transition-colors duration-200">Home</a>
+            <Link href="/" className="text-neutral-500 hover:text-[#009eb9] transition-colors duration-200">Home</Link>
             <svg className="w-3.5 h-3.5 text-neutral-300" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
-            <a
+            <Link
   href={breadcrumb.href}
   className="text-neutral-500 hover:text-[#009eb9] transition-colors duration-200"
 >
   {breadcrumb.label}
-</a>
+</Link>
             <svg className="w-3.5 h-3.5 text-neutral-300" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
@@ -217,11 +200,13 @@ const breadcrumb = originMap[origin as keyof typeof originMap] || originMap.shop
                   <div className={`absolute inset-0 transition-opacity duration-700 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`}>
                     <div className="absolute inset-0 bg-linear-to-br from-neutral-100 to-neutral-50 animate-pulse"></div>
                   </div>
-                  <img
+                  <Image
                     src={product.image}
                     alt={product.name}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     onLoad={() => setImageLoaded(true)}
-                    className="relative w-full h-full object-contain transform transition-transform duration-700 hover:scale-105"
+                    className="object-contain p-12 transform transition-transform duration-700 hover:scale-105"
                   />
                 </div>
               </div>
@@ -561,14 +546,14 @@ const breadcrumb = originMap[origin as keyof typeof originMap] || originMap.shop
                   You May Also Like
                 </h2>
               </div>
-              <a href="/promotions" className="hidden sm:flex items-center gap-2 text-[#009eb9] font-bold! hover:gap-3 transition-all duration-300">
+              <Link href="/shop/promotions" className="hidden sm:flex items-center gap-2 text-[#009eb9] font-bold! hover:gap-3 transition-all duration-300">
                 View All
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
-              </a>
+              </Link>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map((relatedProduct) => (
                 <a
@@ -589,11 +574,13 @@ const breadcrumb = originMap[origin as keyof typeof originMap] || originMap.shop
                     </div>
                     
                     {/* Image - Premium Display */}
-                    <div className="relative bg-linear-to-br from-neutral-50 to-white p-8 aspect-square overflow-hidden">
-                      <img
+                    <div className="relative bg-linear-to-br from-neutral-50 to-white aspect-square overflow-hidden">
+                      <Image
                         src={relatedProduct.image}
                         alt={relatedProduct.name}
-                        className="w-full h-full object-contain transform transition-transform duration-700 group-hover:scale-110"
+                        fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        className="object-contain p-8 transform transition-transform duration-700 group-hover:scale-110"
                       />
                     </div>
                     

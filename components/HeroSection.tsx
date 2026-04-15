@@ -55,7 +55,7 @@ export default function HeroSection() {
   ];
 
   const tallCard = {
-    image: '/images/card-prescriptions.jpg',
+    image: '/images/card-pills.jpg',
     title: 'Fill Your Prescription Online',
     description: 'Quick, easy and secure',
     link: '/fill-script'

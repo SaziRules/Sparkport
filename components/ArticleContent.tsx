@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const RELATED_ARTICLES = [
   {
@@ -80,7 +81,7 @@ export default function ArticleContent({ post }: { post: any }) {
           {/* Hero Section */}
           <div className="bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden shadow-2xl border border-white/50 mb-8 max-w-7xl mx-auto">
             <div className="relative h-100 lg:h-125">
-              <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
+              <Image src={post.image} alt={post.title} fill sizes="100vw" className="object-cover" priority />
               <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
               
               {/* Title Overlay */}
@@ -122,9 +123,11 @@ export default function ArticleContent({ post }: { post: any }) {
                 
                 {/* Author Info */}
                 <div className="flex items-center gap-4 pb-8 mb-8 border-b border-neutral-200">
-                  <img 
-                    src={post.author.image} 
+                  <Image
+                    src={post.author.image}
                     alt={post.author.name}
+                    width={64}
+                    height={64}
                     className="w-16 h-16 rounded-full object-cover"
                   />
                   <div>
@@ -199,9 +202,11 @@ export default function ArticleContent({ post }: { post: any }) {
                     </h3>
                     {post.relatedProducts.map((product: any, idx: number) => (
                       <div key={idx} className="flex flex-col md:flex-row gap-6 items-start">
-                        <img 
+                        <Image
                           src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80"
                           alt={product.name}
+                          width={128}
+                          height={128}
                           className="w-full md:w-32 h-32 object-cover rounded-xl shadow-md"
                         />
                         <div className="flex-1">
@@ -292,10 +297,12 @@ export default function ArticleContent({ post }: { post: any }) {
                       className="group bg-white/95 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all border border-white/50"
                     >
                       <div className="relative h-48 overflow-hidden">
-                        <img 
-                          src={article.image} 
+                        <Image
+                          src={article.image}
                           alt={article.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <div className="p-4">
