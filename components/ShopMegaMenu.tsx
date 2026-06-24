@@ -1,7 +1,5 @@
 'use client';
 
-import { useRef } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 
 interface ShopMegaMenuProps {
@@ -10,136 +8,162 @@ interface ShopMegaMenuProps {
 }
 
 export default function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  const categories = [
+  const columns = [
     {
-      name: 'Health & Wellness',
-      subcategories: [
-        { name: 'Vitamins & Supplements', link: '/categories/vitamins', image: '/images/categories/vitamins.jpeg' },
-        { name: 'Weight Management', link: '/categories/weight-management', image: '/images/categories/weight.jpg' },
-      ]
+      title: 'Health & Wellness',
+      links: [
+        { name: 'Vitamins & Supplements', href: '/categories/vitamins' },
+        { name: 'Weight Management', href: '/categories/weight-management' },
+        { name: 'Sports Nutrition', href: '/categories/sports-nutrition' },
+        { name: 'Immune Support', href: '/categories/immune-support' },
+        { name: 'Mental Wellness', href: '/categories/mental-wellness' },
+      ],
     },
     {
-      name: 'Medicines',
-      subcategories: [
-        { name: 'Pain Relief', link: '/categories/pain-relief', image: '/images/categories/pain.jpg' },
-        { name: 'Cold & Flu', link: '/categories/cold-flu', image: '/images/categories/cold.jpeg' },
-      ]
+      title: 'Medicines',
+      links: [
+        { name: 'Pain Relief', href: '/categories/pain-relief' },
+        { name: 'Cold & Flu', href: '/categories/cold-flu' },
+        { name: 'Allergy & Sinus', href: '/categories/allergy' },
+        { name: 'Digestive Health', href: '/categories/digestive' },
+        { name: 'Chronic Medication', href: '/categories/chronic' },
+      ],
     },
     {
-      name: 'Personal Care',
-      subcategories: [
-        { name: 'Skincare', link: '/categories/skincare', image: '/images/categories/skincare.jpeg' },
-        { name: 'Hair Care', link: '/categories/haircare', image: '/images/categories/haircare.jpg' },
-      ]
+      title: 'Personal Care',
+      links: [
+        { name: 'Skincare', href: '/categories/skincare' },
+        { name: 'Hair Care', href: '/categories/haircare' },
+        { name: 'Oral Health', href: '/categories/oral-health' },
+        { name: 'Eye Care', href: '/categories/eye-care' },
+        { name: 'Feminine Care', href: '/categories/feminine-care' },
+      ],
     },
     {
-      name: 'Baby & Child',
-      subcategories: [
-        { name: 'Baby Food & Formula', link: '/categories/baby-food', image: '/images/categories/baby-food.jpeg' },
-        { name: 'Diapers & Wipes', link: '/categories/diapers', image: '/images/categories/diapers.jpg' },
-      ]
-    },
-    {
-      name: 'Medical Devices',
-      subcategories: [
-        { name: 'Blood Pressure Monitors', link: '/categories/bp-monitors', image: '/images/categories/bp-monitor.jpeg' },
-        { name: 'Surgical Tools & Wheelchairs', link: '/categories/surgical-tools', image: '/images/categories/surgical-tools.webp' },
-      ]
+      title: 'Baby, Child & Mom',
+      links: [
+        { name: 'Baby Food & Formula', href: '/categories/baby-food' },
+        { name: 'Diapers & Wipes', href: '/categories/diapers' },
+        { name: 'Baby Skincare', href: '/categories/baby-skincare' },
+        { name: 'Pregnancy & Mom', href: '/categories/pregnancy' },
+        { name: 'Medical Devices', href: '/categories/medical-devices' },
+      ],
     },
   ];
 
-  if (!isOpen) return null;
-
   return (
     <div
-      ref={menuRef}
-      className="absolute left-0 right-0 top-full bg-white shadow-2xl border-t border-neutral-200 z-50 animate-[fadeIn_0.4s_ease-out_forwards]"
+      className={`absolute left-0 right-0 top-full bg-white shadow-2xl border-t-2 border-t-[#009eb9] z-50 transition-all duration-200 ${
+        isOpen
+          ? 'opacity-100 translate-y-0 pointer-events-auto'
+          : 'opacity-0 -translate-y-1 pointer-events-none'
+      }`}
     >
-
       <div className="mx-auto max-w-385 px-6 py-8">
-        
-        {/* Header */}
-        <div className="mb-6">
-          <h3 className="text-2xl font-black! text-[#184363] mb-2">
-            Shop by Category
-          </h3>
-          <p className="text-sm text-neutral-600">
-            Browse our complete range of healthcare products and wellness solutions
-          </p>
-        </div>
+        <div className="flex gap-8">
 
-        {/* Categories Grid - 5 columns */}
-        <div className="grid grid-cols-5 gap-6">
-          {categories.map((category) => (
-            <div key={category.name} className="space-y-3">
-              {/* Category Title */}
-              <h4 className="text-sm font-bold! text-[#184363] uppercase tracking-wide border-b-2 border-[#009eb9] pb-2">
-                {category.name}
-              </h4>
-              
-              {/* Subcategories - 2 rows */}
-              <div className="space-y-3">
-                {category.subcategories.map((sub) => (
-                  <Link
-                    key={sub.name}
-                    href={sub.link}
-                    onClick={onClose}
-                    className="group block"
-                  >
-                    {/* Image */}
-                    <div className="relative h-28 rounded-lg overflow-hidden mb-2 bg-neutral-100">
-                      <Image
-                        src={sub.image}
-                        alt={sub.name}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    </div>
-                    {/* Name */}
-                    <p className="text-sm text-neutral-700 group-hover:text-[#009eb9] transition-colors font-medium!">
-                      {sub.name}
-                    </p>
-                  </Link>
-                ))}
+          {/* 4 text-link columns */}
+          <div className="flex-1 grid grid-cols-4 gap-6">
+            {columns.map((col) => (
+              <div key={col.title}>
+                <h4 className="text-xs font-bold! text-[#184363] uppercase tracking-widest mb-4 pb-2 border-b border-neutral-100">
+                  {col.title}
+                </h4>
+                <ul className="space-y-2.5">
+                  {col.links.map((link) => (
+                    <li key={link.name}>
+                      <Link
+                        href={link.href}
+                        onClick={onClose}
+                        className="group flex items-center gap-1.5 text-sm text-neutral-600 hover:text-[#009eb9] transition-colors"
+                      >
+                        <svg
+                          className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 shrink-0 text-[#009eb9]"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                        </svg>
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* Footer CTA */}
-        <div className="mt-6 pt-4 border-t border-neutral-200 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link 
+          {/* Featured dark panel */}
+          <div className="w-52 shrink-0 bg-[#184363] rounded-2xl p-6 flex flex-col gap-4">
+            <p className="text-[#009eb9] text-xs font-bold! uppercase tracking-widest">Quick Access</p>
+
+            <Link
+              href="/fill-your-script"
+              onClick={onClose}
+              className="flex items-start gap-3 p-3 rounded-xl bg-white/8 hover:bg-white/15 transition-colors group"
+            >
+              <svg className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <div>
+                <p className="text-white text-sm font-semibold! leading-tight">Fill Your Script</p>
+                <p className="text-white/45 text-xs mt-0.5">Upload &amp; collect or deliver</p>
+              </div>
+            </Link>
+
+            <Link
               href="/sale"
               onClick={onClose}
-              className="text-sm font-semibold text-white bg-[#009eb9] px-6 py-2.5 rounded-full hover:bg-[#184363] transition-colors"
+              className="flex items-start gap-3 p-3 rounded-xl bg-white/8 hover:bg-white/15 transition-colors group"
             >
-              Shop Sale Items
+              <svg className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              <div>
+                <p className="text-white text-sm font-semibold! leading-tight">Shop Deals</p>
+                <p className="text-white/45 text-xs mt-0.5">Savings across all categories</p>
+              </div>
             </Link>
-            <Link 
-              href="/brands"
+
+            <Link
+              href="/rewards"
               onClick={onClose}
-              className="text-sm font-semibold text-white bg-[#009eb9] px-6 py-2.5 rounded-full hover:bg-[#184363] transition-colors"
+              className="flex items-start gap-3 p-3 rounded-xl bg-white/8 hover:bg-white/15 transition-colors group"
             >
-              Shop by Brand
+              <svg className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-white text-sm font-semibold! leading-tight">Sparkport+ Rewards</p>
+                <p className="text-white/45 text-xs mt-0.5">Earn points on every purchase</p>
+              </div>
             </Link>
-            <Link 
-              href="/new-arrivals"
-              onClick={onClose}
-              className="text-sm font-semibold text-[#009eb9] hover:text-[#184363] transition-colors"
-            >
-              New Arrivals →
-            </Link>
+
+            <div className="mt-auto pt-4 border-t border-white/10">
+              <Link
+                href="/categories"
+                onClick={onClose}
+                className="text-white/40 hover:text-white/75 text-xs transition-colors"
+              >
+                View all categories →
+              </Link>
+            </div>
           </div>
-          <Link 
-            href="/categories"
-            onClick={onClose}
-            className="text-sm font-semibold text-neutral-600 hover:text-[#009eb9] transition-colors"
-          >
-            View All Categories →
+
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center gap-6">
+          <Link href="/brands" onClick={onClose} className="text-xs font-semibold text-neutral-400 hover:text-[#009eb9] transition-colors">
+            Shop by Brand →
+          </Link>
+          <Link href="/new-arrivals" onClick={onClose} className="text-xs font-semibold text-neutral-400 hover:text-[#009eb9] transition-colors">
+            New Arrivals →
+          </Link>
+          <Link href="/sale" onClick={onClose} className="text-xs font-semibold text-neutral-400 hover:text-[#009eb9] transition-colors">
+            Sale Items →
           </Link>
         </div>
       </div>

@@ -50,7 +50,7 @@ export default function RewardsRegistrationForm() {
         </p>
         <button
           onClick={() => setSubmitStatus('idle')}
-          className="px-6 py-3 bg-[#009eb9] text-white font-bold! rounded-lg hover:bg-[#184363] transition-colors"
+          className="px-6 py-3 bg-[#009eb9] text-white font-bold! rounded-xl hover:bg-[#184363] transition-colors"
         >
           Register Another Member
         </button>
@@ -80,7 +80,7 @@ export default function RewardsRegistrationForm() {
               required
               value={formData.firstName}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent"
+              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
               placeholder="John"
             />
           </div>
@@ -96,7 +96,7 @@ export default function RewardsRegistrationForm() {
               required
               value={formData.lastName}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent"
+              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
               placeholder="Doe"
             />
           </div>
@@ -114,7 +114,7 @@ export default function RewardsRegistrationForm() {
             required
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
             placeholder="john.doe@example.com"
           />
         </div>
@@ -131,7 +131,7 @@ export default function RewardsRegistrationForm() {
             required
             value={formData.phone}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
             placeholder="0XX XXX XXXX"
           />
           <p className="text-sm text-neutral-500 mt-2">This number will be used for in-store purchases and to receive your member number via SMS</p>
@@ -149,7 +149,7 @@ export default function RewardsRegistrationForm() {
             required
             value={formData.dateOfBirth}
             onChange={handleChange}
-            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
           />
           <p className="text-sm text-neutral-500 mt-2">You must be 18 years or older to join</p>
         </div>
@@ -190,7 +190,7 @@ export default function RewardsRegistrationForm() {
         </button>
       </form>
 
-      <div className="mt-6 p-4 bg-[#009eb9]/10 rounded-lg">
+      <div className="mt-6 p-4 bg-[#009eb9]/8 rounded-xl">
         <p className="text-sm text-[#184363] font-semibold">
           ✓ Free enrollment • ✓ Instant activation • ✓ Start saving immediately
         </p>

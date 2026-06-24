@@ -1,83 +1,103 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { isPromotionalCategory } from '@/lib/wordpress/filters';
+import type { Product, Category } from '@/lib/wordpress';
+import { useCart } from '@/contexts/CartContext';
 
-// TODO: Replace with WooCommerce API — accept products/categories as props
-export const SHOP_CATEGORIES = [
-  'All Products',
-  'Vitamins & Supplements',
-  'Personal Care',
-  'Baby & Toddlers',
-  "Women's Health",
-  'Cold & Flu',
-  'Pain Relief',
-  'Oral Care',
-  'Hair & Beauty',
-  'First Aid',
-  'Digestive Health',
-];
+export type ShopProduct = Product;
 
-export type ShopProduct = {
-  id: number;
-  name: string;
-  category: string;
-  tags: string[];
-  originalPrice: number;
-  salePrice: number;
-  image: string;
-  inStock: boolean;
-};
+type SortOption = 'default' | 'price-asc' | 'price-desc' | 'name-asc';
 
 type Props = {
-  products: ShopProduct[];
+  products: Product[];
+  categories?: Category[];
   hero: React.ReactNode;
-  linkSource: string; // e.g. 'shop' or 'promotions'
+  linkSource: string;
+  initialCategory?: string;
 };
 
-export default function ShopLayout({ products, hero, linkSource }: Props) {
+const PAGE_SIZE = 24;
+
+export default function ShopLayout({ products, categories, hero, linkSource, initialCategory }: Props) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All Products');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'All Products');
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
+  const [quantities, setQuantities] = useState<Record<number, number>>({});
+  const [addingIds, setAddingIds] = useState<Set<number>>(new Set());
+  const { addToCart } = useCart();
 
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory === 'All Products' || product.category === selectedCategory;
+  const getQty = (id: number) => quantities[id] ?? 1;
+  const setQty = (id: number, qty: number) => setQuantities(prev => ({ ...prev, [id]: Math.max(1, Math.min(99, qty)) }));
+
+  const handleAdd = async (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    if (addingIds.has(product.id)) return;
+    setAddingIds(prev => new Set(prev).add(product.id));
+    await addToCart(product.id, getQty(product.id));
+    setAddingIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
+  };
+
+  // Count products per category from actual loaded data (multi-category aware)
+  const countByCategory = new Map<string, number>();
+  for (const p of products) {
+    for (const cat of p.categories) {
+      countByCategory.set(cat, (countByCategory.get(cat) ?? 0) + 1);
+    }
+  }
+
+  // Permanent categories only — no promos in sidebar
+  const permanentCategories = categories
+    ?.filter(c => c.slug !== 'uncategorized' && !isPromotionalCategory(c.slug))
+    ?? [];
+  const categoryList = ['All Products', ...permanentCategories.map(c => c.name)];
+
+  // Filter uses product.categories (all categories) not just the primary one
+  const filtered = products.filter(product => {
+    const matchesCategory = selectedCategory === 'All Products' || product.categories.includes(selectedCategory);
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPrice = product.salePrice >= priceRange[0] && product.salePrice <= priceRange[1];
     return matchesCategory && matchesSearch && matchesPrice;
   });
 
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'price-asc') return a.salePrice - b.salePrice;
+    if (sortBy === 'price-desc') return b.salePrice - a.salePrice;
+    if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+    return 0;
+  });
+
+  const displayed = sorted.slice(0, displayLimit);
+  const hasMore = sorted.length > displayLimit;
+
+  // Reset pagination whenever filters/sort change
+  useEffect(() => {
+    setDisplayLimit(PAGE_SIZE);
+  }, [selectedCategory, searchQuery, priceRange[1], sortBy]);
+
   return (
     <div className="relative min-h-screen">
 
-      {/* Background image */}
       <div
         className="fixed inset-0 -z-10 bg-cover bg-center"
-        style={{
-          backgroundImage: "url('/images/heart-health.jpg')",
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
+        style={{ backgroundImage: "url('/images/heart-health.jpg')" }}
       />
-
-      {/* Overlay */}
       <div className="fixed inset-0 -z-10 bg-white/80" />
 
-      {/* Page content */}
       <main className="relative py-12 lg:py-16 px-4 lg:px-6">
         <div className="max-w-full mx-auto">
 
-          {/* Hero — passed in per-page */}
           {hero}
 
-          {/* Main Layout: Sidebar + Products */}
           <div className="flex flex-col lg:flex-row gap-6">
 
-            {/* Sidebar Filters */}
+            {/* Sidebar */}
             <aside className={`lg:w-64 shrink-0 ${isFiltersOpen ? 'block' : 'hidden'} lg:block`}>
               <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-6 sticky top-6">
 
@@ -101,20 +121,31 @@ export default function ShopLayout({ products, hero, linkSource }: Props) {
                 {/* Categories */}
                 <div className="mb-6">
                   <label className="block text-sm font-bold! text-[#184363] mb-3">Categories</label>
-                  <div className="space-y-2">
-                    {SHOP_CATEGORIES.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                          selectedCategory === category
-                            ? 'bg-[#009eb9] text-white font-semibold!'
-                            : 'text-neutral-700 hover:bg-neutral-100'
-                        }`}
-                      >
-                        {category}
-                      </button>
-                    ))}
+                  <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+                    {categoryList.map((category) => {
+                      const count = category === 'All Products'
+                        ? products.length
+                        : (countByCategory.get(category) ?? 0);
+                      const active = selectedCategory === category;
+                      return (
+                        <button
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
+                            active
+                              ? 'bg-[#009eb9] text-white font-semibold!'
+                              : 'text-neutral-700 hover:bg-neutral-100'
+                          }`}
+                        >
+                          <span className="text-left truncate pr-2">{category}</span>
+                          <span className={`shrink-0 text-xs font-bold! px-2 py-0.5 rounded-full ${
+                            active ? 'bg-white/25 text-white' : 'bg-neutral-200 text-neutral-500'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -143,6 +174,7 @@ export default function ShopLayout({ products, hero, linkSource }: Props) {
                     setSelectedCategory('All Products');
                     setPriceRange([0, 500]);
                     setSearchQuery('');
+                    setSortBy('default');
                   }}
                   className="w-full px-4 py-2 border-2 border-[#009eb9] text-[#009eb9] font-semibold! rounded-lg hover:bg-[#009eb9] hover:text-white transition-colors text-sm"
                 >
@@ -151,14 +183,15 @@ export default function ShopLayout({ products, hero, linkSource }: Props) {
               </div>
             </aside>
 
-            {/* Products Area */}
+            {/* Products area */}
             <div className="flex-1">
 
               {/* Toolbar */}
-              <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
+              <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <p className="text-neutral-600 text-sm">
-                    Showing <span className="font-bold! text-[#184363]">{filteredProducts.length}</span> products
+                    Showing <span className="font-bold! text-[#184363]">{Math.min(displayLimit, sorted.length)}</span>
+                    {' '}of <span className="font-bold! text-[#184363]">{sorted.length}</span> products
                   </p>
                   <button
                     onClick={() => setIsFiltersOpen(!isFiltersOpen)}
@@ -171,8 +204,20 @@ export default function ShopLayout({ products, hero, linkSource }: Props) {
                   </button>
                 </div>
 
-                {/* View Toggle */}
                 <div className="flex items-center gap-2">
+                  {/* Sort */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="text-sm border border-neutral-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#009eb9] text-neutral-700 bg-white"
+                  >
+                    <option value="default">Default</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="name-asc">Name: A–Z</option>
+                  </select>
+
+                  {/* View Toggle */}
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#009eb9] text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}`}
@@ -194,112 +239,73 @@ export default function ShopLayout({ products, hero, linkSource }: Props) {
                 </div>
               </div>
 
-              {/* Products Grid */}
-              {viewMode === 'grid' ? (
+              {/* Empty state */}
+              {sorted.length === 0 && (
+                <div className="bg-white rounded-2xl border border-neutral-200 p-16 text-center">
+                  <svg className="w-12 h-12 text-neutral-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-neutral-500 font-medium!">No products found</p>
+                  <p className="text-neutral-400 text-sm mt-1">Try adjusting your filters</p>
+                </div>
+              )}
+
+              {/* Grid */}
+              {viewMode === 'grid' && displayed.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredProducts.map((product) => (
+                  {displayed.map((product) => (
                     <div
                       key={product.id}
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative"
                     >
-                      <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full z-10">
-                        Sale
-                      </div>
+                      {product.onSale && (
+                        <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full z-10">
+                          Sale
+                        </div>
+                      )}
                       <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
                         <div className="relative bg-white h-56 overflow-hidden">
-                          <Image
-                            src={product.image}
-                            alt={product.name}
-                            fill
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                            className="object-contain p-8 group-hover:scale-105 transition-transform duration-300"
-                          />
+                          {product.image && (
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              fill
+                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              className="object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
+                            />
+                          )}
                         </div>
                       </Link>
-                      <div className="p-6 pt-4 border-t border-neutral-100">
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {product.tags.map((tag, idx) => (
-                            <span key={idx} className="text-xs text-[#009eb9] font-medium!">
-                              {tag}{idx < product.tags.length - 1 && ','}
-                            </span>
-                          ))}
-                        </div>
+                      <div className="p-5 pt-4 border-t border-neutral-100">
+                        <p className="text-xs text-[#009eb9] font-medium! mb-1">{product.category}</p>
                         <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
-                          <h3 className="text-base font-bold! text-[#184363] mb-0.5 min-h-12 hover:text-[#009eb9] transition-colors">
+                          <h3 className="text-sm font-bold! text-[#184363] mb-2 min-h-10 line-clamp-2 hover:text-[#009eb9] transition-colors">
                             {product.name}
                           </h3>
                         </Link>
                         <div className="flex items-baseline gap-2 mb-4">
-                          <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
+                          {product.onSale && product.originalPrice > product.salePrice && (
+                            <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
+                          )}
                           <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-3">
-                            <button className="text-neutral-600 hover:text-[#184363] font-bold! text-lg">-</button>
-                            <span className="font-semibold! text-[#184363] w-6 text-center">1</span>
-                            <button className="text-neutral-600 hover:text-[#184363] font-bold! text-lg">+</button>
+                          <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-2.5">
+                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">−</button>
+                            <span className="font-semibold! text-[#184363] w-6 text-center text-sm">{getQty(product.id)}</span>
+                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">+</button>
                           </div>
-                          <button className="flex-1 px-4 py-3 bg-[#e8f5f7] text-[#184363] font-semibold! rounded-lg hover:bg-[#009eb9] hover:text-white transition-colors flex items-center justify-center gap-2">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                            </svg>
-                            Add to basket
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* Products List */
-                <div className="space-y-4">
-                  {filteredProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-lg transition-all"
-                    >
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 relative">
-                        <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full">
-                          Sale
-                        </div>
-                        <Link href={`/product/${product.id}?from=${linkSource}`} className="relative w-full sm:w-40 h-32 shrink-0 pt-8 sm:pt-0 block">
-                          <Image
-                            src={product.image}
-                            alt={product.name}
-                            fill
-                            sizes="160px"
-                            className="object-contain"
-                          />
-                        </Link>
-                        <div className="flex-1">
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {product.tags.map((tag, idx) => (
-                              <span key={idx} className="text-xs text-[#009eb9] font-medium!">
-                                {tag}{idx < product.tags.length - 1 && ','}
-                              </span>
-                            ))}
-                          </div>
-                          <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
-                            <h3 className="text-lg font-bold! text-[#184363] mb-3 hover:text-[#009eb9] transition-colors">
-                              {product.name}
-                            </h3>
-                          </Link>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
-                            <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 w-full sm:w-auto">
-                          <div className="flex items-center gap-3 bg-neutral-50 rounded-lg px-4 py-2">
-                            <button className="text-neutral-600 hover:text-[#184363] font-bold! text-lg">-</button>
-                            <span className="font-semibold! text-[#184363] w-8 text-center">1</span>
-                            <button className="text-neutral-600 hover:text-[#184363] font-bold! text-lg">+</button>
-                          </div>
-                          <button className="flex-1 sm:flex-none px-6 py-3 bg-[#e8f5f7] text-[#184363] font-semibold! rounded-lg hover:bg-[#009eb9] hover:text-white transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                            </svg>
-                            Add to basket
+                          <button
+                            onClick={(e) => handleAdd(e, product)}
+                            disabled={addingIds.has(product.id)}
+                            className="flex-1 px-4 py-2.5 bg-[#e8f5f7] text-[#184363] font-semibold! rounded-xl hover:bg-[#009eb9] hover:text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 text-sm"
+                          >
+                            {addingIds.has(product.id) ? (
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                            ) : (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
+                            )}
+                            {addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
                           </button>
                         </div>
                       </div>
@@ -307,9 +313,88 @@ export default function ShopLayout({ products, hero, linkSource }: Props) {
                   ))}
                 </div>
               )}
+
+              {/* List */}
+              {viewMode === 'list' && displayed.length > 0 && (
+                <div className="space-y-4">
+                  {displayed.map((product) => (
+                    <div
+                      key={product.id}
+                      className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-lg transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 relative">
+                        {product.onSale && (
+                          <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full">
+                            Sale
+                          </div>
+                        )}
+                        <Link href={`/product/${product.id}?from=${linkSource}`} className="relative w-full sm:w-36 h-28 shrink-0 pt-6 sm:pt-0 block">
+                          {product.image && (
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              fill
+                              sizes="144px"
+                              className="object-contain mix-blend-multiply"
+                            />
+                          )}
+                        </Link>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-[#009eb9] font-medium! mb-1">{product.category}</p>
+                          <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
+                            <h3 className="text-base font-bold! text-[#184363] mb-2 hover:text-[#009eb9] transition-colors line-clamp-2">
+                              {product.name}
+                            </h3>
+                          </Link>
+                          <div className="flex items-baseline gap-2">
+                            {product.onSale && product.originalPrice > product.salePrice && (
+                              <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
+                            )}
+                            <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
+                          <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-2.5">
+                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">−</button>
+                            <span className="font-semibold! text-[#184363] w-8 text-center">{getQty(product.id)}</span>
+                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">+</button>
+                          </div>
+                          <button
+                            onClick={(e) => handleAdd(e, product)}
+                            disabled={addingIds.has(product.id)}
+                            className="flex-1 sm:flex-none px-5 py-2.5 bg-[#e8f5f7] text-[#184363] font-semibold! rounded-xl hover:bg-[#009eb9] hover:text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap text-sm"
+                          >
+                            {addingIds.has(product.id) ? (
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                            ) : (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
+                            )}
+                            {addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Load More */}
+              {hasMore && (
+                <div className="mt-10 text-center">
+                  <button
+                    onClick={() => setDisplayLimit(prev => prev + PAGE_SIZE)}
+                    className="inline-flex items-center gap-2 px-8 py-3.5 bg-white border-2 border-[#009eb9] text-[#009eb9] font-bold! rounded-xl hover:bg-[#009eb9] hover:text-white transition-all duration-200 shadow-sm"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Load More ({sorted.length - displayLimit} remaining)
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
-
         </div>
       </main>
     </div>

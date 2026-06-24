@@ -58,11 +58,11 @@ export default function ServicesShowcase() {
             <Link
               key={index}
               href={service.link}
-              className="group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 h-100"
+              className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 h-100"
             >
               {/* Background Image */}
               <div 
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+                className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
                 style={{ backgroundImage: `url('${service.image}')` }}
               />
               
@@ -83,7 +83,7 @@ export default function ServicesShowcase() {
                 </p>
                 
                 {/* CTA Button */}
-                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 px-5 py-2.5 rounded-lg font-semibold! text-sm transition-all w-fit">
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 px-5 py-2.5 rounded-xl font-semibold! text-sm transition-all w-fit">
                   {service.cta}
                   <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -117,7 +117,7 @@ export default function ServicesShowcase() {
             </div>
             <Link
               href="/store-locator"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#184363] text-white font-semibold! rounded-lg hover:bg-[#009eb9] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#184363] text-white font-semibold! rounded-xl hover:bg-[#009eb9] transition-all duration-200 group"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

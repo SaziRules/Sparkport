@@ -1,7 +1,7 @@
 // app/account/page.tsx (UPDATED - Clears fields & redirects to dashboard)
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signUp, signIn, signInWithGoogle, signInWithFacebook } from '@/app/auth/actions';
@@ -19,7 +19,7 @@ const initialFormData = {
   receiveMarketing: false,
 };
 
-export default function AuthPageSplit() {
+function AuthPageSplitInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/account/dashboard'; // ← Dashboard redirect
@@ -595,5 +595,13 @@ export default function AuthPageSplit() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPageSplit() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#009eb9] border-t-transparent rounded-full animate-spin" /></div>}>
+      <AuthPageSplitInner />
+    </Suspense>
   );
 }

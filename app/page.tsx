@@ -5,11 +5,15 @@ import HeroSection from "@/components/HeroSection";
 import ImageBanner from "@/components/ImageBanner";
 import PromotionalBanners from "@/components/PromotionalBanners";
 import ServicesShowcase from "@/components/ServicesShowcase";
+import SurgicalProducts from "@/components/SurgicalProducts";
 import ValuePropositionStrip from "@/components/ValuePropositionStrip";
+import { getPosts } from "@/lib/wordpress";
 
-export default function Home() {
+export default async function Home() {
+  const blogPosts = await getPosts({ per_page: 4 });
+
   return (
-    <main >
+    <main>
       <HeroSection />
       <FeaturedProducts />
       <ImageBanner
@@ -22,8 +26,8 @@ export default function Home() {
       <ServicesShowcase />
       <CategorySpotlight />
       <PromotionalBanners />
-      <BlogPreview />
-      
+      <SurgicalProducts />
+      <BlogPreview posts={blogPosts} />
     </main>
   );
 }

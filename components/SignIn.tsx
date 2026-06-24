@@ -60,7 +60,7 @@ export default function SignIn() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button
               onClick={() => handleSocialLogin('google')}
-              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
+              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-200 rounded-xl hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -73,7 +73,7 @@ export default function SignIn() {
 
             <button
               onClick={() => handleSocialLogin('facebook')}
-              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
+              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-200 rounded-xl hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
             >
               <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -104,7 +104,7 @@ export default function SignIn() {
                   setEmail(e.target.value);
                   if (errors.email) setErrors({ ...errors, email: '' });
                 }}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                   errors.email ? 'border-red-500' : 'border-neutral-300'
                 }`}
                 placeholder="Enter your email or phone"
@@ -125,7 +125,7 @@ export default function SignIn() {
                       setPassword(e.target.value);
                       if (errors.password) setErrors({ ...errors, password: '' });
                     }}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                       errors.password ? 'border-red-500' : 'border-neutral-300'
                     }`}
                     placeholder="Enter your password"
@@ -163,7 +163,7 @@ export default function SignIn() {
 
             <button
               type="submit"
-              className="w-full bg-[#009eb9] text-white font-semibold py-3 rounded-lg hover:bg-[#184363] transition-colors"
+              className="w-full bg-[#009eb9] text-white font-semibold py-3 rounded-xl hover:bg-[#184363] transition-colors"
             >
               {isOTP ? 'Send OTP' : 'Sign in'}
             </button>
@@ -171,7 +171,7 @@ export default function SignIn() {
             <button
               type="button"
               onClick={() => setIsOTP(!isOTP)}
-              className="w-full border-2 border-neutral-300 text-neutral-700 font-semibold py-3 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
+              className="w-full border-2 border-neutral-200 text-neutral-700 font-semibold py-3 rounded-xl hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
             >
               {isOTP ? 'Sign in with password' : 'Sign in with OTP'}
             </button>

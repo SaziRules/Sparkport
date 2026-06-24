@@ -92,7 +92,7 @@ export default function SignUp() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button
               onClick={() => handleSocialSignUp('google')}
-              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
+              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-200 rounded-xl hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -105,7 +105,7 @@ export default function SignUp() {
 
             <button
               onClick={() => handleSocialSignUp('facebook')}
-              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-300 rounded-lg hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
+              className="flex items-center justify-center gap-3 px-4 py-3 border-2 border-neutral-200 rounded-xl hover:border-[#009eb9] hover:bg-[#009eb9]/5 transition-all"
             >
               <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -135,7 +135,7 @@ export default function SignUp() {
                   type="text"
                   value={formData.firstName}
                   onChange={(e) => handleInputChange('firstName', e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                     errors.firstName ? 'border-red-500' : 'border-neutral-300'
                   }`}
                   placeholder="First name"
@@ -151,7 +151,7 @@ export default function SignUp() {
                   type="text"
                   value={formData.lastName}
                   onChange={(e) => handleInputChange('lastName', e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                     errors.lastName ? 'border-red-500' : 'border-neutral-300'
                   }`}
                   placeholder="Last name"
@@ -170,7 +170,7 @@ export default function SignUp() {
                   type="tel"
                   value={formData.cellphone}
                   onChange={(e) => handleInputChange('cellphone', e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                     errors.cellphone ? 'border-red-500' : 'border-neutral-300'
                   }`}
                   placeholder="0821234567"
@@ -186,7 +186,7 @@ export default function SignUp() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                     errors.email ? 'border-red-500' : 'border-neutral-300'
                   }`}
                   placeholder="your@email.com"
@@ -206,7 +206,7 @@ export default function SignUp() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                       errors.password ? 'border-red-500' : 'border-neutral-300'
                     }`}
                     placeholder="Password"
@@ -240,7 +240,7 @@ export default function SignUp() {
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
                       errors.confirmPassword ? 'border-red-500' : 'border-neutral-300'
                     }`}
                     placeholder="Confirm password"
@@ -307,16 +307,16 @@ export default function SignUp() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-[#009eb9] text-white font-semibold py-3 rounded-lg hover:bg-[#184363] transition-colors"
+              className="w-full bg-[#009eb9] text-white font-semibold py-3 rounded-xl hover:bg-[#184363] transition-colors"
             >
               Sign Up
             </button>
           </form>
 
           {/* Security Note */}
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="mt-6 bg-[#009eb9]/8 border border-[#009eb9]/20 rounded-xl p-4">
             <div className="flex gap-3">
-              <svg className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               <p className="text-sm text-blue-900">

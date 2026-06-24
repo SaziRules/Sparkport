@@ -125,37 +125,45 @@ export default function HeroSection() {
                       : 'translate-x-full'
                   }`}
                 >
-                  <h2 className="text-3xl lg:text-6xl font-extrabold! text-white mb-3 drop-shadow-lg">
+                  <h2 className="text-3xl lg:text-5xl font-extrabold! text-white mb-3 leading-tight drop-shadow-lg">
                     {slide.title}
                   </h2>
-                  <p className="text-base lg:text-lg text-white! mb-6 max-w-md drop-shadow-md">
+                  <p className="text-sm lg:text-base text-white/85 mb-6 max-w-sm leading-relaxed">
                     {slide.description}
                   </p>
                   <div>
-                    <Link 
+                    <Link
                       href={slide.ctaLink}
-                      className="inline-block px-8 py-3 bg-white text-[#009eb9] font-semibold rounded-full hover:bg-[#009eb9] hover:text-white transition-colors"
+                      className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-[#184363] font-bold rounded-full shadow-lg hover:bg-[#009eb9] hover:text-white hover:shadow-xl transition-all duration-200 group"
                     >
                       {slide.ctaText}
+                      <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                      </svg>
                     </Link>
                   </div>
                 </div>
               ))}
 
-              {/* Carousel Dots */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-                {mainSlides.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSlideChange(index)}
-                    className={`h-2 rounded-full transition-all ${
-                      activeSlide === index 
-                        ? 'w-8 bg-white' 
-                        : 'w-2 bg-white/50 hover:bg-white/75'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
+              {/* Slide Controls */}
+              <div className="absolute bottom-5 left-6 z-20 flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  {mainSlides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSlideChange(index)}
+                      className={`h-1 rounded-full transition-all duration-300 ${
+                        activeSlide === index
+                          ? 'w-8 bg-white'
+                          : 'w-3 bg-white/40 hover:bg-white/65'
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-white/55 text-xs font-medium tabular-nums tracking-wider">
+                  {String(activeSlide + 1).padStart(2, '0')} / {String(mainSlides.length).padStart(2, '0')}
+                </span>
               </div>
             </div>
           </div>
@@ -163,24 +171,28 @@ export default function HeroSection() {
           {/* Small Cards Column - Middle */}
           <div className="col-span-12 md:col-span-6 lg:col-span-3 flex flex-col gap-6">
             {smallCards.map((card, index) => (
-              <Link 
+              <Link
                 key={index}
                 href={card.link}
-                className="group relative h-60.5 rounded-2xl overflow-hidden bg-linear-to-br from-[#f0f7f7] to-neutral-100 hover:shadow-lg transition-all"
+                className="group relative h-60.5 rounded-2xl overflow-hidden bg-neutral-900 hover:shadow-xl transition-all duration-300"
               >
                 <Image
                   src={card.image}
                   alt={card.title}
                   fill
-                  className="object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                  className="object-cover opacity-75 group-hover:opacity-90 group-hover:scale-105 transition-all duration-500"
                 />
+                <div className="absolute inset-0 bg-linear-to-t from-[#184363]/80 via-[#184363]/20 to-transparent" />
                 <div className="relative z-10 h-full flex flex-col justify-end p-6">
-                  <p className="text-xs font-medium text-neutral-600 mb-1">
-                    {card.subtitle}
-                  </p>
-                  <h3 className="text-xl font-extrabold! text-[#184363]">
+                  <h3 className="text-xl font-extrabold! text-white mb-1">
                     {card.title}
                   </h3>
+                  <div className="flex items-center gap-1.5 text-white/70 group-hover:text-[#009eb9] transition-colors duration-200">
+                    <span className="text-xs font-medium">{card.subtitle}</span>
+                    <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
               </Link>
             ))}
@@ -188,28 +200,35 @@ export default function HeroSection() {
 
           {/* Tall Card - Right */}
           <div className="col-span-12 md:col-span-6 lg:col-span-2">
-            <Link 
+            <Link
               href={tallCard.link}
-              className="group relative block h-96 lg:h-125 rounded-2xl overflow-hidden bg-linear-to-b from-[#009eb9] to-[#184363] hover:shadow-lg transition-all"
+              className="group relative block h-96 lg:h-125 rounded-2xl overflow-hidden bg-[#184363] hover:shadow-xl transition-all duration-300"
             >
               <Image
                 src={tallCard.image}
                 alt={tallCard.title}
                 fill
-                className="object-cover opacity-30 group-hover:opacity-40 transition-opacity"
+                className="object-cover opacity-20 group-hover:opacity-30 group-hover:scale-105 transition-all duration-500"
               />
-              <div className="relative z-10 h-full flex flex-col justify-center items-center text-center p-6">
-                <div className="w-16 h-16 mb-4 rounded-full bg-white/20 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="absolute inset-0 bg-linear-to-t from-[#184363] via-[#184363]/70 to-[#009eb9]/50" />
+              <div className="relative z-10 h-full flex flex-col justify-end p-6">
+                <div className="w-11 h-11 mb-5 rounded-2xl bg-white/15 group-hover:bg-white/25 flex items-center justify-center transition-colors duration-200">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-extrabold! text-white mb-2">
+                <h3 className="text-lg font-extrabold! text-white mb-1.5 leading-snug">
                   {tallCard.title}
                 </h3>
-                <p className="text-sm text-white/80!">
+                <p className="text-xs text-white/60 mb-4 leading-relaxed">
                   {tallCard.description}
                 </p>
+                <div className="flex items-center gap-1.5 text-[#009eb9] group-hover:text-white transition-colors duration-200">
+                  <span className="text-sm font-semibold">Start Now</span>
+                  <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </div>
             </Link>
           </div>

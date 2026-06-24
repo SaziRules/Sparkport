@@ -1,0 +1,613 @@
+SPARKPORT — WORDPRESS / WOOCOMMERCE INTEGRATION EXECUTION PLAN
+================================================================
+Generated from codebase + live site audit of sparkport.co.za
+================================================================
+
+
+CURRENT STATE SUMMARY
+----------------------
+- All product data is hardcoded in 4 separate files (duplicated arrays)
+- All blog post data is hardcoded in 3 separate files (duplicated arrays)
+- All product categories are hardcoded in ShopLayout.tsx
+- Supabase is live and working for prescriptions and auth only
+- WordPress blog posts ARE publicly accessible (no auth needed)
+- WooCommerce products require API keys (returns 401 without them)
+- sparkport.co.za is already in next.config.ts image remotePatterns
+- WordPress site has: Yoast SEO, WooCommerce, 10 blog categories,
+  81 Insights posts, 71 Pharmacy & Healthcare posts
+
+
+================================================================
+PHASE 0 — PREREQUISITES (Must be done before any code)
+================================================================
+
+0.1  Generate WooCommerce REST API Keys
+     - Log in to sparkport.co.za/wp-admin
+     - Navigate to: WooCommerce → Settings → Advanced → REST API
+     - Click "Add Key"
+     - Description: "Sparkport Next.js Frontend"
+     - User: select your admin account
+     - Permissions: Read
+     - Click "Generate API Key"
+     - Copy the consumer_key (ck_...) and consumer_secret (cs_...)
+     - These are shown ONCE — save them immediately
+
+0.2  Add credentials to .env.local
+     Add these three lines:
+       NEXT_PUBLIC_WP_API_URL=https://sparkport.co.za/wp-json
+       WC_CONSUMER_KEY=ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+       WC_CONSUMER_SECRET=cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+     IMPORTANT: WC_CONSUMER_KEY and WC_CONSUMER_SECRET must NOT have the
+     NEXT_PUBLIC_ prefix — they must stay server-side only
+
+0.3  Verify WooCommerce has real products
+     - In wp-admin → WooCommerce → Products
+     - Confirm products exist with: images, regular price, sale price,
+       categories assigned, stock status set
+     - Confirm product categories are created
+       (Vitamins & Supplements, Baby & Toddlers, Cold & Flu, etc.)
+     - If no products exist yet, add at least 10 before Phase 4
+
+
+================================================================
+PHASE 1 — INFRASTRUCTURE SETUP
+================================================================
+
+1.1  Update next.config.ts — clean up image domains
+     REMOVE these 15 competitor/placeholder hostnames that will no
+     longer be needed once WooCommerce products are live:
+       cloudinary.images-iherb.com
+       www.dischem.co.za
+       clicks.co.za
+       www.maximed.co.za
+       www.vitatechhealth.com
+       m.media-amazon.com
+       cdn.shopify.com
+       mopani.co.za
+       vitagene.co.za
+       catalog.sixty60.co.za
+       www.mynavyexchange.com
+       www.feelhealthy.co.za
+       cdn-prd-02.pnp.co.za
+       shoprite-ecommerce-prod-cdn.azureedge.net
+       city-pharmacy-windhoek.myshopify.com
+     KEEP:
+       sparkport.co.za (WP media + WooCommerce product images)
+       images.unsplash.com (blog placeholder images until WP images take over)
+       upload.wikimedia.org (payment icons in footer)
+     NOTE: Do this cleanup ONLY after Phase 4 is fully live and tested
+
+1.2  Create lib/wordpress/types.ts (NEW FILE)
+     Define all TypeScript interfaces:
+
+     WPPost — raw shape returned by /wp/v2/posts?_embed
+       id, date, slug, status
+       title: { rendered: string }
+       content: { rendered: string }
+       excerpt: { rendered: string }
+       featured_media: number
+       categories: number[]
+       tags: number[]
+       yoast_head_json: {
+         title, description, robots, canonical,
+         og_title, og_description, og_image: [{ url }]
+       }
+       _embedded: {
+         'wp:featuredmedia': [{ source_url: string, alt_text: string }]
+         'wp:term': [WPCategory[], WPTag[]]
+         author: [{ name: string, avatar_urls: Record<string,string> }]
+       }
+
+     WPCategory — raw shape from /wp/v2/categories
+       id, name, slug, count, parent, description
+
+     WCProduct — raw shape from /wc/v3/products
+       id, name, slug, status, type, description, short_description
+       sku, price, regular_price, sale_price, on_sale, featured
+       stock_status ('instock' | 'outofstock' | 'onbackorder')
+       images: [{ id, src, alt }]
+       categories: [{ id, name, slug }]
+       tags: [{ id, name, slug }]
+       attributes: [{ name, options: string[] }]
+       meta_data: [{ key, value }]
+
+     WCProductCategory — raw shape from /wc/v3/products/categories
+       id, name, slug, parent, count
+       image: { src: string, alt: string } | null
+
+     Normalized internal types (what components consume):
+
+     Product {
+       id: number
+       name: string
+       slug: string
+       category: string
+       categories: string[]
+       tags: string[]
+       originalPrice: number
+       salePrice: number
+       image: string
+       imageAlt: string
+       inStock: boolean
+       onSale: boolean
+       featured: boolean
+       shortDescription: string
+       description: string
+       sku: string
+     }
+
+     BlogPost {
+       id: number
+       title: string
+       excerpt: string
+       content: string
+       slug: string
+       date: string
+       image: string
+       imageAlt: string
+       categories: string[]
+       tags: string[]
+       author: { name: string; avatar: string }
+       seo: { title: string; description: string; ogImage: string }
+     }
+
+     Category {
+       id: number
+       name: string
+       slug: string
+       count: number
+       image?: string
+     }
+
+
+================================================================
+PHASE 2 — API LAYER (lib/wordpress/)
+================================================================
+
+2.1  Create lib/wordpress/config.ts (NEW FILE)
+     - Export WP_API constant = process.env.NEXT_PUBLIC_WP_API_URL
+     - Export WC_API constant = WP_API + '/wc/v3'
+     - Export wcAuthHeaders() function:
+         Returns Authorization: Basic base64(key + ':' + secret)
+         Uses Buffer.from on server side
+     - Export stripHtml(html: string) helper:
+         Removes HTML tags for excerpt plain-text conversion
+     - Define default revalidation constants:
+         REVALIDATE_POSTS = 3600      (1 hour)
+         REVALIDATE_PRODUCTS = 300    (5 minutes)
+         REVALIDATE_CATEGORIES = 86400 (24 hours)
+
+2.2  Create lib/wordpress/posts.ts (NEW FILE)
+     Implement these functions (all server-side, all using Next.js fetch()):
+
+     getPosts(params?: {
+       per_page?: number   default: 12
+       page?: number       default: 1
+       category?: number   WP category ID
+       search?: string
+     }) → Promise<BlogPost[]>
+       Endpoint: GET /wp/v2/posts?_embed&per_page=N&page=N
+       Mapping:
+         post.title.rendered            → title (run through stripHtml)
+         post.excerpt.rendered          → excerpt (stripHtml, trim)
+         post.content.rendered          → content (raw HTML, kept for rendering)
+         post.slug                      → slug
+         post.date                      → date
+         post._embedded['wp:featuredmedia'][0].source_url → image
+         post._embedded['wp:featuredmedia'][0].alt_text  → imageAlt
+         post._embedded['wp:term'][0].map(t => t.name)   → categories
+         post._embedded.author[0].name  → author.name
+         post._embedded.author[0].avatar_urls['96'] → author.avatar
+         post.yoast_head_json.title     → seo.title
+         post.yoast_head_json.description → seo.description
+         post.yoast_head_json.og_image?.[0]?.url → seo.ogImage
+       Cache: { next: { revalidate: REVALIDATE_POSTS } }
+
+     getPostBySlug(slug: string) → Promise<BlogPost | null>
+       Endpoint: GET /wp/v2/posts?slug={slug}&_embed
+       Returns mapped BlogPost or null if empty array
+
+     getAllPostSlugs() → Promise<string[]>
+       Endpoint: GET /wp/v2/posts?per_page=100&_fields=slug
+       Used for generateStaticParams() in blog/[slug]
+
+     getBlogCategories() → Promise<Category[]>
+       Endpoint: GET /wp/v2/categories?per_page=100&hide_empty=true
+       Returns only categories with count > 0
+
+2.3  Create lib/wordpress/products.ts (NEW FILE)
+     All functions use wcAuthHeaders() for Authorization header.
+
+     getProducts(params?: {
+       per_page?: number   default: 20
+       page?: number       default: 1
+       category?: number   WC category ID
+       on_sale?: boolean
+       featured?: boolean
+       search?: string
+       orderby?: 'date' | 'price' | 'popularity' | 'rating'
+       order?: 'asc' | 'desc'
+     }) → Promise<Product[]>
+       Endpoint: GET /wc/v3/products?status=publish&per_page=N
+       Mapping:
+         product.id                     → id
+         product.name                   → name
+         product.slug                   → slug
+         product.categories[0]?.name   → category
+         product.categories.map(c=>c.name) → categories
+         product.tags.map(t=>t.name)   → tags
+         parseFloat(product.regular_price) → originalPrice
+         parseFloat(product.price)     → salePrice
+         product.images[0]?.src        → image
+         product.images[0]?.alt        → imageAlt
+         product.stock_status === 'instock' → inStock
+         product.on_sale               → onSale
+         product.featured              → featured
+         product.short_description     → shortDescription (keep HTML)
+         product.description           → description (keep HTML)
+         product.sku                   → sku
+       Cache: { next: { revalidate: REVALIDATE_PRODUCTS } }
+
+     getProductById(id: number) → Promise<Product | null>
+       Endpoint: GET /wc/v3/products/{id}
+       Returns mapped Product or null
+
+     getAllProductIds() → Promise<number[]>
+       Endpoint: GET /wc/v3/products?per_page=100&_fields=id&status=publish
+       Used for generateStaticParams() in product/[id]
+
+     getProductCategories() → Promise<Category[]>
+       Endpoint: GET /wc/v3/products/categories?per_page=100&hide_empty=true
+       Maps: id, name, slug, count, image?.src
+       Cache: { next: { revalidate: REVALIDATE_CATEGORIES } }
+
+     getFeaturedProducts(limit?: number) → Promise<Product[]>
+       Calls getProducts({ featured: true, per_page: limit ?? 4 })
+
+     getOnSaleProducts(limit?: number) → Promise<Product[]>
+       Calls getProducts({ on_sale: true, per_page: limit ?? 20 })
+
+     getProductsByCategory(categorySlug: string, limit?: number) → Promise<Product[]>
+       First: find category ID from getProductCategories() by slug
+       Then: getProducts({ category: id, per_page: limit ?? 20 })
+
+     getNewArrivals(limit?: number) → Promise<Product[]>
+       Calls getProducts({ orderby: 'date', order: 'desc', per_page: limit ?? 4 })
+
+2.4  Create lib/wordpress/index.ts (NEW FILE)
+     Re-export everything from posts.ts and products.ts
+     Single import point for all API calls:
+       import { getProducts, getPosts, getPostBySlug, ... } from '@/lib/wordpress'
+
+
+================================================================
+PHASE 3 — BLOG INTEGRATION (Unblocked — no WC keys needed)
+================================================================
+
+3.1  Update app/blog/page.tsx
+     - Remove 'use client' if present
+     - Make it an async Server Component
+     - Add: const posts = await getPosts({ per_page: 12 })
+     - Pass posts as prop to BlogGrid: <BlogGrid posts={posts} />
+
+3.2  Update components/BlogGrid.tsx
+     - Add posts: BlogPost[] prop to component signature
+     - Delete the internal BLOG_POSTS hardcoded constant (6 posts)
+     - Use the passed posts prop instead
+     - Update featured image: use post.image (comes from _embedded)
+     - Update categories: use post.categories array
+     - Update href: /blog/{post.slug}
+
+3.3  Update app/blog/[slug]/page.tsx
+     - Delete the internal BLOG_POSTS hardcoded array (2 detailed posts)
+     - Add: const post = await getPostBySlug(params.slug)
+     - Add: if (!post) notFound()
+     - Render post.content via dangerouslySetInnerHTML={{ __html: post.content }}
+       (WordPress sanitizes content on save — this is safe)
+     - Add export async function generateMetadata({ params }):
+         Fetch post, return title and description from post.seo fields
+     - Add export async function generateStaticParams():
+         const slugs = await getAllPostSlugs()
+         return slugs.map(slug => ({ slug }))
+
+3.4  Update components/BlogPreview.tsx (used on homepage)
+     - Add posts: BlogPost[] prop
+     - Delete internal BLOG_POSTS hardcoded constant (4 posts)
+     - Use passed posts prop
+
+3.5  Update app/page.tsx (homepage)
+     - Already a Server Component
+     - Add: const blogPosts = await getPosts({ per_page: 4 })
+     - Pass to BlogPreview: <BlogPreview posts={blogPosts} />
+
+
+================================================================
+PHASE 4 — PRODUCTS INTEGRATION (Requires WC API keys from Phase 0)
+================================================================
+
+4.1  Update app/shop/page.tsx
+     - Remove 'use client' directive
+     - Convert to async Server Component
+     - Delete hardcoded PRODUCTS array (8 items)
+     - Add: const products = await getProducts({ per_page: 100 })
+     - Add: const categories = await getProductCategories()
+     - Pass both to ShopLayout:
+         <ShopLayout products={products} categories={categories} hero={hero} />
+
+4.2  Update components/ShopLayout.tsx
+     - Delete hardcoded SHOP_CATEGORIES constant (11 items)
+     - Update ShopProduct type to use normalized Product type from lib/wordpress/types.ts
+     - Accept categories: Category[] as prop
+     - Derive category filter list from the passed categories prop
+     - Update filter logic to match on product.categories array
+     - Update price comparisons: use product.originalPrice and product.salePrice
+
+4.3  Update components/FeaturedProducts.tsx
+     - The component needs tab-specific data (hot deals, bestsellers, new arrivals)
+     - Approach: split into a Server wrapper + Client tabs component
+       Server wrapper (FeaturedProducts.tsx — becomes async, no 'use client'):
+         Fetch all three datasets:
+           hotDeals = await getOnSaleProducts(4)
+           bestsellers = await getFeaturedProducts(4)
+           newArrivals = await getNewArrivals(4)
+         Pass all three to a client child:
+           <FeaturedProductsTabs hotDeals={...} bestsellers={...} newArrivals={...} />
+       Client component (FeaturedProductsTabs.tsx — NEW, has 'use client'):
+         Receives all three arrays as props
+         Handles tab state with useState (existing logic)
+         No data fetching — purely presentational
+     - Delete the entire internal PRODUCTS hardcoded object
+
+4.4  Update app/shop/promotions/page.tsx
+     - Remove 'use client' directive
+     - Delete hardcoded PRODUCTS array (8 items, identical to shop page)
+     - Add: const products = await getOnSaleProducts()
+     - Pass to ShopLayout with promotions hero banner
+
+4.5  Update app/product/[id]/page.tsx
+     - Add: const product = await getProductById(Number(params.id))
+     - Add: if (!product) notFound()
+     - Pass product to <ProductDetailPage product={product} />
+     - Add export async function generateMetadata({ params }):
+         Return { title: product.name, description: product.shortDescription,
+         openGraph: { images: [product.image] } }
+     - Add export async function generateStaticParams():
+         const ids = await getAllProductIds()
+         return ids.map(id => ({ id: String(id) }))
+
+4.6  Update components/ProductDetailPage.tsx
+     - Delete hardcoded SALE_PRODUCTS array (8 items)
+     - Accept product: Product as prop
+     - Display product.name, product.salePrice, product.originalPrice,
+       product.image, product.shortDescription, product.inStock
+     - "Related products" section: parent page can pass related products
+       fetched by same category
+
+4.7  Update components/CategorySpotlight.tsx
+     - Delete hardcoded CATEGORY_SPOTLIGHTS constant
+     - Accept spotlight data as props from parent
+     - app/page.tsx fetches spotlight data server-side:
+         vitaminsProducts = await getProductsByCategory('vitamins-supplements', 4)
+         babyProducts = await getProductsByCategory('baby-toddlers', 4)
+     - Pass to CategorySpotlight component
+
+4.8  Update app/categories/page.tsx
+     - Add: const categories = await getProductCategories()
+     - Render live category grid with counts and images
+
+
+================================================================
+PHASE 5 — CACHING STRATEGY
+================================================================
+
+5.1  Blog posts — revalidate: 3600 (1 hour)
+     Blog content changes infrequently. Applied inside getPosts() and getPostBySlug().
+
+5.2  Products — revalidate: 300 (5 minutes)
+     Stock levels and prices must propagate quickly.
+     Applied inside getProducts() and getProductById().
+
+5.3  Product categories — revalidate: 86400 (24 hours)
+     Categories almost never change. Applied in getProductCategories().
+
+5.4  On-sale products — revalidate: 300 (5 minutes)
+     Sales can be time-limited. Applied in getOnSaleProducts().
+
+5.5  Featured products — revalidate: 3600 (1 hour)
+     Featured flag changes infrequently. Applied in getFeaturedProducts().
+
+5.6  Static page generation
+     app/blog/[slug]/page.tsx — generateStaticParams from getAllPostSlugs()
+     app/product/[id]/page.tsx — generateStaticParams from getAllProductIds()
+     Both use dynamicParams = true so new slugs/IDs are built on first request
+
+
+================================================================
+PHASE 6 — SEO WIRING
+================================================================
+
+6.1  Blog post pages — wire Yoast SEO fields
+     In app/blog/[slug]/page.tsx, export generateMetadata:
+       title: post.seo.title
+       description: post.seo.description
+       openGraph.images: [post.seo.ogImage]
+       twitter.card: 'summary_large_image'
+
+6.2  Product pages — wire product metadata
+     In app/product/[id]/page.tsx, export generateMetadata:
+       title: product.name + ' | Sparkport Pharmacy'
+       description: stripHtml(product.shortDescription)
+       openGraph.images: [product.image]
+
+6.3  Shop category pages — wire category metadata
+     In app/categories/page.tsx:
+       title: 'Shop by Category | Sparkport Pharmacy'
+
+6.4  Blog listing page — wire metadata
+     In app/blog/page.tsx:
+       title: 'Health Insights & News | Sparkport Pharmacy'
+
+
+================================================================
+PHASE 7 — CART INTEGRATION
+================================================================
+
+7.1  Research the right cart approach
+     WooCommerce exposes two APIs for cart:
+       A) WooCommerce Store API (wc/store/v1) — public, uses nonce + session cookie,
+          no consumer keys needed, built for headless frontends. RECOMMENDED.
+       B) WooCommerce REST API cart — requires per-customer auth, complex.
+     Use option A: WooCommerce Store API
+
+7.2  Create lib/wordpress/cart.ts (NEW FILE)
+     Implement cart functions using /wc/store/v1:
+       getNonce() → fetch nonce from /wc/store/v1
+       getCart() → GET /wc/store/v1/cart
+         Returns: { items: CartItem[], totals: CartTotals, items_count: number }
+       addToCart(productId: number, quantity: number) → POST /wc/store/v1/cart/add-item
+       updateCartItem(key: string, quantity: number) → PUT /wc/store/v1/cart/items/{key}
+       removeCartItem(key: string) → DELETE /wc/store/v1/cart/items/{key}
+       clearCart() → DELETE /wc/store/v1/cart/items
+     Define CartItem type: { key, id, quantity, name, price, totals, images }
+     All requests include 'Nonce' header and handle session cookies
+
+7.3  Update contexts/CartContext.tsx
+     - Replace TODO comment with real implementation
+     - State: items: CartItem[], itemCount: number, isLoading: boolean
+     - On mount: getCart() to hydrate state
+     - addToCart(productId, quantity): call cart API, update state
+     - removeFromCart(key): call cart API, update state
+     - updateQuantity(key, quantity): call cart API, update state
+     - Persist cart via WooCommerce session cookie (handled automatically)
+
+7.4  Wire "Add to basket" buttons
+     Files to update:
+       components/FeaturedProducts.tsx (or FeaturedProductsTabs.tsx)
+       components/ShopLayout.tsx
+       components/ProductDetailPage.tsx
+     Changes:
+       - Import useCart() from CartContext
+       - onClick of "Add to basket": cart.addToCart(product.id, qty)
+       - Add loading state: disable button while adding
+       - Add success feedback: brief "Added!" message or checkmark
+
+7.5  Wire quantity pickers
+     The +/- buttons are currently non-functional (hardcoded to 1).
+     Add local useState for quantity in each product card.
+     Pass quantity to addToCart.
+     On ProductDetailPage.tsx, allow quantity changes before adding.
+
+7.6  Update cart count badge in header
+     - KlaasHeader.tsx and SparkportMobileHeader.tsx have cart icon
+     - Import useCart(), display cart.itemCount as badge
+     - Badge appears/disappears based on count > 0
+
+
+================================================================
+PHASE 8 — CLEANUP (Do last, after live data confirmed working)
+================================================================
+
+8.1  Delete all hardcoded product arrays:
+     - app/shop/page.tsx: delete PRODUCTS (8 items)
+     - app/shop/promotions/page.tsx: delete PRODUCTS (8 items)
+     - components/FeaturedProducts.tsx: delete PRODUCTS object (12 items)
+     - components/ProductDetailPage.tsx: delete SALE_PRODUCTS (8 items)
+
+8.2  Delete all hardcoded blog arrays:
+     - components/BlogGrid.tsx: delete BLOG_POSTS (6 items)
+     - components/BlogPreview.tsx: delete BLOG_POSTS (4 items)
+     - app/blog/[slug]/page.tsx: delete BLOG_POSTS (2 detailed items)
+
+8.3  Delete hardcoded category list:
+     - components/ShopLayout.tsx: delete SHOP_CATEGORIES (11 items)
+
+8.4  Remove competitor image domains from next.config.ts (15 domains listed in 1.1)
+
+8.5  Add loading states and error boundaries:
+     - Wrap async data sections with Suspense + skeleton UI
+     - Handle fetch errors gracefully (show empty state, not crash)
+
+
+================================================================
+PHASE 9 — ENVIRONMENT & DEPLOYMENT
+================================================================
+
+9.1  Add environment variables to hosting (Vercel/production)
+     NEXT_PUBLIC_WP_API_URL=https://sparkport.co.za/wp-json
+     WC_CONSUMER_KEY=ck_...
+     WC_CONSUMER_SECRET=cs_...
+
+9.2  Verify WordPress CORS settings
+     WordPress REST API allows cross-origin GET requests by default.
+     WooCommerce Store API (for cart) also allows cross-origin.
+     If 403/CORS errors appear: add header in .htaccess:
+       Header add Access-Control-Allow-Origin "*"
+     Or install WP plugin: "WP CORS" or "Add HTTP Headers"
+
+9.3  Test ISR cache revalidation end-to-end
+     - Update a product price in WP Admin
+     - Wait 5 minutes
+     - Confirm Next.js product page shows new price
+
+9.4  Test cart session persistence
+     - Add item to cart, reload page
+     - Confirm item persists (WooCommerce session cookie)
+
+9.5  Test generateStaticParams
+     - Deploy and confirm /product/[id] and /blog/[slug] pages
+       are pre-built for all existing content
+
+
+================================================================
+EXECUTION ORDER (CRITICAL PATH)
+================================================================
+
+START HERE (unblocked):
+  Phase 1.2 → Phase 2 → Phase 3 (full blog integration)
+
+Blocked on WooCommerce keys (Phase 0.1 + 0.2):
+  Phase 4 → Phase 7
+
+Do in parallel with blog work:
+  Phase 1.1 prep (plan which domains to remove, don't commit yet)
+  Phase 5 (baked into Phase 2 fetcher implementations)
+  Phase 6 (baked into Phase 3 + 4 page updates)
+
+Do last:
+  Phase 8 (cleanup — only after live data confirmed)
+  Phase 9 (deployment)
+
+
+================================================================
+NEW FILES TO CREATE
+================================================================
+  lib/wordpress/types.ts
+  lib/wordpress/config.ts
+  lib/wordpress/posts.ts
+  lib/wordpress/products.ts
+  lib/wordpress/cart.ts
+  lib/wordpress/index.ts
+  components/FeaturedProductsTabs.tsx   (client-side tab shell)
+
+
+================================================================
+EXISTING FILES TO MODIFY
+================================================================
+  next.config.ts
+  .env.local
+  app/page.tsx
+  app/shop/page.tsx
+  app/shop/promotions/page.tsx
+  app/product/[id]/page.tsx
+  app/blog/page.tsx
+  app/blog/[slug]/page.tsx
+  app/categories/page.tsx
+  components/FeaturedProducts.tsx
+  components/BlogGrid.tsx
+  components/BlogPreview.tsx
+  components/ProductDetailPage.tsx
+  components/ShopLayout.tsx
+  components/CategorySpotlight.tsx
+  contexts/CartContext.tsx
+
+  Total: 7 new files, 16 modified files

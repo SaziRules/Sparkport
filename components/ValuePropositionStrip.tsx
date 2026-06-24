@@ -50,26 +50,26 @@ export default function ValuePropositionStrip() {
   ];
 
   return (
-    <section className="py-8 lg:py-12 px-4 lg:px-6 ">
+    <section className="py-6 lg:py-8 px-4 lg:px-6 border-y border-neutral-100 bg-white">
       <div className="max-w-full mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6">
           {valueProps.map((prop, index) => (
             <div
               key={index}
-              className="flex flex-col items-center text-center group"
+              className="flex flex-col items-center text-center group cursor-default select-none p-4 rounded-2xl hover:bg-[#009eb9]/5 transition-all duration-200"
             >
-              {/* Icon */}
-              <div className="mb-3 text-[#009eb9] group-hover:text-[#184363] transition-colors">
+              {/* Icon container */}
+              <div className="w-14 h-14 mb-3 rounded-2xl bg-[#009eb9]/10 flex items-center justify-center text-[#009eb9] group-hover:bg-[#009eb9] group-hover:text-white group-hover:scale-110 transition-all duration-200 shadow-sm">
                 {prop.icon}
               </div>
-              
+
               {/* Title */}
-              <h3 className="text-sm lg:text-base font-bold! text-[#184363] mb-1">
+              <h3 className="text-sm lg:text-base font-bold! text-[#184363] mb-0.5 group-hover:text-[#009eb9] transition-colors">
                 {prop.title}
               </h3>
-              
+
               {/* Description */}
-              <p className="text-xs lg:text-sm text-neutral-600">
+              <p className="text-xs text-neutral-500">
                 {prop.description}
               </p>
             </div>

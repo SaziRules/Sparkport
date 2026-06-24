@@ -280,90 +280,117 @@ export default function FillYourScript() {
   };
 
   return (
-    <div className="min-h-screen bg-transparent mt-10 py-8 lg:py-12">
-      <div className="mx-auto max-w-full px-2 lg:px-0">
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
-          
-          {/* Left Column: Header & Progress */}
-          <div className="lg:col-span-4 lg:sticky lg:top-8 lg:self-start">
-            
-            <div className="mb-6">
-              <h1 className="text-3xl lg:text-6xl font-extrabold text-[#184363] mb-3">
-                Fill Your Script Online
-              </h1>
-              <p className="text-neutral-600 text-sm lg:text-base">
-                Simply provide your personal details, prescription information, and any special instructions to ensure a seamless and efficient process.
-              </p>
-            </div>
+    <div className="min-h-screen flex flex-col lg:flex-row">
 
-            {/* Progress Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-xs font-bold text-neutral-700 mb-4 uppercase tracking-wide">
-                Progress
-              </h3>
-              
-              <div className="space-y-3 mb-6">
-                {[
-                  { num: 1, label: 'Personal Details' },
-                  { num: 2, label: 'Prescription Upload' },
-                  { num: 3, label: 'Delivery/Collection' },
-                  { num: 4, label: 'Additional Info' },
-                  { num: 5, label: 'Review & Submit' },
-                ].map((step) => (
-                  <div key={step.num} className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all shrink-0 ${
-                      currentStep > step.num
-                        ? 'bg-[#009eb9] text-white'
-                        : currentStep === step.num
-                        ? 'bg-[#009eb9] text-white ring-4 ring-[#009eb9]/20'
-                        : 'bg-neutral-200 text-neutral-500'
-                    }`}>
-                      {currentStep > step.num ? (
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        step.num
-                      )}
-                    </div>
-                    <span className={`text-sm font-medium ${
-                      currentStep >= step.num ? 'text-[#009eb9]' : 'text-neutral-500'
-                    }`}>
-                      {step.label}
-                    </span>
+      {/* LEFT: Dark branded sticky panel */}
+      <div className="lg:w-96 xl:w-[420px] lg:shrink-0 bg-[#184363] lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto flex flex-col px-8 py-10">
+
+        {/* Brand header */}
+        <div className="mb-10">
+          <p className="text-[#009eb9] text-xs font-bold! uppercase tracking-widest mb-5">Sparkport Pharmacy</p>
+          <h1 className="text-3xl xl:text-4xl font-extrabold! text-white leading-tight mb-3">
+            Fill Your Script<br className="hidden xl:block" /> Online
+          </h1>
+          <p className="text-white/55 text-sm leading-relaxed">
+            Upload your prescription and we&apos;ll prepare it for safe collection or delivery.
+          </p>
+        </div>
+
+        {/* Progress */}
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white/40 text-xs uppercase tracking-wide font-semibold!">Your Progress</span>
+            <span className="text-[#009eb9] text-xs font-bold!">{currentStep} / {totalSteps}</span>
+          </div>
+          <div className="h-1 bg-white/10 rounded-full overflow-hidden mb-7">
+            <div
+              className="h-full bg-[#009eb9] transition-all duration-500 rounded-full"
+              style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+            />
+          </div>
+
+          <div className="relative">
+            <div className="absolute left-3.5 top-4 bottom-4 w-px bg-white/10" />
+            <div className="space-y-0">
+              {[
+                { num: 1, label: 'Personal Details' },
+                { num: 2, label: 'Prescription Upload' },
+                { num: 3, label: 'Delivery / Collection' },
+                { num: 4, label: 'Additional Info' },
+                { num: 5, label: 'Review & Submit' },
+              ].map((step) => (
+                <div key={step.num} className="flex items-center gap-3 py-2.5 relative">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all shrink-0 z-10 ${
+                    currentStep > step.num
+                      ? 'bg-[#009eb9] text-white'
+                      : currentStep === step.num
+                      ? 'bg-white text-[#184363] shadow-[0_0_0_4px_rgba(255,255,255,0.12)]'
+                      : 'bg-white/8 text-white/30 border border-white/10'
+                  }`}>
+                    {currentStep > step.num ? (
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : step.num}
                   </div>
-                ))}
-              </div>
+                  <span className={`text-sm transition-colors ${
+                    currentStep === step.num
+                      ? 'font-bold! text-white'
+                      : currentStep > step.num
+                      ? 'text-[#009eb9] font-medium'
+                      : 'text-white/30'
+                  }`}>
+                    {step.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-              <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[#009eb9] transition-all duration-500"
+        {/* Trust signals + help */}
+        <div className="mt-auto pt-8 border-t border-white/10">
+          <div className="space-y-3 mb-6">
+            {([
+              { label: 'Encrypted & secure', d: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
+              { label: 'Ready within 2 hours', d: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+              { label: 'Collect or delivery', d: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z' },
+            ] as {label: string; d: string}[]).map(({ label, d }) => (
+              <div key={label} className="flex items-center gap-2.5 text-xs text-white/50">
+                <svg className="w-3.5 h-3.5 text-[#009eb9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
+                </svg>
+                {label}
+              </div>
+            ))}
+          </div>
+          <Link href="/contact" className="flex items-center gap-1.5 text-white/35 hover:text-white/70 text-xs transition-colors">
+            Need help? Contact us →
+          </Link>
+        </div>
+      </div>
+
+      {/* RIGHT: Form area */}
+      <div className="flex-1 bg-neutral-50/60">
+        <div className="max-w-2xl mx-auto px-4 lg:px-8 py-8 lg:py-12">
+
+            {/* Mobile step strip — hidden on lg (left panel takes over) */}
+            <div className="lg:hidden mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-[#184363] uppercase tracking-widest">
+                  Step {currentStep} of {totalSteps}
+                </span>
+                <span className="text-xs text-neutral-400">
+                  {['Personal Details', 'Prescription Upload', 'Delivery / Collection', 'Additional Info', 'Review & Submit'][currentStep - 1]}
+                </span>
+              </div>
+              <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#009eb9] transition-all duration-500 rounded-full"
                   style={{ width: `${(currentStep / totalSteps) * 100}%` }}
                 />
               </div>
-              <p className="text-sm text-neutral-600 mt-2 text-center font-medium">
-                Step {currentStep} of {totalSteps}
-              </p>
             </div>
-
-            <div className="hidden lg:block mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <div className="flex gap-3">
-                <svg className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="text-sm text-blue-800">
-                  <p className="font-semibold mb-1">Need help?</p>
-                  <Link href="/contact" className="text-[#009eb9] hover:underline font-semibold">
-                    Contact our pharmacy team
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Form */}
-          <div className="lg:col-span-8">
             
             {/* Error Alert */}
             {submitError && (
@@ -381,12 +408,19 @@ export default function FillYourScript() {
             )}
 
             {/* Form Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 lg:p-8 mb-6">
-              
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
+              <div className="px-6 lg:px-8 py-4 border-b border-neutral-100 flex items-center gap-2">
+                <span className="text-xs font-bold text-[#009eb9] uppercase tracking-widest">Step {currentStep}</span>
+                <span className="text-neutral-300 text-xs">·</span>
+                <span className="text-xs font-semibold text-neutral-500">
+                  {['Personal Details', 'Prescription Upload', 'Delivery / Collection', 'Additional Info', 'Review & Submit'][currentStep - 1]}
+                </span>
+              </div>
+              <div className="p-6 lg:p-8">
+
               {/* Step 1: Personal Details */}
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Personal Details</h2>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -397,8 +431,8 @@ export default function FillYourScript() {
                         type="text"
                         value={formData.firstName}
                         onChange={(e) => handleInputChange('firstName', e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                          errors.firstName ? 'border-red-500' : 'border-neutral-300'
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                          errors.firstName ? 'border-red-500' : 'border-neutral-200'
                         }`}
                         placeholder="Enter first name"
                       />
@@ -413,8 +447,8 @@ export default function FillYourScript() {
                         type="text"
                         value={formData.lastName}
                         onChange={(e) => handleInputChange('lastName', e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                          errors.lastName ? 'border-red-500' : 'border-neutral-300'
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                          errors.lastName ? 'border-red-500' : 'border-neutral-200'
                         }`}
                         placeholder="Enter last name"
                       />
@@ -431,8 +465,8 @@ export default function FillYourScript() {
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                          errors.email ? 'border-red-500' : 'border-neutral-300'
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                          errors.email ? 'border-red-500' : 'border-neutral-200'
                         }`}
                         placeholder="your@email.com"
                       />
@@ -447,8 +481,8 @@ export default function FillYourScript() {
                         type="tel"
                         value={formData.whatsappNumber}
                         onChange={(e) => handleInputChange('whatsappNumber', e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                          errors.whatsappNumber ? 'border-red-500' : 'border-neutral-300'
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                          errors.whatsappNumber ? 'border-red-500' : 'border-neutral-200'
                         }`}
                         placeholder="e.g., 0821234567"
                       />
@@ -465,8 +499,8 @@ export default function FillYourScript() {
                         type="text"
                         value={formData.idNumber}
                         onChange={(e) => handleInputChange('idNumber', e.target.value.slice(0, 13))}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                          errors.idNumber ? 'border-red-500' : 'border-neutral-300'
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                          errors.idNumber ? 'border-red-500' : 'border-neutral-200'
                         }`}
                         placeholder="13-digit ID number"
                         maxLength={13}
@@ -483,7 +517,7 @@ export default function FillYourScript() {
                         type="date"
                         value={formData.dateOfBirth}
                         onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                        className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                        className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                       />
                       <p className="text-xs text-neutral-500 mt-1">Auto-filled from ID number</p>
                     </div>
@@ -496,7 +530,7 @@ export default function FillYourScript() {
                     <select
                       value={formData.preferredContact}
                       onChange={(e) => handleInputChange('preferredContact', e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                     >
                       <option value="whatsapp">WhatsApp</option>
                       <option value="email">Email</option>
@@ -510,9 +544,8 @@ export default function FillYourScript() {
               {/* Step 2: Upload Prescription + Doctor Info + Chronic */}
               {currentStep === 2 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Prescription Details</h2>
                   
-                  <div className="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-[#009eb9] transition-colors">
+                  <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 text-center hover:border-[#009eb9] transition-colors">
                     <div className="mb-4">
                       <svg className="w-16 h-16 mx-auto text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -538,7 +571,7 @@ export default function FillYourScript() {
                   </div>
 
                   {formData.prescriptionFile && (
-                    <div className="bg-neutral-50 rounded-lg p-4 flex items-center gap-4">
+                    <div className="bg-neutral-50 rounded-xl p-4 flex items-center gap-4">
                       <div className="w-12 h-12 bg-[#009eb9] rounded-lg flex items-center justify-center shrink-0">
                         <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -593,8 +626,8 @@ export default function FillYourScript() {
                           type="text"
                           value={formData.doctorName}
                           onChange={(e) => handleInputChange('doctorName', e.target.value)}
-                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                            errors.doctorName ? 'border-red-500' : 'border-neutral-300'
+                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                            errors.doctorName ? 'border-red-500' : 'border-neutral-200'
                           }`}
                           placeholder="Dr. John Smith"
                         />
@@ -609,7 +642,7 @@ export default function FillYourScript() {
                           type="text"
                           value={formData.doctorPracticeNumber}
                           onChange={(e) => handleInputChange('doctorPracticeNumber', e.target.value)}
-                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                          className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                           placeholder="MP123456"
                         />
                       </div>
@@ -624,8 +657,8 @@ export default function FillYourScript() {
                         value={formData.prescriptionDate}
                         onChange={(e) => handleInputChange('prescriptionDate', e.target.value)}
                         max={new Date().toISOString().split('T')[0]}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                          errors.prescriptionDate ? 'border-red-500' : 'border-neutral-300'
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                          errors.prescriptionDate ? 'border-red-500' : 'border-neutral-200'
                         }`}
                       />
                       <p className="text-xs text-neutral-500 mt-1">When did the doctor issue this prescription?</p>
@@ -676,7 +709,7 @@ export default function FillYourScript() {
                           max="12"
                           value={formData.chronicRepeats}
                           onChange={(e) => handleInputChange('chronicRepeats', e.target.value)}
-                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                          className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                           placeholder="e.g., 5"
                         />
                         <p className="text-xs text-neutral-500 mt-1">How many repeats are left on this prescription?</p>
@@ -689,7 +722,6 @@ export default function FillYourScript() {
               {/* Step 3: Delivery/Collection */}
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Delivery or Collection?</h2>
                   
                   <div>
                     <label className="block text-sm font-semibold text-neutral-700 mb-3">
@@ -706,7 +738,7 @@ export default function FillYourScript() {
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            formData.deliveryMethod === 'collection' ? 'border-[#009eb9]' : 'border-neutral-300'
+                            formData.deliveryMethod === 'collection' ? 'border-[#009eb9]' : 'border-neutral-200'
                           }`}>
                             {formData.deliveryMethod === 'collection' && (
                               <div className="w-3 h-3 rounded-full bg-[#009eb9]" />
@@ -726,7 +758,7 @@ export default function FillYourScript() {
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            formData.deliveryMethod === 'delivery' ? 'border-[#009eb9]' : 'border-neutral-300'
+                            formData.deliveryMethod === 'delivery' ? 'border-[#009eb9]' : 'border-neutral-200'
                           }`}>
                             {formData.deliveryMethod === 'delivery' && (
                               <div className="w-3 h-3 rounded-full bg-[#009eb9]" />
@@ -785,8 +817,8 @@ export default function FillYourScript() {
                           type="text"
                           value={formData.streetAddress}
                           onChange={(e) => handleInputChange('streetAddress', e.target.value)}
-                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                            errors.streetAddress ? 'border-red-500' : 'border-neutral-300'
+                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                            errors.streetAddress ? 'border-red-500' : 'border-neutral-200'
                           }`}
                           placeholder="Enter street address"
                         />
@@ -801,7 +833,7 @@ export default function FillYourScript() {
                           type="text"
                           value={formData.addressLine2}
                           onChange={(e) => handleInputChange('addressLine2', e.target.value)}
-                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                          className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                           placeholder="Apartment, suite, etc."
                         />
                       </div>
@@ -815,8 +847,8 @@ export default function FillYourScript() {
                             type="text"
                             value={formData.city}
                             onChange={(e) => handleInputChange('city', e.target.value)}
-                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                              errors.city ? 'border-red-500' : 'border-neutral-300'
+                            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                              errors.city ? 'border-red-500' : 'border-neutral-200'
                             }`}
                             placeholder="City"
                           />
@@ -831,8 +863,8 @@ export default function FillYourScript() {
                             type="text"
                             value={formData.province}
                             onChange={(e) => handleInputChange('province', e.target.value)}
-                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                              errors.province ? 'border-red-500' : 'border-neutral-300'
+                            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                              errors.province ? 'border-red-500' : 'border-neutral-200'
                             }`}
                             placeholder="Province"
                           />
@@ -849,8 +881,8 @@ export default function FillYourScript() {
                             type="text"
                             value={formData.postalCode}
                             onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                              errors.postalCode ? 'border-red-500' : 'border-neutral-300'
+                            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                              errors.postalCode ? 'border-red-500' : 'border-neutral-200'
                             }`}
                             placeholder="Postal code"
                           />
@@ -864,7 +896,7 @@ export default function FillYourScript() {
                           <select
                             value={formData.country}
                             onChange={(e) => handleInputChange('country', e.target.value)}
-                            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                            className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                           >
                             <option value="South Africa">South Africa</option>
                           </select>
@@ -878,7 +910,6 @@ export default function FillYourScript() {
               {/* Step 4: Medical & Payment Info */}
               {currentStep === 4 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Additional Information</h2>
                   
                   <div>
                     <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -887,7 +918,7 @@ export default function FillYourScript() {
                     <select
                       value={formData.paymentType}
                       onChange={(e) => handleInputChange('paymentType', e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                     >
                       <option value="card">Card Payment</option>
                       <option value="cash">Cash on Collection/Delivery</option>
@@ -907,7 +938,7 @@ export default function FillYourScript() {
                             type="text"
                             value={formData.medicalAidProvider}
                             onChange={(e) => handleInputChange('medicalAidProvider', e.target.value)}
-                            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                            className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                             placeholder="e.g., Discovery, Bonitas, Medshield"
                           />
                         </div>
@@ -920,7 +951,7 @@ export default function FillYourScript() {
                             type="text"
                             value={formData.medicalAidNumber}
                             onChange={(e) => handleInputChange('medicalAidNumber', e.target.value)}
-                            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                            className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                             placeholder="Membership number"
                           />
                         </div>
@@ -934,7 +965,7 @@ export default function FillYourScript() {
                           type="text"
                           value={formData.dependantCode}
                           onChange={(e) => handleInputChange('dependantCode', e.target.value)}
-                          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                          className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                           placeholder="e.g., 00 for main member"
                         />
                       </div>
@@ -1005,8 +1036,8 @@ export default function FillYourScript() {
                       <textarea
                         value={formData.allergyDetails}
                         onChange={(e) => handleInputChange('allergyDetails', e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] ${
-                          errors.allergyDetails ? 'border-red-500' : 'border-neutral-300'
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors ${
+                          errors.allergyDetails ? 'border-red-500' : 'border-neutral-200'
                         }`}
                         rows={3}
                         placeholder="List all allergies..."
@@ -1022,7 +1053,7 @@ export default function FillYourScript() {
                     <textarea
                       value={formData.additionalNotes}
                       onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#009eb9]/25 focus:border-[#009eb9] transition-colors"
                       rows={4}
                       placeholder="Any special instructions..."
                     />
@@ -1033,7 +1064,6 @@ export default function FillYourScript() {
               {/* Step 5: Review & Submit */}
               {currentStep === 5 && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-[#184363] mb-6">Review Your Information</h2>
                   
                   <div className="space-y-4">
                     <div className="bg-neutral-50 rounded-lg p-4">
@@ -1124,10 +1154,10 @@ export default function FillYourScript() {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-[#009eb9]/8 border border-[#009eb9]/20 rounded-xl p-4">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input type="checkbox" required className="mt-1" />
-                      <span className="text-sm text-blue-900">
+                      <span className="text-sm text-[#184363]">
                         I confirm that the information provided is accurate and I agree to the{' '}
                         <Link href="/terms" className="text-[#009eb9] hover:underline font-semibold">
                           Terms & Conditions
@@ -1141,33 +1171,34 @@ export default function FillYourScript() {
                   </div>
                 </div>
               )}
+              </div>{/* /p-6 lg:p-8 */}
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 mt-6">
               {currentStep > 1 ? (
                 <button
                   onClick={prevStep}
                   disabled={isSubmitting}
-                  className="px-6 py-3 text-[#009eb9] font-semibold rounded-lg hover:bg-neutral-100 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm text-neutral-600 font-semibold! rounded-xl border border-neutral-200 hover:border-[#009eb9] hover:text-[#009eb9] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  Previous
+                  Back
                 </button>
               ) : (
-                <div></div>
+                <div />
               )}
-              
+
               {currentStep < totalSteps ? (
                 <button
                   onClick={nextStep}
                   disabled={isSubmitting}
-                  className="ml-auto px-8 py-3 bg-[#009eb9] text-white font-semibold rounded-lg hover:bg-[#184363] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="ml-auto inline-flex items-center gap-2 px-8 py-2.5 bg-[#009eb9] text-white text-sm font-semibold! rounded-xl hover:bg-[#184363] transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
-                  Next Step
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  Continue
+                  <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -1175,30 +1206,33 @@ export default function FillYourScript() {
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="ml-auto px-8 py-3 bg-[#009eb9] text-white font-semibold rounded-lg hover:bg-[#184363] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
+                  className="ml-auto inline-flex items-center gap-2 px-8 py-2.5 bg-[#009eb9] text-white text-sm font-semibold! rounded-xl hover:bg-[#184363] transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
                       Submitting...
                     </>
                   ) : (
-                    'Submit Prescription'
+                    <>
+                      Submit Prescription
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </>
                   )}
                 </button>
               )}
             </div>
 
-            {/* Help Section - Mobile */}
-            <div className="lg:hidden mt-8 text-center">
-              <p className="text-neutral-600 mb-2">Need help?</p>
+            <div className="lg:hidden mt-6 pt-5 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-400">
+              <span>Need help?</span>
               <Link href="/contact" className="text-[#009eb9] font-semibold hover:text-[#184363] transition-colors">
-                Contact our pharmacy team
+                Contact pharmacy team →
               </Link>
             </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
