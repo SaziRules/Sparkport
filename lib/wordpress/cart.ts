@@ -24,6 +24,13 @@ export interface Cart {
     total_items: string;
     currency_symbol: string;
   };
+  _nonce?: string;
+}
+
+export class CartApiError extends Error {
+  constructor(public status: number) {
+    super(`Cart API error: ${status}`);
+  }
 }
 
 const EMPTY_CART: Cart = {
@@ -42,37 +49,28 @@ export async function fetchCart(): Promise<Cart> {
   }
 }
 
-export async function addToCart(productId: number, quantity: number): Promise<Cart | null> {
-  try {
-    const res = await fetch('/api/cart/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId, quantity }),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+export async function addToCart(productId: number, quantity: number, clientNonce?: string): Promise<Cart> {
+  const res = await fetch('/api/cart/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId, quantity, clientNonce }),
+  });
+  if (!res.ok) throw new CartApiError(res.status);
+  return res.json();
 }
 
-export async function updateCartItem(key: string, quantity: number): Promise<Cart | null> {
-  try {
-    const res = await fetch(`/api/cart/item/${key}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity }),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+export async function updateCartItem(key: string, quantity: number, clientNonce?: string): Promise<Cart> {
+  const res = await fetch(`/api/cart/item/${key}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ quantity, clientNonce }),
+  });
+  if (!res.ok) throw new CartApiError(res.status);
+  return res.json();
 }
 
 export async function removeCartItem(key: string): Promise<Cart | null> {
   try {
-    // No body — DELETE with body is unreliable across browsers/environments
     const res = await fetch(`/api/cart/item/${key}`, { method: 'DELETE' });
     if (!res.ok) return null;
     return res.json();
