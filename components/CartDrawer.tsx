@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
@@ -69,6 +69,50 @@ export default function CartDrawer() {
       .catch(() => setSuggestions([]));
   }, [isDrawerOpen, count]);
 
+  // Ref for focus trap
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Focus first focusable element when drawer opens
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    const focusable = drawerRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus();
+  }, [isDrawerOpen]);
+
+  // Escape key + Tab focus trap
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        closeDrawer();
+        return;
+      }
+      if (e.key !== 'Tab' || !drawerRef.current) return;
+
+      const focusableEls = drawerRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const first = focusableEls[0];
+      const last = focusableEls[focusableEls.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawerOpen, closeDrawer]);
+
   function handleRemove(item: (typeof items)[number]) {
     if (pendingRemoval) {
       // If another item was already pending, fire it immediately
@@ -105,6 +149,7 @@ export default function CartDrawer() {
 
       {/* Panel — slides in/out from right */}
       <div
+        ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label="Shopping basket"

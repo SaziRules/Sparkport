@@ -13,7 +13,13 @@ function SuccessContent() {
 
   useEffect(() => {
     clearCart();
-  }, [clearCart]);
+    // Analytics stub: checkout completed
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sparkport:checkout:complete', {
+        detail: { orderId: orderId ?? '', total: '' },
+      }));
+    }
+  }, [clearCart, orderId]);
 
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">

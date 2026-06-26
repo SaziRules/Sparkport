@@ -146,7 +146,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { cartRef.current = cart; }, [cart]);
 
-  const openDrawer = useCallback(() => setIsDrawerOpen(true), []);
+  const openDrawer = useCallback(() => {
+    setIsDrawerOpen(true);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sparkport:cart:view', {
+        detail: { itemCount: cartRef.current?.items_count ?? 0, total: cartRef.current?.totals?.total_items ?? '0' },
+      }));
+    }
+  }, []);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
 
   useEffect(() => {
@@ -162,6 +169,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(prev => optimisticallyAdd(prev ?? EMPTY_CART, productId, quantity, productSnapshot, tempKey));
     setLastAddedKey(tempKey);
     setIsDrawerOpen(true);
+
+    // Analytics stub: item added to cart
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sparkport:cart:add', {
+        detail: { productId, productName: productSnapshot?.name ?? '', price: productSnapshot?.price ?? '0', quantity },
+      }));
+    }
 
     try {
       let result = await apiAdd(productId, quantity, nonceRef.current);
@@ -221,6 +235,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = useCallback(async (key: string) => {
     const prevCart = cartRef.current;
+    const removedName = prevCart?.items.find(i => i.key === key)?.name ?? '';
     setCart(prev => optimisticallyRemove(prev ?? EMPTY_CART, key));
 
     try {
@@ -229,11 +244,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (result) {
         if (result._nonce) nonceRef.current = result._nonce;
         setCart(result);
+        // Analytics stub: item removed from cart
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sparkport:cart:remove', {
+            detail: { key, productName: removedName },
+          }));
+        }
       } else {
         const refreshed = await fetchCart();
         if (refreshed._nonce) nonceRef.current = refreshed._nonce;
         if (!refreshed.items.some(i => i.key === key)) {
           setCart(refreshed);
+          // Analytics stub: item removed from cart
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('sparkport:cart:remove', {
+              detail: { key, productName: removedName },
+            }));
+          }
         } else {
           setCart(prevCart);
           console.error('removeFromCart failed');

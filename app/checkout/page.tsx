@@ -4,6 +4,13 @@ import { useEffect } from 'react';
 
 export default function CheckoutPage() {
   useEffect(() => {
+    // Analytics stub: checkout initiated
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sparkport:checkout:begin', {
+        detail: { itemCount: 0, total: '' },
+      }));
+    }
+
     // Cart session is maintained via the wc_cart_token HttpOnly cookie
     // which the browser sends automatically with same-site requests.
     // Just redirect — WC will pick up the session.
