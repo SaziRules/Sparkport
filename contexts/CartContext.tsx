@@ -31,6 +31,7 @@ interface CartContextType {
   updateQuantity: (key: string, quantity: number) => Promise<void>;
   removeFromCart: (key: string) => Promise<void>;
   refreshCart: () => Promise<void>;
+  clearCart: () => void;
 }
 
 const EMPTY_CART: Cart = {
@@ -132,6 +133,7 @@ const CartContext = createContext<CartContextType>({
   updateQuantity: async () => {},
   removeFromCart: async () => {},
   refreshCart: async () => {},
+  clearCart: () => {},
 });
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -261,6 +263,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const freshCart = await fetchCart();
       setCart(freshCart);
     },
+    clearCart: () => setCart(EMPTY_CART),
   }), [cart, isLoading, isDrawerOpen, lastAddedKey, openDrawer, closeDrawer, addToCart, updateQuantity, removeFromCart]);
 
   return (
