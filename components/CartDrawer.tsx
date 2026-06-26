@@ -146,7 +146,7 @@ export default function CartDrawer() {
                 </svg>
               </div>
               <p className="font-bold! text-[#184363] mb-1">Your basket is empty</p>
-              <p className="text-sm text-neutral-500 mb-6">Add products to get started</p>
+              <p className="text-sm text-neutral-500 mb-6">Trusted by thousands of South Africans since 1983.</p>
               <button
                 onClick={closeDrawer}
                 className="px-6 py-2.5 bg-[#009eb9] text-white font-semibold! text-sm rounded-xl hover:bg-[#007a8f] transition-colors"
@@ -311,7 +311,7 @@ export default function CartDrawer() {
               {amountLeft > 0 ? (
                 <>
                   <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-neutral-500">Add <span className="font-semibold! text-[#009eb9]">{symbol}{amountLeft.toFixed(2)}</span> more for FREE delivery</span>
+                    <span className="text-neutral-500">Add <span className="font-semibold! text-[#009eb9]">{symbol}{amountLeft.toFixed(2)}</span> more for free delivery — you&apos;re close!</span>
                     <span className="text-neutral-400">{symbol}500 threshold</span>
                   </div>
                   <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
@@ -357,7 +357,7 @@ export default function CartDrawer() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               )}
-              Proceed to Checkout
+              Proceed to Checkout →
             </Link>
 
             <Link
@@ -373,7 +373,7 @@ export default function CartDrawer() {
               <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span className="text-[10px] text-neutral-400">Secure checkout</span>
+              <span className="text-[10px] text-neutral-400">Safe &amp; secure checkout</span>
               <div className="flex items-center gap-1.5 ml-1">
                 {/* Visa */}
                 <div className="px-1.5 py-0.5 border border-neutral-200 rounded text-[9px] font-black! text-neutral-500 bg-neutral-50">VISA</div>

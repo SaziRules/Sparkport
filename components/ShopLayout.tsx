@@ -341,7 +341,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                         {product.onSale && product.originalPrice > product.salePrice && (
                           <div className="mb-2">
                             <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold! rounded-full">
-                              Save R{(product.originalPrice - product.salePrice).toFixed(2)}
+                              You save R{(product.originalPrice - product.salePrice).toFixed(2)}
                             </span>
                           </div>
                         )}
@@ -379,7 +379,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                               ) : (
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
                               )}
-                              {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
+                              {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : product.onSale ? 'Grab This Deal' : 'Add to Basket'}
                             </button>
                           </div>
                         )}
@@ -442,7 +442,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                           {product.onSale && product.originalPrice > product.salePrice && (
                             <div className="mt-1">
                               <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold! rounded-full">
-                                Save R{(product.originalPrice - product.salePrice).toFixed(2)}
+                                You save R{(product.originalPrice - product.salePrice).toFixed(2)}
                               </span>
                             </div>
                           )}
@@ -482,7 +482,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                                 ) : (
                                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
                                 )}
-                                {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
+                                {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : product.onSale ? 'Grab This Deal' : 'Add to Basket'}
                               </button>
                             </>
                           )}

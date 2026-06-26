@@ -119,6 +119,8 @@ export default function CartPage() {
             {items.map((item) => {
               const unitPrice = (parseInt(item.prices.price, 10) / 100).toFixed(2);
               const lineTotal = (parseInt(item.totals.line_total, 10) / 100).toFixed(2);
+              const savedPerUnit = (parseInt(item.prices.regular_price, 10) - parseInt(item.prices.price, 10)) / 100;
+              const totalSaved = savedPerUnit * item.quantity;
 
               return (
                 <div
@@ -186,6 +188,9 @@ export default function CartPage() {
                         </button>
                       </div>
                     </div>
+                    {savedPerUnit > 0 && (
+                      <span className="text-xs text-green-600 font-medium! mt-1 block">You saved R{totalSaved.toFixed(2)}</span>
+                    )}
                   </div>
                 </div>
               );
@@ -272,8 +277,12 @@ export default function CartPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 )}
-                Proceed to Checkout
+                Complete My Order — Secure Checkout
               </Link>
+
+              <p className="text-xs text-center text-neutral-400 mt-2">
+                30-day returns · Licensed pharmacists · Est. 1983
+              </p>
 
               <Link
                 href="/shop"

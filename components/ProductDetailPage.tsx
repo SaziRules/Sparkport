@@ -200,8 +200,8 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                   R{product.salePrice.toFixed(2)}
                 </span>
                 {product.onSale && product.originalPrice > product.salePrice && (
-                  <span className="text-2xl text-neutral-400 line-through font-medium!">
-                    R{product.originalPrice.toFixed(2)}
+                  <span className="text-base text-neutral-400 font-medium!">
+                    was R{product.originalPrice.toFixed(2)}
                   </span>
                 )}
               </div>
@@ -238,7 +238,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                       </div>
                       <div>
                         <p className="font-bold! text-green-900">In Stock</p>
-                        <p className="text-sm text-green-700">Ready to ship</p>
+                        <p className="text-sm text-green-700">Ready to dispatch from Sparkport Durban</p>
                       </div>
                     </div>
                   </div>
