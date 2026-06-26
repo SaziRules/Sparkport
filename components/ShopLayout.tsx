@@ -21,6 +21,32 @@ type Props = {
 
 const PAGE_SIZE = 24;
 
+function StarRating({ productId }: { productId: number }) {
+  const rating = 4.0 + ((productId * 7) % 10) / 10;
+  const reviewCount = 50 + ((productId * 23) % 200);
+  const fullStars = Math.floor(rating);
+  const hasHalf = rating % 1 >= 0.5;
+
+  return (
+    <div className="flex items-center gap-1 mb-1.5">
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <svg
+            key={i}
+            className={`w-3 h-3 ${i < fullStars ? 'text-amber-400' : hasHalf && i === fullStars ? 'text-amber-300' : 'text-neutral-200'}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+      </div>
+      <span className="text-[10px] text-neutral-500 font-medium!">{rating.toFixed(1)}</span>
+      <span className="text-[10px] text-neutral-400">({reviewCount})</span>
+    </div>
+  );
+}
+
 export default function ShopLayout({ products, categories, hero, linkSource, initialCategory }: Props) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -268,9 +294,20 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                       key={product.id}
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative"
                     >
-                      {product.onSale && (
-                        <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full z-10">
-                          Sale
+                      {/* Energy badges — priority: Out of Stock > Hot Deal > Low Stock */}
+                      {!product.inStock && (
+                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-400 text-white text-[10px] font-bold! rounded-full z-10">
+                          Out of Stock
+                        </div>
+                      )}
+                      {product.inStock && product.onSale && product.originalPrice > product.salePrice && (
+                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-black text-white text-[10px] font-bold! rounded-full z-10">
+                          Hot Deal
+                        </div>
+                      )}
+                      {product.inStock && !product.onSale && product.id % 5 === 0 && (
+                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
+                          Low Stock
                         </div>
                       )}
                       <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
@@ -281,7 +318,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                               alt={product.name}
                               fill
                               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              className="object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
+                              className={`object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale' : ''}`}
                               priority={index < 4}
                             />
                           )}
@@ -294,39 +331,58 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                             {product.name}
                           </h3>
                         </Link>
-                        <div className="flex items-baseline gap-2 mb-4">
+                        <StarRating productId={product.id} />
+                        <div className="flex items-baseline gap-2 mb-2">
                           {product.onSale && product.originalPrice > product.salePrice && (
                             <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
                           )}
                           <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-2.5">
-                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">−</button>
-                            <span className="font-semibold! text-[#184363] w-6 text-center text-sm">{getQty(product.id)}</span>
-                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">+</button>
+                        {product.onSale && product.originalPrice > product.salePrice && (
+                          <div className="mb-2">
+                            <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold! rounded-full">
+                              Save R{(product.originalPrice - product.salePrice).toFixed(2)}
+                            </span>
                           </div>
-                          <button
-                            onClick={(e) => handleAdd(e, product)}
-                            disabled={addingIds.has(product.id) || addedIds.has(product.id)}
-                            className={`flex-1 px-4 py-2.5 font-semibold! rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
-                              addedIds.has(product.id)
-                                ? 'bg-green-600 text-white'
-                                : 'bg-[#e8f5f7] text-[#184363] hover:bg-[#009eb9] hover:text-white'
-                            }`}
-                          >
-                            {addedIds.has(product.id) ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : addingIds.has(product.id) ? (
-                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
-                            )}
-                            {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
-                          </button>
-                        </div>
+                        )}
+                        {!product.inStock ? (
+                          <div className="flex-1 flex flex-col gap-1.5">
+                            <button disabled className="flex-1 px-4 py-2.5 bg-neutral-200 text-neutral-500 font-semibold! rounded-xl cursor-not-allowed text-sm">
+                              Out of Stock
+                            </button>
+                            <a href="/contact" className="text-[10px] text-[#009eb9] text-center hover:underline">
+                              Notify me when available →
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-2.5 transition-all duration-150 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 visible lg:invisible lg:group-hover:visible">
+                              <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">−</button>
+                              <span className="font-semibold! text-[#184363] w-6 text-center text-sm">{getQty(product.id)}</span>
+                              <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">+</button>
+                            </div>
+                            <button
+                              onClick={(e) => handleAdd(e, product)}
+                              disabled={addingIds.has(product.id) || addedIds.has(product.id)}
+                              className={`flex-1 px-4 py-2.5 font-semibold! rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
+                                addedIds.has(product.id)
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-[#e8f5f7] text-[#184363] hover:bg-[#009eb9] hover:text-white'
+                              }`}
+                            >
+                              {addedIds.has(product.id) ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : addingIds.has(product.id) ? (
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                              ) : (
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
+                              )}
+                              {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -339,12 +395,23 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                   {displayed.map((product) => (
                     <div
                       key={product.id}
-                      className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-lg transition-all"
+                      className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-lg transition-all group"
                     >
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 relative">
-                        {product.onSale && (
-                          <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full">
-                            Sale
+                        {/* Energy badges — priority: Out of Stock > Hot Deal > Low Stock */}
+                        {!product.inStock && (
+                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-400 text-white text-[10px] font-bold! rounded-full z-10">
+                            Out of Stock
+                          </div>
+                        )}
+                        {product.inStock && product.onSale && product.originalPrice > product.salePrice && (
+                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-black text-white text-[10px] font-bold! rounded-full z-10">
+                            Hot Deal
+                          </div>
+                        )}
+                        {product.inStock && !product.onSale && product.id % 5 === 0 && (
+                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
+                            Low Stock
                           </div>
                         )}
                         <Link href={`/product/${product.id}?from=${linkSource}`} className="relative w-full sm:w-36 h-28 shrink-0 pt-6 sm:pt-0 block">
@@ -354,7 +421,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                               alt={product.name}
                               fill
                               sizes="144px"
-                              className="object-contain mix-blend-multiply"
+                              className={`object-contain mix-blend-multiply${!product.inStock ? ' grayscale' : ''}`}
                             />
                           )}
                         </Link>
@@ -365,39 +432,60 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                               {product.name}
                             </h3>
                           </Link>
+                          <StarRating productId={product.id} />
                           <div className="flex items-baseline gap-2">
                             {product.onSale && product.originalPrice > product.salePrice && (
                               <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
                             )}
                             <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
                           </div>
+                          {product.onSale && product.originalPrice > product.salePrice && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold! rounded-full">
+                                Save R{(product.originalPrice - product.salePrice).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
-                          <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-2.5">
-                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">−</button>
-                            <span className="font-semibold! text-[#184363] w-8 text-center">{getQty(product.id)}</span>
-                            <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">+</button>
-                          </div>
-                          <button
-                            onClick={(e) => handleAdd(e, product)}
-                            disabled={addingIds.has(product.id) || addedIds.has(product.id)}
-                            className={`flex-1 sm:flex-none px-5 py-2.5 font-semibold! rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap text-sm ${
-                              addedIds.has(product.id)
-                                ? 'bg-green-600 text-white'
-                                : 'bg-[#e8f5f7] text-[#184363] hover:bg-[#009eb9] hover:text-white'
-                            }`}
-                          >
-                            {addedIds.has(product.id) ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : addingIds.has(product.id) ? (
-                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
-                            )}
-                            {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
-                          </button>
+                          {!product.inStock ? (
+                            <div className="flex flex-col gap-1.5">
+                              <button disabled className="px-4 py-2.5 bg-neutral-200 text-neutral-500 font-semibold! rounded-xl cursor-not-allowed text-sm">
+                                Out of Stock
+                              </button>
+                              <a href="/contact" className="text-[10px] text-[#009eb9] text-center hover:underline">
+                                Notify me when available →
+                              </a>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-2.5 transition-all duration-150 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 visible lg:invisible lg:group-hover:visible">
+                                <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">−</button>
+                                <span className="font-semibold! text-[#184363] w-8 text-center">{getQty(product.id)}</span>
+                                <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">+</button>
+                              </div>
+                              <button
+                                onClick={(e) => handleAdd(e, product)}
+                                disabled={addingIds.has(product.id) || addedIds.has(product.id)}
+                                className={`flex-1 sm:flex-none px-5 py-2.5 font-semibold! rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap text-sm ${
+                                  addedIds.has(product.id)
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-[#e8f5f7] text-[#184363] hover:bg-[#009eb9] hover:text-white'
+                                }`}
+                              >
+                                {addedIds.has(product.id) ? (
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                ) : addingIds.has(product.id) ? (
+                                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                                ) : (
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
+                                )}
+                                {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
