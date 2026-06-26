@@ -36,7 +36,15 @@ export async function POST(request: Request) {
   }
   // Return the updated cart so caller can refresh
   const data = await res.json();
-  return Response.json(data);
+  const newToken = res.headers.get('Cart-Token') ?? cartToken ?? '';
+  const response = Response.json(data);
+  if (newToken) {
+    response.headers.append(
+      'Set-Cookie',
+      `wc_cart_token=${newToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
+    );
+  }
+  return response;
 }
 
 // DELETE: remove coupon
@@ -57,5 +65,13 @@ export async function DELETE(request: Request) {
   if (!res.ok) {
     return Response.json({ error: 'Failed to remove coupon' }, { status: res.status });
   }
-  return Response.json({ success: true });
+  const newToken = res.headers.get('Cart-Token') ?? cartToken ?? '';
+  const response = Response.json({ success: true });
+  if (newToken) {
+    response.headers.append(
+      'Set-Cookie',
+      `wc_cart_token=${newToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
+    );
+  }
+  return response;
 }

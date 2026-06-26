@@ -272,6 +272,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearCart = useCallback(() => {
+    setCart(EMPTY_CART);
+  }, []); // setCart is stable, EMPTY_CART is a module constant
+
+  const refreshCart = useCallback(async () => {
+    const freshCart = await fetchCart();
+    setCart(freshCart);
+  }, []); // fetchCart is a stable import, setCart is stable
+
   const value = useMemo(() => ({
     items: cart?.items ?? [],
     count: cart?.items_count ?? 0,
@@ -286,12 +295,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     addToCart,
     updateQuantity,
     removeFromCart,
-    refreshCart: async () => {
-      const freshCart = await fetchCart();
-      setCart(freshCart);
-    },
-    clearCart: () => setCart(EMPTY_CART),
-  }), [cart, isLoading, isDrawerOpen, lastAddedKey, openDrawer, closeDrawer, addToCart, updateQuantity, removeFromCart]);
+    refreshCart,
+    clearCart,
+  }), [cart, isLoading, isDrawerOpen, lastAddedKey, openDrawer, closeDrawer, addToCart, updateQuantity, removeFromCart, clearCart, refreshCart]);
 
   return (
     <CartContext.Provider value={value}>
