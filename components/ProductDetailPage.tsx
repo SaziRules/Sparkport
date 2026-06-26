@@ -1,21 +1,24 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/wordpress';
+import type { ProductReview } from '@/lib/wordpress/products';
 import { useCart } from '@/contexts/CartContext';
 import DeliveryEstimate from '@/components/DeliveryEstimate';
+import ValuePropositionStrip from '@/components/ValuePropositionStrip';
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
 
 interface Props {
   product: Product;
   relatedProducts: Product[];
+  reviews?: ProductReview[];
 }
 
-function ProductDetailInner({ product, relatedProducts }: Props) {
+function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
   const searchParams = useSearchParams();
   const origin = searchParams.get('from');
 
@@ -30,6 +33,8 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  const mainButtonRef = useRef<HTMLButtonElement>(null);
   const { addToCart } = useCart();
 
   const handleAdd = async () => {
@@ -50,6 +55,17 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [product.id]);
+
+  useEffect(() => {
+    const el = mainButtonRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const savings = product.originalPrice - product.salePrice;
   const savingsPercent = product.originalPrice > 0 ? Math.round((savings / product.originalPrice) * 100) : 0;
@@ -272,6 +288,7 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
                 </div>
 
                 <button
+                  ref={mainButtonRef}
                   onClick={handleAdd}
                   disabled={!product.inStock || isAdding || isAdded}
                   className="flex-1 group relative overflow-hidden disabled:cursor-not-allowed"
@@ -379,6 +396,8 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
           </div>
         </div>
 
+        <ValuePropositionStrip />
+
         {/* Product Details Tabs */}
         <div className="bg-white rounded-3xl shadow-xl shadow-neutral-200/50 overflow-hidden border border-neutral-100 mb-16">
           <div className="border-b border-neutral-100 bg-linear-to-r from-neutral-50 to-white p-2">
@@ -481,42 +500,48 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
                   </button>
                 </div>
 
-                <div className="space-y-6">
-                  {[
-                    { initials: 'TM', name: 'Thabo M.', stars: 5, time: '2 weeks ago', text: 'Excellent product! Works as described and delivery was fast. Great value for money. Highly recommend to anyone looking for quality products from Sparkport.' },
-                    { initials: 'SP', name: 'Sarah P.', stars: 4, time: '1 month ago', text: 'Good quality product. Does what it says on the box. Would buy again from Sparkport.' },
-                  ].map((review, idx) => (
-                    <div key={idx} className="group relative overflow-hidden rounded-2xl">
-                      <div className="absolute inset-0 bg-linear-to-r from-neutral-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <div className="relative p-6 border border-neutral-100 rounded-2xl bg-white">
-                        <div className="flex items-start gap-5">
-                          <div className="relative">
-                            <div className="absolute inset-0 bg-linear-to-br from-[#009eb9]/30 to-[#00c9d7]/30 blur-xl"></div>
-                            <div className={`relative w-14 h-14 ${idx === 0 ? 'bg-linear-to-br from-[#009eb9] to-[#00c9d7]' : 'bg-linear-to-br from-[#184363] to-[#2a5a7a]'} rounded-2xl flex items-center justify-center shrink-0`}>
-                              <span className="text-white font-black! text-lg">{review.initials}</span>
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <p className="font-bold! text-[#184363] text-lg">{review.name}</p>
-                                <p className="text-sm text-neutral-500">{review.time}</p>
+                {reviews.length > 0 ? (
+                  <div className="space-y-6">
+                    {reviews.map((review) => {
+                      const initials = review.reviewer.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                      const date = new Date(review.date_created).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+                      return (
+                        <div key={review.id} className="group relative overflow-hidden rounded-2xl">
+                          <div className="relative p-6 border border-neutral-100 rounded-2xl bg-white">
+                            <div className="flex items-start gap-5">
+                              <div className="w-14 h-14 bg-linear-to-br from-[#009eb9] to-[#00c9d7] rounded-2xl flex items-center justify-center shrink-0">
+                                <span className="text-white font-black! text-lg">{initials}</span>
                               </div>
-                              <div className="flex">
-                                {[...Array(5)].map((_, i) => (
-                                  <svg key={i} className={`w-5 h-5 ${i < review.stars ? 'text-amber-400' : 'text-neutral-200'}`} fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                  </svg>
-                                ))}
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div>
+                                    <p className="font-bold! text-[#184363] text-lg">{review.reviewer}</p>
+                                    <p className="text-sm text-neutral-500">{date}</p>
+                                  </div>
+                                  <div className="flex">
+                                    {[...Array(5)].map((_, i) => (
+                                      <svg key={i} className={`w-5 h-5 ${i < review.rating ? 'text-amber-400' : 'text-neutral-200'}`} fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                      </svg>
+                                    ))}
+                                  </div>
+                                </div>
+                                <p className="text-neutral-700 leading-relaxed">{review.review}</p>
                               </div>
                             </div>
-                            <p className="text-neutral-700 leading-relaxed">{review.text}</p>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-neutral-500 mb-3">Be the first to review this product</p>
+                    <a href="/contact" className="text-[#009eb9] hover:underline font-semibold! text-sm">
+                      Contact us to leave a review
+                    </a>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -589,6 +614,41 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
         )}
 
       </div>
+
+      {/* Mobile sticky buy bar */}
+      {showStickyBar && product.inStock && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-neutral-200 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-3 max-w-lg mx-auto">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-neutral-500 truncate">{product.name}</p>
+              <p className="text-base font-black! text-[#009eb9]">R{product.salePrice.toFixed(2)}</p>
+            </div>
+            <button
+              onClick={handleAdd}
+              disabled={isAdding || isAdded}
+              className={`px-5 py-3 rounded-xl font-bold! text-white text-sm flex items-center gap-2 transition-all ${
+                isAdded ? 'bg-green-600' : 'bg-[#009eb9] hover:bg-[#007a8f]'
+              } disabled:opacity-60`}
+            >
+              {isAdded ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : isAdding ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                </svg>
+              )}
+              {isAdded ? 'Added!' : isAdding ? 'Adding...' : `Buy Now — R${product.salePrice.toFixed(2)}`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

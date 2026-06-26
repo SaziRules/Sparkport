@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getProductById, getProductCategories, getProducts, getAllProductIds } from '@/lib/wordpress';
+import { getProductReviews } from '@/lib/wordpress/products';
 import ProductDetailPage from '@/components/ProductDetailPage';
 
 export const dynamicParams = true;
@@ -34,9 +35,10 @@ export default async function ProductPage(props: PageProps) {
   const params = await Promise.resolve(props.params);
   const productId = parseInt(params.id);
 
-  const [product, allCategories] = await Promise.all([
+  const [product, allCategories, reviews] = await Promise.all([
     getProductById(productId),
     getProductCategories(),
+    getProductReviews(productId),
   ]);
 
   if (!product) notFound();
@@ -48,5 +50,5 @@ export default async function ProductPage(props: PageProps) {
         .slice(0, 4)
     : [];
 
-  return <ProductDetailPage product={product} relatedProducts={relatedProducts} />;
+  return <ProductDetailPage product={product} relatedProducts={relatedProducts} reviews={reviews} />;
 }

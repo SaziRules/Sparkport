@@ -112,6 +112,43 @@ export async function getNewArrivals(limit = 4): Promise<Product[]> {
   return getProducts({ orderby: 'date', order: 'desc', per_page: limit });
 }
 
+export interface ProductReview {
+  id: number;
+  reviewer: string;
+  review: string;
+  rating: number;
+  date_created: string;
+  verified: boolean;
+}
+
+export async function getProductReviews(productId: number): Promise<ProductReview[]> {
+  try {
+    const res = await fetch(`${WC_API}/products/${productId}/reviews?per_page=10&status=approved`, {
+      headers: wcAuthHeaders(),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((r: {
+      id: number;
+      reviewer: string;
+      review: string;
+      rating: number;
+      date_created: string;
+      verified: boolean;
+    }) => ({
+      id: r.id,
+      reviewer: r.reviewer,
+      review: r.review.replace(/<[^>]*>/g, '').trim(),
+      rating: r.rating,
+      date_created: r.date_created,
+      verified: r.verified,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getAllProducts(params?: {
   category?: number;
   on_sale?: boolean;
