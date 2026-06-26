@@ -69,9 +69,13 @@ export async function updateCartItem(key: string, quantity: number, clientNonce?
   return res.json();
 }
 
-export async function removeCartItem(key: string): Promise<Cart | null> {
+export async function removeCartItem(key: string, clientNonce?: string): Promise<Cart | null> {
   try {
-    const res = await fetch(`/api/cart/item/${key}`, { method: 'DELETE' });
+    const res = await fetch(`/api/cart/item/${key}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientNonce }),
+    });
     if (!res.ok) return null;
     return res.json();
   } catch {

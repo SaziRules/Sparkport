@@ -218,7 +218,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(prev => optimisticallyRemove(prev ?? EMPTY_CART, key));
 
     try {
-      const result = await apiRemove(key);
+      const result = await apiRemove(key, nonceRef.current);
 
       if (result) {
         if (result._nonce) nonceRef.current = result._nonce;

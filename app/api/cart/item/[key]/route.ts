@@ -24,10 +24,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ key:
   const { key } = await params;
   const cookieStore = await cookies();
   let cartToken = cookieStore.get('wc_cart_token')?.value;
-  const { quantity } = await request.json();
+  const { quantity, clientNonce } = await request.json();
 
-  const session = await getFreshNonce(cartToken);
-  if (session.token) cartToken = session.token;
+  let session: { nonce: string; token: string };
+  if (clientNonce && typeof clientNonce === 'string' && clientNonce.length > 0) {
+    session = { nonce: clientNonce, token: cartToken ?? '' };
+  } else {
+    session = await getFreshNonce(cartToken);
+    if (session.token) cartToken = session.token;
+  }
 
   try {
     const res = await fetch(`${STORE}/cart/items/${key}`, {
@@ -63,14 +68,22 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ k
   const { key } = await params;
   const cookieStore = await cookies();
   let cartToken = cookieStore.get('wc_cart_token')?.value;
+  const body = await request.json().catch(() => ({}));
+  const { clientNonce } = body as { clientNonce?: string };
 
-  const session = await getFreshNonce(cartToken);
-  if (session.token) cartToken = session.token;
+  let session: { nonce: string; token: string };
+  if (clientNonce && typeof clientNonce === 'string' && clientNonce.length > 0) {
+    session = { nonce: clientNonce, token: cartToken ?? '' };
+  } else {
+    session = await getFreshNonce(cartToken);
+    if (session.token) cartToken = session.token;
+  }
 
   try {
     const res = await fetch(`${STORE}/cart/items/${key}`, {
       method: 'DELETE',
       headers: {
+        'Content-Type': 'application/json',
         Nonce: session.nonce,
         ...(cartToken ? { 'Cart-Token': cartToken } : {}),
       },

@@ -16,10 +16,15 @@ async function getFreshNonce(cartToken: string | undefined): Promise<{ nonce: st
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   let cartToken = cookieStore.get('wc_cart_token')?.value;
-  const { productId, quantity } = await request.json();
+  const { productId, quantity, clientNonce } = await request.json();
 
-  const session = await getFreshNonce(cartToken);
-  if (session.token) cartToken = session.token;
+  let session: { nonce: string; token: string };
+  if (clientNonce && typeof clientNonce === 'string' && clientNonce.length > 0) {
+    session = { nonce: clientNonce, token: cartToken ?? '' };
+  } else {
+    session = await getFreshNonce(cartToken);
+    if (session.token) cartToken = session.token;
+  }
 
   try {
     const res = await fetch(`${STORE}/cart/add-item`, {
