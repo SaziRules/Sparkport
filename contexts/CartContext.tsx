@@ -136,6 +136,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
   const nonceRef = useRef<string>('');
+  const cartRef = useRef<Cart | null>(null);
+
+  useEffect(() => { cartRef.current = cart; }, [cart]);
 
   const openDrawer = useCallback(() => setIsDrawerOpen(true), []);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
@@ -149,7 +152,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = useCallback(async (productId: number, quantity = 1, productSnapshot?: ProductSnapshot) => {
     const tempKey = `optimistic-${Date.now()}`;
-    const prevCart = cart;
+    const prevCart = cartRef.current;
     setCart(prev => optimisticallyAdd(prev ?? EMPTY_CART, productId, quantity, productSnapshot, tempKey));
     setLastAddedKey(tempKey);
     setIsDrawerOpen(true);
@@ -180,10 +183,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     setTimeout(() => setLastAddedKey(null), 800);
-  }, [cart]);
+  }, []);
 
   const updateQuantity = useCallback(async (key: string, quantity: number) => {
-    const prevCart = cart;
+    const prevCart = cartRef.current;
     setCart(prev => optimisticallyUpdate(prev ?? EMPTY_CART, key, quantity));
 
     try {
@@ -208,28 +211,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         console.error('updateQuantity failed', err);
       }
     }
-  }, [cart]);
+  }, []);
 
   const removeFromCart = useCallback(async (key: string) => {
-    const prevCart = cart;
+    const prevCart = cartRef.current;
     setCart(prev => optimisticallyRemove(prev ?? EMPTY_CART, key));
 
-    const result = await apiRemove(key);
+    try {
+      const result = await apiRemove(key);
 
-    if (result) {
-      if (result._nonce) nonceRef.current = result._nonce;
-      setCart(result);
-    } else {
-      const refreshed = await fetchCart();
-      if (refreshed._nonce) nonceRef.current = refreshed._nonce;
-      if (!refreshed.items.some(i => i.key === key)) {
-        setCart(refreshed);
+      if (result) {
+        if (result._nonce) nonceRef.current = result._nonce;
+        setCart(result);
       } else {
-        setCart(prevCart);
-        console.error('removeFromCart failed');
+        const refreshed = await fetchCart();
+        if (refreshed._nonce) nonceRef.current = refreshed._nonce;
+        if (!refreshed.items.some(i => i.key === key)) {
+          setCart(refreshed);
+        } else {
+          setCart(prevCart);
+          console.error('removeFromCart failed');
+        }
       }
+    } catch (err) {
+      setCart(prevCart);
+      console.error('removeFromCart failed', err);
     }
-  }, [cart]);
+  }, []);
 
   const value = useMemo(() => ({
     items: cart?.items ?? [],
