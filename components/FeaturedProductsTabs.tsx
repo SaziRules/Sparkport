@@ -18,6 +18,7 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
   const [activeTab, setActiveTab] = useState<TabType>('hot-deals');
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [addingIds, setAddingIds] = useState<Set<number>>(new Set());
+  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
   const { addToCart } = useCart();
 
   const getQty = (id: number) => quantities[id] ?? 1;
@@ -25,10 +26,19 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
 
   const handleAdd = async (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
-    if (addingIds.has(product.id)) return;
+    if (addingIds.has(product.id) || addedIds.has(product.id)) return;
     setAddingIds(prev => new Set(prev).add(product.id));
-    await addToCart(product.id, getQty(product.id));
+    await addToCart(product.id, getQty(product.id), {
+      name: product.name,
+      price: String(Math.round(product.salePrice * 100)),
+      image: product.image,
+    });
     setAddingIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
+    setAddedIds(prev => new Set(prev).add(product.id));
+    setQty(product.id, 1);
+    setTimeout(() => {
+      setAddedIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
+    }, 1500);
   };
 
   const tabs: { key: TabType; label: string; products: Product[]; badge: string; icon: React.ReactNode }[] = [
@@ -148,10 +158,18 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
                 </div>
                 <button
                   onClick={(e) => handleAdd(e, product)}
-                  disabled={addingIds.has(product.id)}
-                  className="flex-1 px-3 py-2 bg-[#e8f5f7] text-[#184363] font-semibold! text-sm rounded-xl hover:bg-[#009eb9] hover:text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-1"
+                  disabled={addingIds.has(product.id) || addedIds.has(product.id)}
+                  className={`flex-1 px-3 py-2 font-semibold! text-sm rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-1 ${
+                    addedIds.has(product.id)
+                      ? 'bg-green-600 text-white'
+                      : 'bg-[#e8f5f7] text-[#184363] hover:bg-[#009eb9] hover:text-white'
+                  }`}
                 >
-                  {addingIds.has(product.id) ? (
+                  {addedIds.has(product.id) ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : addingIds.has(product.id) ? (
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
@@ -161,7 +179,7 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
                       <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
                     </svg>
                   )}
-                  {addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
+                  {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
                 </button>
               </div>
             </div>

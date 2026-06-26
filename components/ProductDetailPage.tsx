@@ -28,13 +28,22 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
   const [activeTab, setActiveTab] = useState<'description' | 'usage' | 'reviews'>('description');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
   const { addToCart } = useCart();
 
   const handleAdd = async () => {
-    if (!product.inStock || isAdding) return;
+    if (!product.inStock || isAdding || isAdded) return;
     setIsAdding(true);
-    await addToCart(product.id, quantity);
+    await addToCart(product.id, quantity, {
+      name: product.name,
+      price: String(Math.round(product.salePrice * 100)),
+      image: product.image,
+    });
     setIsAdding(false);
+    setIsAdded(true);
+    setTimeout(() => {
+      setIsAdded(false);
+    }, 1500);
   };
 
   useEffect(() => {
@@ -263,15 +272,25 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
 
                 <button
                   onClick={handleAdd}
-                  disabled={!product.inStock || isAdding}
+                  disabled={!product.inStock || isAdding || isAdded}
                   className="flex-1 group relative overflow-hidden disabled:cursor-not-allowed"
                 >
-                  <div className={`absolute inset-0 transition-transform duration-300 ${product.inStock ? 'bg-linear-to-r from-[#009eb9] to-[#00c9d7] group-hover:scale-105' : 'bg-neutral-300'}`}></div>
-                  {product.inStock && !isAdding && (
+                  <div className={`absolute inset-0 transition-transform duration-300 ${
+                    isAdded
+                      ? 'bg-green-600'
+                      : product.inStock
+                        ? 'bg-linear-to-r from-[#009eb9] to-[#00c9d7] group-hover:scale-105'
+                        : 'bg-neutral-300'
+                  }`}></div>
+                  {product.inStock && !isAdding && !isAdded && (
                     <div className="absolute inset-0 bg-linear-to-r from-[#007a8f] to-[#009eb9] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   )}
                   <div className="relative px-8 py-4 flex items-center justify-center gap-3">
-                    {isAdding ? (
+                    {isAdded ? (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : isAdding ? (
                       <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
@@ -282,7 +301,7 @@ function ProductDetailInner({ product, relatedProducts }: Props) {
                       </svg>
                     )}
                     <span className="text-white font-black! text-lg tracking-wide">
-                      {isAdding ? 'Adding...' : product.inStock ? 'Add to Basket' : 'Out of Stock'}
+                      {isAdded ? 'Added!' : isAdding ? 'Adding...' : product.inStock ? 'Add to Basket' : 'Out of Stock'}
                     </span>
                   </div>
                 </button>

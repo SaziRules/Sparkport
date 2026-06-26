@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Category, Product } from '@/lib/wordpress';
+import { useCart } from '@/contexts/CartContext';
 
 export interface Spotlight {
   category: Category;
@@ -56,7 +57,26 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
   const [activeId, setActiveId] = useState(spotlights[0]?.category.id ?? 0);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const [addingIds, setAddingIds] = useState<Set<number>>(new Set());
+  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const { addToCart } = useCart();
+
+  const handleAdd = async (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    if (addingIds.has(product.id) || addedIds.has(product.id)) return;
+    setAddingIds(prev => new Set(prev).add(product.id));
+    await addToCart(product.id, 1, {
+      name: product.name,
+      price: String(Math.round(product.salePrice * 100)),
+      image: product.image,
+    });
+    setAddingIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
+    setAddedIds(prev => new Set(prev).add(product.id));
+    setTimeout(() => {
+      setAddedIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
+    }, 1500);
+  };
 
   const current = spotlights.find(s => s.category.id === activeId) ?? spotlights[0];
   if (!current) return null;
@@ -192,12 +212,31 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
                       R{product.salePrice.toFixed(0)}
                     </span>
                   </div>
-                  <div className="w-full px-3 py-2 bg-[#e8f5f7] text-[#184363] font-semibold! text-xs rounded-xl hover:bg-[#009eb9] hover:text-white transition-all duration-200 flex items-center justify-center gap-1">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                    </svg>
-                    Add to basket
-                  </div>
+                  <button
+                    onClick={(e) => handleAdd(e, product)}
+                    disabled={addingIds.has(product.id) || addedIds.has(product.id)}
+                    className={`w-full px-3 py-2 font-semibold! text-xs rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-1 ${
+                      addedIds.has(product.id)
+                        ? 'bg-green-600 text-white'
+                        : 'bg-[#e8f5f7] text-[#184363] hover:bg-[#009eb9] hover:text-white'
+                    }`}
+                  >
+                    {addedIds.has(product.id) ? (
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : addingIds.has(product.id) ? (
+                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                      </svg>
+                    )}
+                    {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : 'Add to basket'}
+                  </button>
                 </div>
               </Link>
             ))}
