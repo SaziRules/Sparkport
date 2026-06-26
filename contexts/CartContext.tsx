@@ -21,6 +21,7 @@ interface CartContextType {
   count: number;
   total: string;
   currencySymbol: string;
+  cartTotals: Cart['totals'];
   isLoading: boolean;
   isDrawerOpen: boolean;
   lastAddedKey: string | null;
@@ -29,12 +30,13 @@ interface CartContextType {
   addToCart: (productId: number, quantity?: number, productSnapshot?: ProductSnapshot) => Promise<void>;
   updateQuantity: (key: string, quantity: number) => Promise<void>;
   removeFromCart: (key: string) => Promise<void>;
+  refreshCart: () => Promise<void>;
 }
 
 const EMPTY_CART: Cart = {
   items: [],
   items_count: 0,
-  totals: { total_price: '0', total_items: '0', currency_symbol: 'R' },
+  totals: { total_price: '0', total_items: '0', total_discount: '0', total_shipping: '0', currency_symbol: 'R' },
 };
 
 function optimisticallyAdd(
@@ -120,6 +122,7 @@ const CartContext = createContext<CartContextType>({
   count: 0,
   total: '0',
   currencySymbol: 'R',
+  cartTotals: EMPTY_CART.totals,
   isLoading: false,
   isDrawerOpen: false,
   lastAddedKey: null,
@@ -128,6 +131,7 @@ const CartContext = createContext<CartContextType>({
   addToCart: async () => {},
   updateQuantity: async () => {},
   removeFromCart: async () => {},
+  refreshCart: async () => {},
 });
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -244,6 +248,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     count: cart?.items_count ?? 0,
     total: cart?.totals.total_items ?? '0',
     currencySymbol: cart?.totals.currency_symbol ?? 'R',
+    cartTotals: cart?.totals ?? EMPTY_CART.totals,
     isLoading,
     isDrawerOpen,
     lastAddedKey,
@@ -252,6 +257,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     addToCart,
     updateQuantity,
     removeFromCart,
+    refreshCart: async () => {
+      const freshCart = await fetchCart();
+      setCart(freshCart);
+    },
   }), [cart, isLoading, isDrawerOpen, lastAddedKey, openDrawer, closeDrawer, addToCart, updateQuantity, removeFromCart]);
 
   return (

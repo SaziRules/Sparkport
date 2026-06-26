@@ -22,6 +22,8 @@ export interface Cart {
   totals: {
     total_price: string;
     total_items: string;
+    total_discount: string;
+    total_shipping: string;
     currency_symbol: string;
   };
   _nonce?: string;
@@ -36,7 +38,7 @@ export class CartApiError extends Error {
 const EMPTY_CART: Cart = {
   items: [],
   items_count: 0,
-  totals: { total_price: '0', total_items: '0', currency_symbol: 'R' },
+  totals: { total_price: '0', total_items: '0', total_discount: '0', total_shipping: '0', currency_symbol: 'R' },
 };
 
 export async function fetchCart(): Promise<Cart> {

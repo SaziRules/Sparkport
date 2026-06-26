@@ -1,16 +1,81 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { decodeHtml } from '@/lib/wordpress';
+import ValuePropositionStrip from '@/components/ValuePropositionStrip';
 
 export default function CartPage() {
-  const { items, count, total, currencySymbol, isLoading, updateQuantity, removeFromCart } = useCart();
+  const {
+    items,
+    count,
+    currencySymbol,
+    cartTotals,
+    isLoading,
+    updateQuantity,
+    removeFromCart,
+    addToCart,
+    refreshCart,
+  } = useCart();
 
   const symbol = currencySymbol || 'R';
-  // WC Store API returns prices in minor units (cents): "1999" = R19.99
-  const formattedTotal = (parseInt(total, 10) / 100).toFixed(2);
+
+  // Order summary derived values
+  const subtotal = (parseInt(cartTotals.total_items, 10) / 100).toFixed(2);
+  const discount = parseInt(cartTotals.total_discount, 10);
+  const shipping = parseInt(cartTotals.total_shipping, 10);
+  const grandTotal = (parseInt(cartTotals.total_price, 10) / 100).toFixed(2);
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [couponMessage, setCouponMessage] = useState('');
+
+  // Recommended products state
+  const [recommended, setRecommended] = useState<Array<{
+    id: number;
+    name: string;
+    salePrice: number;
+    image: string;
+  }>>([]);
+
+  useEffect(() => {
+    if (count === 0) return;
+    fetch('/api/products/suggestions')
+      .then(r => r.json())
+      .then((data: Array<{ id: number; name: string; salePrice: number; imageUrl: string }>) =>
+        setRecommended(
+          data.slice(0, 4).map(p => ({ id: p.id, name: p.name, salePrice: p.salePrice, image: p.imageUrl }))
+        )
+      )
+      .catch(() => {});
+  }, [count]);
+
+  async function handleApplyCoupon() {
+    if (!couponCode.trim()) return;
+    setCouponStatus('loading');
+    try {
+      const res = await fetch('/api/cart/coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setCouponStatus('error');
+        setCouponMessage((err?.error?.message as string | undefined) ?? 'Coupon code not valid');
+      } else {
+        setCouponStatus('success');
+        setCouponMessage('Coupon applied!');
+        await refreshCart();
+      }
+    } catch {
+      setCouponStatus('error');
+      setCouponMessage('Something went wrong. Try again.');
+    }
+  }
 
   if (count === 0 && !isLoading) {
     return (
@@ -22,7 +87,7 @@ export default function CartPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-black! text-[#184363] mb-3">Your basket is empty</h1>
-          <p className="text-neutral-500 mb-8">Looks like you haven't added anything yet.</p>
+          <p className="text-neutral-500 mb-8">Looks like you haven&apos;t added anything yet.</p>
           <Link
             href="/shop"
             className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#009eb9] text-white font-bold! rounded-xl hover:bg-[#007a8f] transition-colors"
@@ -49,7 +114,7 @@ export default function CartPage() {
 
         <div className="flex flex-col lg:flex-row gap-8">
 
-          {/* Item list */}
+          {/* Item list + coupon */}
           <div className="flex-1 space-y-4">
             {items.map((item) => {
               const unitPrice = (parseInt(item.prices.price, 10) / 100).toFixed(2);
@@ -125,6 +190,34 @@ export default function CartPage() {
                 </div>
               );
             })}
+
+            {/* Coupon code */}
+            <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-5">
+              <p className="text-sm font-bold! text-[#184363] mb-3">Have a promo code?</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={e => { setCouponCode(e.target.value); setCouponStatus('idle'); }}
+                  onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                  placeholder="Enter promo code"
+                  className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]/30 focus:border-[#009eb9]"
+                />
+                <button
+                  onClick={handleApplyCoupon}
+                  disabled={couponStatus === 'loading' || !couponCode.trim()}
+                  className="px-5 py-2.5 bg-[#184363] text-white text-sm font-semibold! rounded-xl hover:bg-[#0f2d47] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {couponStatus === 'loading' ? 'Applying...' : 'Apply'}
+                </button>
+              </div>
+              {couponStatus === 'success' && (
+                <p className="text-xs text-green-600 mt-2 font-medium!">{couponMessage}</p>
+              )}
+              {couponStatus === 'error' && (
+                <p className="text-xs text-red-500 mt-2">{couponMessage}</p>
+              )}
+            </div>
           </div>
 
           {/* Order summary */}
@@ -135,18 +228,28 @@ export default function CartPage() {
               <div className="space-y-3 mb-5">
                 <div className="flex justify-between text-sm text-neutral-600">
                   <span>Subtotal ({count} {count === 1 ? 'item' : 'items'})</span>
-                  <span className="font-semibold! text-[#184363]">{symbol}{formattedTotal}</span>
+                  <span className="font-semibold! text-[#184363]">{symbol}{subtotal}</span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600">Discount</span>
+                    <span className="text-green-600 font-semibold!">−{symbol}{(discount / 100).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm text-neutral-500">
-                  <span>Shipping</span>
-                  <span>Calculated at checkout</span>
+                  <span>Delivery</span>
+                  {shipping === 0 ? (
+                    <span className="text-green-600 font-semibold!">FREE</span>
+                  ) : (
+                    <span className="text-neutral-600 font-semibold!">{symbol}{(shipping / 100).toFixed(2)}</span>
+                  )}
                 </div>
               </div>
 
               <div className="border-t border-neutral-200 pt-4 mb-6">
                 <div className="flex justify-between">
                   <span className="font-bold! text-[#184363]">Total</span>
-                  <span className="text-2xl font-extrabold! text-[#009eb9]">{symbol}{formattedTotal}</span>
+                  <span className="text-2xl font-extrabold! text-[#009eb9]">{symbol}{grandTotal}</span>
                 </div>
                 <p className="text-xs text-neutral-400 mt-1">Taxes calculated at checkout</p>
               </div>
@@ -178,10 +281,65 @@ export default function CartPage() {
               >
                 Continue Shopping
               </Link>
+
+              {/* Trust badges */}
+              <div className="mt-4 pt-4 border-t border-neutral-100 space-y-3">
+                <div className="flex items-center justify-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-[10px] text-neutral-400">256-bit SSL encrypted checkout</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  {['VISA', 'MC', 'PayFast', 'EFT'].map(label => (
+                    <div key={label} className="px-2 py-0.5 border border-neutral-200 rounded text-[9px] font-black! text-neutral-500 bg-neutral-50">
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
         </div>
+
+        {/* Value proposition strip — full width */}
+        <div className="mt-10">
+          <ValuePropositionStrip />
+        </div>
+
+        {/* Recommended products — full width */}
+        {recommended.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-xl font-black! text-[#184363] mb-5">You might also need</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {recommended.map(p => (
+                <div key={p.id} className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 flex flex-col gap-3">
+                  <div className="relative w-full aspect-square bg-neutral-50 rounded-xl overflow-hidden">
+                    {p.image && (
+                      <Image src={p.image} alt={p.name} fill sizes="200px" className="object-contain p-2 mix-blend-multiply" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold! text-[#184363] line-clamp-2 mb-1">{p.name}</p>
+                    <p className="text-sm font-extrabold! text-[#009eb9]">{symbol}{p.salePrice.toFixed(2)}</p>
+                  </div>
+                  <button
+                    onClick={() => addToCart(p.id, 1, {
+                      name: p.name,
+                      price: String(Math.round(p.salePrice * 100)),
+                      image: p.image,
+                    })}
+                    className="w-full py-2 bg-[#009eb9] text-white text-xs font-bold! rounded-xl hover:bg-[#007a8f] transition-colors"
+                  >
+                    Add to Basket
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
