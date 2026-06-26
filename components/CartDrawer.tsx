@@ -14,6 +14,7 @@ export default function CartDrawer() {
     currencySymbol,
     isLoading,
     isDrawerOpen,
+    lastAddedKey,
     closeDrawer,
     updateQuantity,
     removeFromCart,
@@ -92,12 +93,19 @@ export default function CartDrawer() {
               </button>
             </div>
           ) : (
-            items.map((item) => {
+            (isDrawerOpen || items.length > 0) && items.map((item) => {
               const unitPrice = (parseInt(item.prices.price, 10) / 100).toFixed(2);
               const lineTotal = (parseInt(item.totals.line_total, 10) / 100).toFixed(2);
 
               return (
-                <div key={item.key} className="flex gap-4 bg-neutral-50 rounded-2xl p-4 border border-neutral-100">
+                <div
+                  key={item.key}
+                  className={`flex gap-4 bg-neutral-50 rounded-2xl p-4 border transition-all duration-300 ${
+                    item.key === lastAddedKey
+                      ? 'border-[#009eb9] ring-2 ring-[#009eb9]/20'
+                      : 'border-neutral-100'
+                  }`}
+                >
                   {/* Image */}
                   <div className="relative w-20 h-20 shrink-0 bg-white rounded-xl overflow-hidden border border-neutral-200">
                     {item.images?.[0]?.src ? (
@@ -107,6 +115,8 @@ export default function CartDrawer() {
                         fill
                         sizes="80px"
                         className="object-contain p-2 mix-blend-multiply"
+                        placeholder="blur"
+                        blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

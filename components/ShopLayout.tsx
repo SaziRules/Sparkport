@@ -263,7 +263,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
               {/* Grid */}
               {viewMode === 'grid' && displayed.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {displayed.map((product) => (
+                  {displayed.map((product, index) => (
                     <div
                       key={product.id}
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative"
@@ -282,6 +282,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                               fill
                               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                               className="object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
+                              priority={index < 4}
                             />
                           )}
                         </div>
