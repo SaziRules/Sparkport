@@ -11,7 +11,7 @@ import { useCart } from '@/contexts/CartContext';
 export default function SparkportMobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { count: cartCount } = useCart();
+  const { count: cartCount, openDrawer } = useCart();
   const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
 
   // Prevent scroll when menu is open
@@ -84,17 +84,19 @@ export default function SparkportMobileHeader() {
             </button>
 
             {/* Cart Button */}
-            <Link
-              href="/cart"
+            <button
+              onClick={openDrawer}
               className="relative w-10 h-10 flex items-center justify-center text-[#184363] hover:bg-neutral-100 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
               </svg>
-              <span className="absolute -top-1 -right-1 min-w-4.5 h-4.5 flex items-center justify-center bg-[#009eb9] text-white text-[10px] font-bold! rounded-full px-1">
-                {cartCount}
-              </span>
-            </Link>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4.5 h-4.5 flex items-center justify-center bg-[#009eb9] text-white text-[10px] font-bold! rounded-full px-1">
+                  {cartCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 

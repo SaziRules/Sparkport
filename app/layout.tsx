@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import Footer from "@/components/Footer";
 import SparkportMobileHeader from "@/components/SparkportMobileHeader";
 import MainWrapper from "@/components/MainWrapper";
+import ClientProviders from "@/components/ClientProviders";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -26,23 +27,25 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased bg-background text-foreground relative`}>
+        <ClientProviders>
 
-        {/* FULL-BLEED HEADER */}
-        <div className="hidden lg:block">
-          <KlaasHeader />
-        </div>
+          {/* FULL-BLEED HEADER */}
+          <div className="hidden lg:block">
+            <KlaasHeader />
+          </div>
 
-        <SparkportMobileHeader />
+          <SparkportMobileHeader />
 
-        <Analytics />
+          <Analytics />
 
-        {/* CONSTRAINED PAGE CONTENT - full width on /account */}
-        <MainWrapper>
-          {children}
-        </MainWrapper>
+          {/* CONSTRAINED PAGE CONTENT - full width on /account */}
+          <MainWrapper>
+            {children}
+          </MainWrapper>
 
-        <Footer />
+          <Footer />
 
+        </ClientProviders>
       </body>
     </html>
   );

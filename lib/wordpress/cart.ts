@@ -24,17 +24,14 @@ export interface Cart {
     total_items: string;
     currency_symbol: string;
   };
-  _nonce?: string;
 }
 
 const EMPTY_CART: Cart = {
   items: [],
   items_count: 0,
   totals: { total_price: '0', total_items: '0', currency_symbol: 'R' },
-  _nonce: '',
 };
 
-// All calls go through the Next.js proxy — no CORS issues, nonce handled server-side.
 export async function fetchCart(): Promise<Cart> {
   try {
     const res = await fetch('/api/cart', { cache: 'no-store' });
@@ -45,12 +42,12 @@ export async function fetchCart(): Promise<Cart> {
   }
 }
 
-export async function addToCart(productId: number, quantity: number, nonce: string): Promise<Cart | null> {
+export async function addToCart(productId: number, quantity: number): Promise<Cart | null> {
   try {
     const res = await fetch('/api/cart/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId, quantity, nonce }),
+      body: JSON.stringify({ productId, quantity }),
     });
     if (!res.ok) return null;
     return res.json();
@@ -59,12 +56,12 @@ export async function addToCart(productId: number, quantity: number, nonce: stri
   }
 }
 
-export async function updateCartItem(key: string, quantity: number, nonce: string): Promise<Cart | null> {
+export async function updateCartItem(key: string, quantity: number): Promise<Cart | null> {
   try {
     const res = await fetch(`/api/cart/item/${key}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity, nonce }),
+      body: JSON.stringify({ quantity }),
     });
     if (!res.ok) return null;
     return res.json();
@@ -73,13 +70,10 @@ export async function updateCartItem(key: string, quantity: number, nonce: strin
   }
 }
 
-export async function removeCartItem(key: string, nonce: string): Promise<Cart | null> {
+export async function removeCartItem(key: string): Promise<Cart | null> {
   try {
-    const res = await fetch(`/api/cart/item/${key}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nonce }),
-    });
+    // No body — DELETE with body is unreliable across browsers/environments
+    const res = await fetch(`/api/cart/item/${key}`, { method: 'DELETE' });
     if (!res.ok) return null;
     return res.json();
   } catch {

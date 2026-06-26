@@ -2,27 +2,42 @@ import { cookies } from 'next/headers';
 
 const STORE = `${process.env.NEXT_PUBLIC_WP_API_URL}/wc/store/v1`;
 
+async function getFreshNonce(cartToken: string | undefined): Promise<{ nonce: string; token: string }> {
+  const res = await fetch(`${STORE}/cart`, {
+    headers: { ...(cartToken ? { 'Cart-Token': cartToken } : {}) },
+    cache: 'no-store',
+  });
+  return {
+    nonce: res.headers.get('Nonce') ?? '',
+    token: res.headers.get('Cart-Token') ?? cartToken ?? '',
+  };
+}
+
 export async function POST(request: Request) {
   const cookieStore = await cookies();
-  const cartToken = cookieStore.get('wc_cart_token')?.value;
-  const { productId, quantity, nonce } = await request.json();
+  let cartToken = cookieStore.get('wc_cart_token')?.value;
+  const { productId, quantity } = await request.json();
+
+  const session = await getFreshNonce(cartToken);
+  if (session.token) cartToken = session.token;
 
   try {
     const res = await fetch(`${STORE}/cart/add-item`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Nonce: nonce ?? '',
+        Nonce: session.nonce,
         ...(cartToken ? { 'Cart-Token': cartToken } : {}),
       },
       body: JSON.stringify({ id: productId, quantity }),
     });
 
-    const newNonce = res.headers.get('Nonce') ?? nonce ?? '';
-    const newToken = res.headers.get('Cart-Token') ?? '';
+    const newNonce = res.headers.get('Nonce') ?? session.nonce;
+    const newToken = res.headers.get('Cart-Token') ?? cartToken ?? '';
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      console.error('[cart/add] WC error:', res.status, JSON.stringify(err));
       return Response.json({ error: err }, { status: res.status });
     }
 
@@ -36,6 +51,7 @@ export async function POST(request: Request) {
     }
     return response;
   } catch (e) {
+    console.error('[cart/add] Exception:', e);
     return Response.json({ error: String(e) }, { status: 500 });
   }
 }

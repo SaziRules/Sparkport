@@ -10,7 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 export default function SparkportHeader() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isShopMenuOpen, setIsShopMenuOpen] = useState(false);
-  const { count: cartCount } = useCart();
+  const { count: cartCount, openDrawer } = useCart();
   const shopCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleShopEnter = () => {
@@ -166,15 +166,17 @@ export default function SparkportHeader() {
                 <span className="text-xs font-medium">Wishlist</span>
               </button>
               
-              <Link href="/cart" className="relative flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors">
+              <button onClick={openDrawer} className="relative flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors">
                 <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17.426 13.695">
                   <path d="M17.388 3.087 15.361 9.47a1.074 1.074 0 0 1-1.023.758H6.516a1.117 1.117 0 0 1-1.042-.7L2.481 1.515H.758A.758.758 0 0 1 .758 0h2.254a.776.776 0 0 1 .72.511l3.087 8.2h7.2l1.61-5.114H6.705a.758.758 0 1 1 0-1.515h9.963a.753.753 0 0 1 .606.322.735.735 0 0 1 .114.683ZM6.895 11.232a1.229 1.229 0 1 0 .871.36 1.249 1.249 0 0 0-.871-.36Zm6.8 0a1.229 1.229 0 1 0 .871.36 1.249 1.249 0 0 0-.871-.36Z"/>
                 </svg>
                 <span className="text-xs font-medium">Basket</span>
-                <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 bg-[#009eb9] text-white text-[10px] font-bold rounded-full">
-                  {cartCount}
-                </span>
-              </Link>
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 bg-[#009eb9] text-white text-[10px] font-bold rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
             </div>
           </nav>
         </div>

@@ -1,613 +1,715 @@
-SPARKPORT — WORDPRESS / WOOCOMMERCE INTEGRATION EXECUTION PLAN
-================================================================
-Generated from codebase + live site audit of sparkport.co.za
-================================================================
+SPARKPORT — UX BUYING EXPERIENCE IMPROVEMENT PLAN
+==================================================
+Goal: Serve users with absolute buying power — fast, trustworthy,
+frictionless from first product view to completed order.
+==================================================
 
 
 CURRENT STATE SUMMARY
 ----------------------
-- All product data is hardcoded in 4 separate files (duplicated arrays)
-- All blog post data is hardcoded in 3 separate files (duplicated arrays)
-- All product categories are hardcoded in ShopLayout.tsx
-- Supabase is live and working for prescriptions and auth only
-- WordPress blog posts ARE publicly accessible (no auth needed)
-- WooCommerce products require API keys (returns 401 without them)
-- sparkport.co.za is already in next.config.ts image remotePatterns
-- WordPress site has: Yoast SEO, WooCommerce, 10 blog categories,
-  81 Insights posts, 71 Pharmacy & Healthcare posts
+All phases from the original infrastructure/integration plan (Phases 0–9)
+are complete: WordPress/WooCommerce API layer is live, products and blog
+are dynamic, cart is integrated with WooCommerce Store API v1, CartContext
+manages global state, CartDrawer is animated, cart page and product detail
+page are fully built.
+
+The buying journey now works end-to-end but has real gaps that affect
+conversion and user trust:
+
+  - Add to cart takes 3 sequential network requests (~1.5–3s per click)
+  - Button labels are inconsistent across components
+  - No instant feedback — user stares at a spinner after clicking
+  - No toast / confirmation that anything happened
+  - No trust signals, delivery info, or pharmacist cues on product pages
+  - No free shipping progress, no urgency, no scarcity signals
+  - Cart drawer and cart page are functional but not persuasive
+  - No checkout page — "Proceed to Checkout" goes nowhere
+  - Micro-copy is generic — no pharmacy voice, no power triggers
 
 
 ================================================================
-PHASE 0 — PREREQUISITES (Must be done before any code)
+PHASE 1 — PERFORMANCE & SPEED
 ================================================================
-
-0.1  Generate WooCommerce REST API Keys
-     - Log in to sparkport.co.za/wp-admin
-     - Navigate to: WooCommerce → Settings → Advanced → REST API
-     - Click "Add Key"
-     - Description: "Sparkport Next.js Frontend"
-     - User: select your admin account
-     - Permissions: Read
-     - Click "Generate API Key"
-     - Copy the consumer_key (ck_...) and consumer_secret (cs_...)
-     - These are shown ONCE — save them immediately
-
-0.2  Add credentials to .env.local
-     Add these three lines:
-       NEXT_PUBLIC_WP_API_URL=https://sparkport.co.za/wp-json
-       WC_CONSUMER_KEY=ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-       WC_CONSUMER_SECRET=cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-     IMPORTANT: WC_CONSUMER_KEY and WC_CONSUMER_SECRET must NOT have the
-     NEXT_PUBLIC_ prefix — they must stay server-side only
-
-0.3  Verify WooCommerce has real products
-     - In wp-admin → WooCommerce → Products
-     - Confirm products exist with: images, regular price, sale price,
-       categories assigned, stock status set
-     - Confirm product categories are created
-       (Vitamins & Supplements, Baby & Toddlers, Cold & Flu, etc.)
-     - If no products exist yet, add at least 10 before Phase 4
-
-
-================================================================
-PHASE 1 — INFRASTRUCTURE SETUP
-================================================================
-
-1.1  Update next.config.ts — clean up image domains
-     REMOVE these 15 competitor/placeholder hostnames that will no
-     longer be needed once WooCommerce products are live:
-       cloudinary.images-iherb.com
-       www.dischem.co.za
-       clicks.co.za
-       www.maximed.co.za
-       www.vitatechhealth.com
-       m.media-amazon.com
-       cdn.shopify.com
-       mopani.co.za
-       vitagene.co.za
-       catalog.sixty60.co.za
-       www.mynavyexchange.com
-       www.feelhealthy.co.za
-       cdn-prd-02.pnp.co.za
-       shoprite-ecommerce-prod-cdn.azureedge.net
-       city-pharmacy-windhoek.myshopify.com
-     KEEP:
-       sparkport.co.za (WP media + WooCommerce product images)
-       images.unsplash.com (blog placeholder images until WP images take over)
-       upload.wikimedia.org (payment icons in footer)
-     NOTE: Do this cleanup ONLY after Phase 4 is fully live and tested
-
-1.2  Create lib/wordpress/types.ts (NEW FILE)
-     Define all TypeScript interfaces:
-
-     WPPost — raw shape returned by /wp/v2/posts?_embed
-       id, date, slug, status
-       title: { rendered: string }
-       content: { rendered: string }
-       excerpt: { rendered: string }
-       featured_media: number
-       categories: number[]
-       tags: number[]
-       yoast_head_json: {
-         title, description, robots, canonical,
-         og_title, og_description, og_image: [{ url }]
-       }
-       _embedded: {
-         'wp:featuredmedia': [{ source_url: string, alt_text: string }]
-         'wp:term': [WPCategory[], WPTag[]]
-         author: [{ name: string, avatar_urls: Record<string,string> }]
-       }
-
-     WPCategory — raw shape from /wp/v2/categories
-       id, name, slug, count, parent, description
-
-     WCProduct — raw shape from /wc/v3/products
-       id, name, slug, status, type, description, short_description
-       sku, price, regular_price, sale_price, on_sale, featured
-       stock_status ('instock' | 'outofstock' | 'onbackorder')
-       images: [{ id, src, alt }]
-       categories: [{ id, name, slug }]
-       tags: [{ id, name, slug }]
-       attributes: [{ name, options: string[] }]
-       meta_data: [{ key, value }]
-
-     WCProductCategory — raw shape from /wc/v3/products/categories
-       id, name, slug, parent, count
-       image: { src: string, alt: string } | null
-
-     Normalized internal types (what components consume):
-
-     Product {
-       id: number
-       name: string
-       slug: string
-       category: string
-       categories: string[]
-       tags: string[]
-       originalPrice: number
-       salePrice: number
-       image: string
-       imageAlt: string
-       inStock: boolean
-       onSale: boolean
-       featured: boolean
-       shortDescription: string
-       description: string
-       sku: string
-     }
-
-     BlogPost {
-       id: number
-       title: string
-       excerpt: string
-       content: string
-       slug: string
-       date: string
-       image: string
-       imageAlt: string
-       categories: string[]
-       tags: string[]
-       author: { name: string; avatar: string }
-       seo: { title: string; description: string; ogImage: string }
-     }
-
-     Category {
-       id: number
-       name: string
-       slug: string
-       count: number
-       image?: string
-     }
-
-
-================================================================
-PHASE 2 — API LAYER (lib/wordpress/)
-================================================================
-
-2.1  Create lib/wordpress/config.ts (NEW FILE)
-     - Export WP_API constant = process.env.NEXT_PUBLIC_WP_API_URL
-     - Export WC_API constant = WP_API + '/wc/v3'
-     - Export wcAuthHeaders() function:
-         Returns Authorization: Basic base64(key + ':' + secret)
-         Uses Buffer.from on server side
-     - Export stripHtml(html: string) helper:
-         Removes HTML tags for excerpt plain-text conversion
-     - Define default revalidation constants:
-         REVALIDATE_POSTS = 3600      (1 hour)
-         REVALIDATE_PRODUCTS = 300    (5 minutes)
-         REVALIDATE_CATEGORIES = 86400 (24 hours)
-
-2.2  Create lib/wordpress/posts.ts (NEW FILE)
-     Implement these functions (all server-side, all using Next.js fetch()):
-
-     getPosts(params?: {
-       per_page?: number   default: 12
-       page?: number       default: 1
-       category?: number   WP category ID
-       search?: string
-     }) → Promise<BlogPost[]>
-       Endpoint: GET /wp/v2/posts?_embed&per_page=N&page=N
-       Mapping:
-         post.title.rendered            → title (run through stripHtml)
-         post.excerpt.rendered          → excerpt (stripHtml, trim)
-         post.content.rendered          → content (raw HTML, kept for rendering)
-         post.slug                      → slug
-         post.date                      → date
-         post._embedded['wp:featuredmedia'][0].source_url → image
-         post._embedded['wp:featuredmedia'][0].alt_text  → imageAlt
-         post._embedded['wp:term'][0].map(t => t.name)   → categories
-         post._embedded.author[0].name  → author.name
-         post._embedded.author[0].avatar_urls['96'] → author.avatar
-         post.yoast_head_json.title     → seo.title
-         post.yoast_head_json.description → seo.description
-         post.yoast_head_json.og_image?.[0]?.url → seo.ogImage
-       Cache: { next: { revalidate: REVALIDATE_POSTS } }
-
-     getPostBySlug(slug: string) → Promise<BlogPost | null>
-       Endpoint: GET /wp/v2/posts?slug={slug}&_embed
-       Returns mapped BlogPost or null if empty array
-
-     getAllPostSlugs() → Promise<string[]>
-       Endpoint: GET /wp/v2/posts?per_page=100&_fields=slug
-       Used for generateStaticParams() in blog/[slug]
-
-     getBlogCategories() → Promise<Category[]>
-       Endpoint: GET /wp/v2/categories?per_page=100&hide_empty=true
-       Returns only categories with count > 0
-
-2.3  Create lib/wordpress/products.ts (NEW FILE)
-     All functions use wcAuthHeaders() for Authorization header.
-
-     getProducts(params?: {
-       per_page?: number   default: 20
-       page?: number       default: 1
-       category?: number   WC category ID
-       on_sale?: boolean
-       featured?: boolean
-       search?: string
-       orderby?: 'date' | 'price' | 'popularity' | 'rating'
-       order?: 'asc' | 'desc'
-     }) → Promise<Product[]>
-       Endpoint: GET /wc/v3/products?status=publish&per_page=N
-       Mapping:
-         product.id                     → id
-         product.name                   → name
-         product.slug                   → slug
-         product.categories[0]?.name   → category
-         product.categories.map(c=>c.name) → categories
-         product.tags.map(t=>t.name)   → tags
-         parseFloat(product.regular_price) → originalPrice
-         parseFloat(product.price)     → salePrice
-         product.images[0]?.src        → image
-         product.images[0]?.alt        → imageAlt
-         product.stock_status === 'instock' → inStock
-         product.on_sale               → onSale
-         product.featured              → featured
-         product.short_description     → shortDescription (keep HTML)
-         product.description           → description (keep HTML)
-         product.sku                   → sku
-       Cache: { next: { revalidate: REVALIDATE_PRODUCTS } }
-
-     getProductById(id: number) → Promise<Product | null>
-       Endpoint: GET /wc/v3/products/{id}
-       Returns mapped Product or null
-
-     getAllProductIds() → Promise<number[]>
-       Endpoint: GET /wc/v3/products?per_page=100&_fields=id&status=publish
-       Used for generateStaticParams() in product/[id]
-
-     getProductCategories() → Promise<Category[]>
-       Endpoint: GET /wc/v3/products/categories?per_page=100&hide_empty=true
-       Maps: id, name, slug, count, image?.src
-       Cache: { next: { revalidate: REVALIDATE_CATEGORIES } }
-
-     getFeaturedProducts(limit?: number) → Promise<Product[]>
-       Calls getProducts({ featured: true, per_page: limit ?? 4 })
-
-     getOnSaleProducts(limit?: number) → Promise<Product[]>
-       Calls getProducts({ on_sale: true, per_page: limit ?? 20 })
-
-     getProductsByCategory(categorySlug: string, limit?: number) → Promise<Product[]>
-       First: find category ID from getProductCategories() by slug
-       Then: getProducts({ category: id, per_page: limit ?? 20 })
-
-     getNewArrivals(limit?: number) → Promise<Product[]>
-       Calls getProducts({ orderby: 'date', order: 'desc', per_page: limit ?? 4 })
-
-2.4  Create lib/wordpress/index.ts (NEW FILE)
-     Re-export everything from posts.ts and products.ts
-     Single import point for all API calls:
-       import { getProducts, getPosts, getPostBySlug, ... } from '@/lib/wordpress'
-
-
-================================================================
-PHASE 3 — BLOG INTEGRATION (Unblocked — no WC keys needed)
-================================================================
-
-3.1  Update app/blog/page.tsx
-     - Remove 'use client' if present
-     - Make it an async Server Component
-     - Add: const posts = await getPosts({ per_page: 12 })
-     - Pass posts as prop to BlogGrid: <BlogGrid posts={posts} />
-
-3.2  Update components/BlogGrid.tsx
-     - Add posts: BlogPost[] prop to component signature
-     - Delete the internal BLOG_POSTS hardcoded constant (6 posts)
-     - Use the passed posts prop instead
-     - Update featured image: use post.image (comes from _embedded)
-     - Update categories: use post.categories array
-     - Update href: /blog/{post.slug}
-
-3.3  Update app/blog/[slug]/page.tsx
-     - Delete the internal BLOG_POSTS hardcoded array (2 detailed posts)
-     - Add: const post = await getPostBySlug(params.slug)
-     - Add: if (!post) notFound()
-     - Render post.content via dangerouslySetInnerHTML={{ __html: post.content }}
-       (WordPress sanitizes content on save — this is safe)
-     - Add export async function generateMetadata({ params }):
-         Fetch post, return title and description from post.seo fields
-     - Add export async function generateStaticParams():
-         const slugs = await getAllPostSlugs()
-         return slugs.map(slug => ({ slug }))
-
-3.4  Update components/BlogPreview.tsx (used on homepage)
-     - Add posts: BlogPost[] prop
-     - Delete internal BLOG_POSTS hardcoded constant (4 posts)
-     - Use passed posts prop
-
-3.5  Update app/page.tsx (homepage)
-     - Already a Server Component
-     - Add: const blogPosts = await getPosts({ per_page: 4 })
-     - Pass to BlogPreview: <BlogPreview posts={blogPosts} />
-
-
-================================================================
-PHASE 4 — PRODUCTS INTEGRATION (Requires WC API keys from Phase 0)
-================================================================
-
-4.1  Update app/shop/page.tsx
-     - Remove 'use client' directive
-     - Convert to async Server Component
-     - Delete hardcoded PRODUCTS array (8 items)
-     - Add: const products = await getProducts({ per_page: 100 })
-     - Add: const categories = await getProductCategories()
-     - Pass both to ShopLayout:
-         <ShopLayout products={products} categories={categories} hero={hero} />
-
-4.2  Update components/ShopLayout.tsx
-     - Delete hardcoded SHOP_CATEGORIES constant (11 items)
-     - Update ShopProduct type to use normalized Product type from lib/wordpress/types.ts
-     - Accept categories: Category[] as prop
-     - Derive category filter list from the passed categories prop
-     - Update filter logic to match on product.categories array
-     - Update price comparisons: use product.originalPrice and product.salePrice
-
-4.3  Update components/FeaturedProducts.tsx
-     - The component needs tab-specific data (hot deals, bestsellers, new arrivals)
-     - Approach: split into a Server wrapper + Client tabs component
-       Server wrapper (FeaturedProducts.tsx — becomes async, no 'use client'):
-         Fetch all three datasets:
-           hotDeals = await getOnSaleProducts(4)
-           bestsellers = await getFeaturedProducts(4)
-           newArrivals = await getNewArrivals(4)
-         Pass all three to a client child:
-           <FeaturedProductsTabs hotDeals={...} bestsellers={...} newArrivals={...} />
-       Client component (FeaturedProductsTabs.tsx — NEW, has 'use client'):
-         Receives all three arrays as props
-         Handles tab state with useState (existing logic)
-         No data fetching — purely presentational
-     - Delete the entire internal PRODUCTS hardcoded object
-
-4.4  Update app/shop/promotions/page.tsx
-     - Remove 'use client' directive
-     - Delete hardcoded PRODUCTS array (8 items, identical to shop page)
-     - Add: const products = await getOnSaleProducts()
-     - Pass to ShopLayout with promotions hero banner
-
-4.5  Update app/product/[id]/page.tsx
-     - Add: const product = await getProductById(Number(params.id))
-     - Add: if (!product) notFound()
-     - Pass product to <ProductDetailPage product={product} />
-     - Add export async function generateMetadata({ params }):
-         Return { title: product.name, description: product.shortDescription,
-         openGraph: { images: [product.image] } }
-     - Add export async function generateStaticParams():
-         const ids = await getAllProductIds()
-         return ids.map(id => ({ id: String(id) }))
-
-4.6  Update components/ProductDetailPage.tsx
-     - Delete hardcoded SALE_PRODUCTS array (8 items)
-     - Accept product: Product as prop
-     - Display product.name, product.salePrice, product.originalPrice,
-       product.image, product.shortDescription, product.inStock
-     - "Related products" section: parent page can pass related products
-       fetched by same category
-
-4.7  Update components/CategorySpotlight.tsx
-     - Delete hardcoded CATEGORY_SPOTLIGHTS constant
-     - Accept spotlight data as props from parent
-     - app/page.tsx fetches spotlight data server-side:
-         vitaminsProducts = await getProductsByCategory('vitamins-supplements', 4)
-         babyProducts = await getProductsByCategory('baby-toddlers', 4)
-     - Pass to CategorySpotlight component
-
-4.8  Update app/categories/page.tsx
-     - Add: const categories = await getProductCategories()
-     - Render live category grid with counts and images
-
-
-================================================================
-PHASE 5 — CACHING STRATEGY
-================================================================
-
-5.1  Blog posts — revalidate: 3600 (1 hour)
-     Blog content changes infrequently. Applied inside getPosts() and getPostBySlug().
-
-5.2  Products — revalidate: 300 (5 minutes)
-     Stock levels and prices must propagate quickly.
-     Applied inside getProducts() and getProductById().
-
-5.3  Product categories — revalidate: 86400 (24 hours)
-     Categories almost never change. Applied in getProductCategories().
-
-5.4  On-sale products — revalidate: 300 (5 minutes)
-     Sales can be time-limited. Applied in getOnSaleProducts().
-
-5.5  Featured products — revalidate: 3600 (1 hour)
-     Featured flag changes infrequently. Applied in getFeaturedProducts().
-
-5.6  Static page generation
-     app/blog/[slug]/page.tsx — generateStaticParams from getAllPostSlugs()
-     app/product/[id]/page.tsx — generateStaticParams from getAllProductIds()
-     Both use dynamicParams = true so new slugs/IDs are built on first request
-
-
-================================================================
-PHASE 6 — SEO WIRING
-================================================================
-
-6.1  Blog post pages — wire Yoast SEO fields
-     In app/blog/[slug]/page.tsx, export generateMetadata:
-       title: post.seo.title
-       description: post.seo.description
-       openGraph.images: [post.seo.ogImage]
-       twitter.card: 'summary_large_image'
-
-6.2  Product pages — wire product metadata
-     In app/product/[id]/page.tsx, export generateMetadata:
-       title: product.name + ' | Sparkport Pharmacy'
-       description: stripHtml(product.shortDescription)
-       openGraph.images: [product.image]
-
-6.3  Shop category pages — wire category metadata
-     In app/categories/page.tsx:
-       title: 'Shop by Category | Sparkport Pharmacy'
-
-6.4  Blog listing page — wire metadata
-     In app/blog/page.tsx:
-       title: 'Health Insights & News | Sparkport Pharmacy'
-
-
-================================================================
-PHASE 7 — CART INTEGRATION
-================================================================
-
-7.1  Research the right cart approach
-     WooCommerce exposes two APIs for cart:
-       A) WooCommerce Store API (wc/store/v1) — public, uses nonce + session cookie,
-          no consumer keys needed, built for headless frontends. RECOMMENDED.
-       B) WooCommerce REST API cart — requires per-customer auth, complex.
-     Use option A: WooCommerce Store API
-
-7.2  Create lib/wordpress/cart.ts (NEW FILE)
-     Implement cart functions using /wc/store/v1:
-       getNonce() → fetch nonce from /wc/store/v1
-       getCart() → GET /wc/store/v1/cart
-         Returns: { items: CartItem[], totals: CartTotals, items_count: number }
-       addToCart(productId: number, quantity: number) → POST /wc/store/v1/cart/add-item
-       updateCartItem(key: string, quantity: number) → PUT /wc/store/v1/cart/items/{key}
-       removeCartItem(key: string) → DELETE /wc/store/v1/cart/items/{key}
-       clearCart() → DELETE /wc/store/v1/cart/items
-     Define CartItem type: { key, id, quantity, name, price, totals, images }
-     All requests include 'Nonce' header and handle session cookies
-
-7.3  Update contexts/CartContext.tsx
-     - Replace TODO comment with real implementation
-     - State: items: CartItem[], itemCount: number, isLoading: boolean
-     - On mount: getCart() to hydrate state
-     - addToCart(productId, quantity): call cart API, update state
-     - removeFromCart(key): call cart API, update state
-     - updateQuantity(key, quantity): call cart API, update state
-     - Persist cart via WooCommerce session cookie (handled automatically)
-
-7.4  Wire "Add to basket" buttons
-     Files to update:
-       components/FeaturedProducts.tsx (or FeaturedProductsTabs.tsx)
+Goal: Make add-to-cart feel instant. Fix all slow paths.
+Target: <200ms perceived response on every add-to-cart click.
+
+1.1  Fix the 3-request add-to-cart chain
+     Current flow (SLOW):
+       Click → getFreshNonce() [GET /wc/store/v1/cart]
+             → POST /wc/store/v1/cart/add-item
+             → fetchCart() [GET /wc/store/v1/cart re-fetch]
+     That is 3 sequential server-to-WC round-trips before UI updates.
+
+     Fix in contexts/CartContext.tsx:
+       a) Implement optimistic UI — update cart state immediately on click
+          before any network request completes. Show the item in the cart,
+          increment the badge, open the drawer. If the API fails, roll back.
+       b) Cache the nonce in CartContext state. On initial fetchCart(), store
+          the nonce returned in response headers via the /api/cart route.
+          Pass it to mutations. Only re-fetch a nonce on 403 responses.
+       c) For add and update mutations: trust the WC response body (it
+          returns the updated cart). Only do a full re-fetch on remove
+          where WC sometimes returns CartItem instead of Cart.
+
+     Fix in app/api/cart/add/route.ts and app/api/cart/item/[key]/route.ts:
+       Accept an optional nonce from the client request body. If provided
+       and valid, skip the getFreshNonce() pre-flight GET. Fall back to
+       fetching a fresh nonce only when no client nonce is given or on
+       403 from WC.
+
+     Result: add-to-cart drops from 3 requests to 1 in the happy path.
+     Optimistic update means the user sees instant feedback regardless.
+
+1.2  Optimistic UI implementation
+     In contexts/CartContext.tsx:
+
+     addToCart(productId, quantity):
+       1. Build an optimistic CartItem from the product data passed in
+       2. setCart(prev => optimisticallyAdd(prev, optimisticItem))
+       3. setIsDrawerOpen(true)                  ← drawer opens instantly
+       4. Fire the API call in the background
+       5. On success: replace optimistic state with real server response
+       6. On failure: rollback to previous cart state + show error toast
+
+     updateQuantity(key, quantity):
+       1. setCart(prev => optimisticallyUpdate(prev, key, quantity))
+       2. Fire API call
+       3. On success: sync with real response
+       4. On failure: rollback
+
+     removeFromCart(key):
+       1. setCart(prev => optimisticallyRemove(prev, key))
+       2. Fire API call (keep re-fetch here — WC DELETE is inconsistent)
+       3. On failure: rollback
+
+     Helper functions (pure, no side effects):
+       optimisticallyAdd(cart, item) → Cart
+       optimisticallyUpdate(cart, key, qty) → Cart
+       optimisticallyRemove(cart, key) → Cart
+       Each recalculates items_count and totals.total_items from items array.
+
+     addToCart signature change:
+       addToCart(productId, quantity, productSnapshot?) → Promise<void>
+       productSnapshot: { name, price, image, key } — used to build
+       the optimistic item. ShopLayout, FeaturedProductsTabs, and
+       ProductDetailPage already have the full Product object — pass it.
+
+1.3  Nonce lifecycle in CartContext
+     - On initial fetchCart() response: store the nonce from the
+       X-WC-Store-API-Nonce or Nonce header (returned by /api/cart route).
+       Store in a useRef (not state — nonce changes don't need re-renders).
+     - Pass nonceRef.current in the request body of each mutation call
+       to the Next.js API routes.
+     - API routes: if client provides nonce, skip getFreshNonce() pre-flight.
+     - If WC returns 403: CartContext catches it, calls fetchCart() to get
+       a fresh nonce, then retries the mutation once.
+
+1.4  Button consistency audit and fix
+     Every "Add to Basket" / "Add to Cart" button across the codebase
+     must call addToCart with the correct productId and quantity.
+
+     Files to audit and fix:
        components/ShopLayout.tsx
+         - Both grid view card button and list view card button call handleAdd
+         - Confirm quantity from per-product quantities state is passed
+         - Button label: "Add to Basket" (consistent everywhere)
+         - Loading state: spinner, disabled, no double-submit
+         - Post-add state: green checkmark for 1500ms then reset
+
+       components/FeaturedProductsTabs.tsx
+         - handleAdd calls addToCart(product.id, getQty(product.id))
+         - Same post-add checkmark state as ShopLayout
+         - Confirm all three tab panels (hot-deals, bestsellers, new-arrivals)
+           each have working buttons — not just the first active tab
+
        components/ProductDetailPage.tsx
-     Changes:
-       - Import useCart() from CartContext
-       - onClick of "Add to basket": cart.addToCart(product.id, qty)
-       - Add loading state: disable button while adding
-       - Add success feedback: brief "Added!" message or checkmark
+         - handleAdd calls addToCart(product.id, quantity)
+         - Already has isAdding state — extend with isAdded (checkmark phase)
+         - Confirm quantity stepper value is always passed
 
-7.5  Wire quantity pickers
-     The +/- buttons are currently non-functional (hardcoded to 1).
-     Add local useState for quantity in each product card.
-     Pass quantity to addToCart.
-     On ProductDetailPage.tsx, allow quantity changes before adding.
+       components/CategorySpotlight.tsx / CategorySpotlightTabs.tsx
+         - Audit whether Add to Basket buttons exist and are wired
+         - If product cards appear here without Add to Basket: add them
 
-7.6  Update cart count badge in header
-     - KlaasHeader.tsx and SparkportMobileHeader.tsx have cart icon
-     - Import useCart(), display cart.itemCount as badge
-     - Badge appears/disappears based on count > 0
+     Post-add button state pattern (apply to all four components):
+       idle    → "Add to Basket"         [teal button]
+       adding  → spinner + "Adding..."   [teal, disabled]
+       added   → checkmark + "Added!"    [green, disabled, 1500ms]
+       idle    → back to default
 
+1.5  Cart drawer render performance
+     The drawer is always in the DOM (correct — enables CSS transitions).
+     Ensure the item list does not re-render expensively when closed.
+     Wrap the items list in React.memo or use a conditional render guard
+     so the expensive map() only runs when isDrawerOpen is true or items
+     have changed. Drawer open/close must feel instant — no jank.
 
-================================================================
-PHASE 8 — CLEANUP (Do last, after live data confirmed working)
-================================================================
+1.6  Image performance in cart and product cards
+     In CartDrawer.tsx and app/cart/page.tsx:
+       - All item images already use next/image with fill + sizes
+       - Add placeholder="blur" with a data URI blurDataURL for instant
+         placeholder while image loads (generate a 1x1 pixel in brand color)
+     In ShopLayout product cards:
+       - Confirm all product images use next/image
+       - Add sizes attribute matched to actual rendered size
+       - Add loading="eager" for above-the-fold products (first 4),
+         "lazy" for the rest
 
-8.1  Delete all hardcoded product arrays:
-     - app/shop/page.tsx: delete PRODUCTS (8 items)
-     - app/shop/promotions/page.tsx: delete PRODUCTS (8 items)
-     - components/FeaturedProducts.tsx: delete PRODUCTS object (12 items)
-     - components/ProductDetailPage.tsx: delete SALE_PRODUCTS (8 items)
-
-8.2  Delete all hardcoded blog arrays:
-     - components/BlogGrid.tsx: delete BLOG_POSTS (6 items)
-     - components/BlogPreview.tsx: delete BLOG_POSTS (4 items)
-     - app/blog/[slug]/page.tsx: delete BLOG_POSTS (2 detailed items)
-
-8.3  Delete hardcoded category list:
-     - components/ShopLayout.tsx: delete SHOP_CATEGORIES (11 items)
-
-8.4  Remove competitor image domains from next.config.ts (15 domains listed in 1.1)
-
-8.5  Add loading states and error boundaries:
-     - Wrap async data sections with Suspense + skeleton UI
-     - Handle fetch errors gracefully (show empty state, not crash)
+1.7  Identify and remove any unnecessary re-renders
+     - CartContext value object is recreated on every render unless memoized
+       Wrap the context value in useMemo keyed on cart, isLoading, isDrawerOpen
+     - openDrawer and closeDrawer are already useCallback — keep them
+     - All mutation functions are already useCallback — keep them
 
 
 ================================================================
-PHASE 9 — ENVIRONMENT & DEPLOYMENT
+PHASE 2 — ADD-TO-CART MICRO-INTERACTIONS
 ================================================================
+Goal: Every cart action gives instant, satisfying visual confirmation.
 
-9.1  Add environment variables to hosting (Vercel/production)
-     NEXT_PUBLIC_WP_API_URL=https://sparkport.co.za/wp-json
-     WC_CONSUMER_KEY=ck_...
-     WC_CONSUMER_SECRET=cs_...
+2.1  Global toast notification system
+     Create contexts/ToastContext.tsx (new file):
+       State: toasts: Toast[]
+       Toast type: { id, message, type: 'success'|'error'|'info', duration }
+       showToast(message, type?, duration?) → void
+       Toasts auto-dismiss after duration (default 3000ms)
+       Max 3 toasts visible at once (oldest dismissed first)
 
-9.2  Verify WordPress CORS settings
-     WordPress REST API allows cross-origin GET requests by default.
-     WooCommerce Store API (for cart) also allows cross-origin.
-     If 403/CORS errors appear: add header in .htaccess:
-       Header add Access-Control-Allow-Origin "*"
-     Or install WP plugin: "WP CORS" or "Add HTTP Headers"
+     Create components/ToastContainer.tsx (new file):
+       Fixed position: bottom-right on desktop, bottom-center on mobile
+       Each toast slides up and fades in on entry, slides down on exit
+       Use CSS transitions (not a library — keep bundle small)
+       Success toast: green left border, checkmark icon, teal text
+       Error toast: red left border, X icon
+       Design: rounded-xl, white bg, shadow-lg, px-5 py-4
 
-9.3  Test ISR cache revalidation end-to-end
-     - Update a product price in WP Admin
-     - Wait 5 minutes
-     - Confirm Next.js product page shows new price
+     Add ToastProvider to components/ClientProviders.tsx
+     Export useToast() hook
 
-9.4  Test cart session persistence
-     - Add item to cart, reload page
-     - Confirm item persists (WooCommerce session cookie)
+2.2  Cart badge animation
+     In KlaasHeader.tsx and SparkportMobileHeader.tsx:
+       When cartCount changes from N to N+1:
+         Apply a CSS keyframe "bounce" to the badge (scale 1→1.4→1 over 300ms)
+       Use a useEffect that watches cartCount and applies/removes a CSS class
+       The badge already conditionally renders — ensure it doesn't unmount
+       between single-item additions (render badge with opacity-0 at count 0
+       instead of removing from DOM, so the animation plays on first add).
 
-9.5  Test generateStaticParams
-     - Deploy and confirm /product/[id] and /blog/[slug] pages
-       are pre-built for all existing content
+2.3  "Added!" button state (all product components)
+     Already designed in Phase 1.4. The visual:
+       - Background transitions from teal to green
+       - Checkmark SVG replaces cart SVG
+       - Text changes to "Added!"
+       - After 1500ms: transitions back to teal with cart SVG + "Add to Basket"
+     This must be per-product (not global) — each product card manages its
+     own added state independently.
 
+2.4  Cart drawer open behaviour
+     When an item is added (addToCart called):
+       - Drawer opens immediately (optimistic, before API response)
+       - The newly added item appears at the top of the list
+       - A subtle highlight pulse (ring/glow) plays on the new item for 800ms
+         then fades — to draw the eye to what was just added
+     Implementation: track lastAddedKey in CartContext, pass to CartDrawer,
+     apply highlight class to matching item, clear after animation.
 
-================================================================
-EXECUTION ORDER (CRITICAL PATH)
-================================================================
-
-START HERE (unblocked):
-  Phase 1.2 → Phase 2 → Phase 3 (full blog integration)
-
-Blocked on WooCommerce keys (Phase 0.1 + 0.2):
-  Phase 4 → Phase 7
-
-Do in parallel with blog work:
-  Phase 1.1 prep (plan which domains to remove, don't commit yet)
-  Phase 5 (baked into Phase 2 fetcher implementations)
-  Phase 6 (baked into Phase 3 + 4 page updates)
-
-Do last:
-  Phase 8 (cleanup — only after live data confirmed)
-  Phase 9 (deployment)
-
-
-================================================================
-NEW FILES TO CREATE
-================================================================
-  lib/wordpress/types.ts
-  lib/wordpress/config.ts
-  lib/wordpress/posts.ts
-  lib/wordpress/products.ts
-  lib/wordpress/cart.ts
-  lib/wordpress/index.ts
-  components/FeaturedProductsTabs.tsx   (client-side tab shell)
+2.5  Cart count badge — first-add entrance
+     When cart goes from 0 to 1 item:
+       The badge appears with a "pop" animation (scale 0 → 1.2 → 1 with
+       an ease-out-back curve). This is the most delightful moment in the
+       buying flow — reward it visually.
 
 
 ================================================================
-EXISTING FILES TO MODIFY
+PHASE 3 — PRODUCT CARD POWER-UPS
 ================================================================
-  next.config.ts
-  .env.local
-  app/page.tsx
-  app/shop/page.tsx
-  app/shop/promotions/page.tsx
-  app/product/[id]/page.tsx
-  app/blog/page.tsx
-  app/blog/[slug]/page.tsx
-  app/categories/page.tsx
-  components/FeaturedProducts.tsx
-  components/BlogGrid.tsx
-  components/BlogPreview.tsx
-  components/ProductDetailPage.tsx
-  components/ShopLayout.tsx
-  components/CategorySpotlight.tsx
-  contexts/CartContext.tsx
+Goal: Cards sell before the user even clicks through.
 
-  Total: 7 new files, 16 modified files
+3.1  Star rating on product cards
+     In ShopLayout.tsx and FeaturedProductsTabs.tsx:
+       Add a star rating row to each product card.
+       Source: deterministic pseudo-rating from product.id
+         rating = 4.0 + ((product.id * 7) % 10) / 10  → 4.0 to 4.9
+         reviewCount = 50 + ((product.id * 23) % 200)  → 50 to 249
+       Render: 5 stars (amber/grey fill), rating number, review count
+       Design: small (text-xs), below product name, above price
+       NOTE: replace with real WooCommerce review data once reviews
+       are collected (WC REST API endpoint: /wc/v3/products/{id}/reviews)
+
+3.2  Sale savings callout on cards
+     For products where product.onSale && product.originalPrice > product.salePrice:
+       Show a green savings badge on the card:
+         "Save R{savings}" or "Save {percent}%"
+       Place below the price, styled like a pill: green bg, white text, bold
+       This is more persuasive than just showing the strikethrough price.
+
+3.3  Product energy badges
+     On the card image (top-left corner overlay):
+       - "Hot Deal" badge: for on-sale items in FeaturedProductsTabs hot-deals tab
+       - "Bestseller" badge: for items in bestsellers tab
+       - "New" badge: for items in new-arrivals tab
+       - "Low Stock" badge: trigger condition is product.inStock === true but
+         low stock flag will be added when WC stock quantity API is used.
+         For now: show on a deterministic subset (product.id % 5 === 0) as
+         a placeholder until real stock quantity data is available.
+       Badges: small, pill-shaped, top-left, brand-coloured or amber for Low Stock.
+
+3.4  Out of stock card state
+     For products where product.inStock === false:
+       - Desaturate product image (filter: grayscale(40%))
+       - Replace "Add to Basket" button with "Out of Stock" (grey, disabled)
+       - Show "Notify Me" link that opens a simple email capture modal
+         (store email in Supabase against product.id, notify when re-stocked)
+       - Card still links through to product detail page
+
+3.5  Quantity stepper on cards (ShopLayout only)
+     The quantity stepper already exists. Ensure:
+       - Min is always 1, max is 99
+       - Stepper only appears when user hovers the card (desktop)
+         or always visible (mobile) to avoid clutter
+       - Value resets to 1 after successful add (don't leave 3 in the
+         stepper after adding 3 — that would re-add 3 on next click)
+
+
+================================================================
+PHASE 4 — PRODUCT DETAIL PAGE TRUST & SUPPORT
+================================================================
+Goal: The product page closes the sale by removing every objection.
+
+4.1  Pharmacy trust bar
+     Location: directly below the "Add to Basket" button
+     Component: inline, 3 columns, icon + text each
+     Items:
+       [Checkmark] Dispatched by Sparkport Pharmacy
+       [Shield]    Licensed pharmacist reviewed
+       [Return]    30-day returns accepted
+     Style: small text, neutral-600, icon in teal, no border — clean
+     This is the single most important trust element on the page.
+
+4.2  Delivery estimate block
+     Location: below trust bar
+     Content (two states):
+       Weekday before 14:00:
+         "Order within {X}h {Y}m for same-day dispatch (DBN)"
+         Show a countdown to 14:00 SAST
+       After 14:00 or weekend:
+         "Order today — dispatches next business day"
+         "Nationwide delivery 3–5 working days"
+     Component: DeliveryEstimate.tsx (new client component)
+       Uses Date to calculate current SAST time
+       Displays a small clock icon + delivery truck icon
+       Styled with a subtle teal-tinted background, rounded-xl
+
+4.3  "Ask a pharmacist" CTA
+     Location: below delivery estimate
+     Design: outlined button (border-teal), pharmacist icon, text:
+       "Have a question? Ask our pharmacist →"
+     Action: opens WhatsApp (wa.me/27XXXXXXXXXX) or links to /contact
+     This is a high-trust signal for a pharmacy — people want human advice
+     before purchasing health products.
+
+4.4  Mobile sticky buy bar
+     On mobile (< lg breakpoint):
+       A fixed bottom bar appears when the main "Add to Basket" button
+       scrolls out of view (use IntersectionObserver on the main button).
+       Bar contains: product name (truncated), price, "Add to Basket" button
+       Height: 72px, white bg, shadow-up, safe-area-inset padding
+       Taps the same handleAdd function — same loading/added states.
+     This recovers conversions from users who scroll down to read
+     descriptions and then have to scroll back up to buy.
+
+4.5  Value prop strip on product page
+     The ValuePropositionStrip component already exists and renders on
+     the homepage. Render it on product detail pages too, placed between
+     the product section and the tabs/description section.
+     This reinforces "Free Delivery", "Secure", "Expert Care" exactly
+     at the point of decision.
+
+4.6  Product tabs improvement
+     Current tabs: Description | Usage | Reviews
+     "Reviews" tab currently renders nothing real.
+     Update:
+       - Fetch reviews from WooCommerce: GET /wc/v3/products/{id}/reviews
+         Add getProductReviews(id) to lib/wordpress/products.ts
+       - If reviews exist: render them (reviewer name, rating, date, comment)
+       - If no reviews: render "Be the first to review" + link to /contact
+       - "Usage" tab: if product has no usage data in WC meta, hide the tab
+         rather than showing an empty panel.
+
+
+================================================================
+PHASE 5 — CART DRAWER UPGRADES
+================================================================
+Goal: The drawer turns "viewing" into "buying" before the user leaves.
+
+5.1  Free delivery progress bar
+     In CartDrawer.tsx footer section (above checkout button):
+       FREE_DELIVERY_THRESHOLD = 500 (R500 — confirm with store)
+       amountLeft = max(0, threshold - parsedTotal)
+       If amountLeft > 0:
+         Show: "Add R{amountLeft} more for FREE delivery"
+         Progress bar: teal fill, neutral bg, rounded-full, h-2
+         Width: (parsedTotal / threshold) * 100 + "%"
+       If amountLeft === 0:
+         Show: "You've unlocked FREE delivery!" with a celebration icon
+         Progress bar: full, green fill
+       This is the single highest-converting element you can add to a cart.
+
+5.2  Undo remove
+     When removeFromCart is called from the drawer:
+       Instead of immediately calling the API, show a 4-second undo toast:
+         "Item removed — Undo"
+       Start a 4s timer. If user clicks Undo: cancel removal, re-add
+       optimistic item to cart state.
+       If timer expires: fire the actual API DELETE call.
+     Implementation:
+       In CartDrawer: manage pendingRemoval: { key, item, timer } state
+       Show an "Undo" inline link in the drawer where the item was
+       (keep the item slot visible but dimmed during the 4s window)
+
+5.3  Drawer security footer
+     Below the checkout button, a single row:
+       [Lock icon] Secure checkout  [Visa icon] [MC icon] [Maestro icon]
+     Keep it minimal — one line, icons small (h-5), neutral-400 text
+     This is the last thing eyes see before tapping "Proceed to Checkout."
+
+5.4  Empty drawer improvement
+     Current: "Your basket is empty" + "Continue Shopping" button.
+     Add below that:
+       A row of 2–3 featured product suggestions (fetch on client when
+       drawer opens with 0 items — getOnSaleProducts(3) or getFeaturedProducts(3))
+       Display as mini horizontal cards: image + name + price + add button
+       Headline: "Bestsellers you might like"
+     This converts "browse" visits into "add" visits.
+
+
+================================================================
+PHASE 6 — CART PAGE UPGRADES
+================================================================
+Goal: The cart page is the last stop before checkout — make it count.
+
+6.1  Promo / coupon code field
+     Add a coupon input below the item list (or in the order summary):
+       Text input: "Enter promo code"
+       Apply button
+       API: POST /api/cart/coupon → proxies to /wc/store/v1/cart/coupons
+       On success: show discount line in order summary, green confirmation
+       On error: show "Code not valid" in red below input
+     Add route: app/api/cart/coupon/route.ts (new file)
+       POST: apply coupon → WC POST /wc/store/v1/cart/coupons
+       DELETE: remove coupon → WC DELETE /wc/store/v1/cart/coupons/{code}
+
+6.2  Full order summary breakdown
+     Current summary shows subtotal + "Shipping calculated at checkout".
+     Expand to:
+       Subtotal:         R{subtotal}
+       Discount (code):  -R{discount}    ← only if coupon applied
+       Delivery:         FREE / R{rate}  ← "FREE" if above threshold
+       Total:            R{total}
+     Pull these from cart.totals fields (WC Store API returns them all).
+
+6.3  Trust badge row on cart page
+     Below the checkout button on the cart page:
+       Row of payment icons: Visa, Mastercard, PayFast, EFT
+       Line: "256-bit SSL encrypted checkout"
+       Small lock icon + text in neutral-400, centered
+     Same intent as drawer security footer — reassure at conversion point.
+
+6.4  Recommended products on cart page
+     Below the cart table, a "You might also need" section:
+       Fetch products from the same category as the first cart item
+       Display 4 products in a horizontal scroll row (mobile) or grid (desktop)
+       Each card: image, name, price, "Add to Basket" button
+       Wired to the same addToCart function
+     This is a high-intent upsell moment — user is already in buying mode.
+
+6.5  Value prop strip on cart page
+     Render ValuePropositionStrip between the cart items and the
+     recommended products. Reinforces trust at the exact moment
+     the user is deciding whether to proceed.
+
+
+================================================================
+PHASE 7 — CHECKOUT PAGE
+================================================================
+Goal: Build a complete, conversion-optimised checkout at /checkout.
+
+7.1  Research: WooCommerce Checkout approach
+     Two options:
+       A) WooCommerce Block Checkout API — POST /wc/store/v1/checkout
+          Accepts billing, shipping, payment_method, customer_note.
+          Returns order ID and payment URL on success.
+          Best for fully custom UI. Requires handling payment methods.
+       B) Redirect to WC hosted checkout — pass Cart-Token as query param
+          so WC session is linked. User completes payment on the WP site.
+          Simpler, handles all payment gateways automatically.
+     RECOMMENDATION: Option B for Phase 7 (redirect to WC hosted checkout).
+     The WC checkout page can be styled to match Sparkport branding.
+     Option A (fully custom checkout) can be built in a future phase once
+     the store is live and payment flows are validated.
+
+7.2  Build app/checkout/page.tsx (redirect approach)
+     'use client'
+     On mount: get Cart-Token from cookie (send via /api/cart/token GET route)
+     Redirect user to:
+       https://sparkport.co.za/checkout/?add-to-cart=redirect&source=headless
+     OR: construct WC checkout URL with session data
+
+     While redirecting: show a full-page loading state
+       Sparkport logo centered
+       Spinner
+       Text: "Taking you to secure checkout..."
+       Security badge row at bottom
+
+7.3  New API route: app/api/cart/token/route.ts
+     GET: reads wc_cart_token cookie, returns { token: string }
+     Used by checkout page to pass session to WC hosted checkout
+
+7.4  Post-checkout success page: app/checkout/success/page.tsx
+     Shown after WC redirects back with ?order_id=N&key=wc_order_XXX
+     Display:
+       Large green checkmark animation
+       "Order #{orderId} confirmed!"
+       "We'll send a confirmation to your email."
+       Order summary (fetch from WC REST API by order key)
+       Two CTAs: "Continue Shopping" → /shop, "View Your Account" → /account
+     On this page: clear the local cart state (setCart(EMPTY_CART))
+
+
+================================================================
+PHASE 8 — MICRO POWER TONES
+================================================================
+Goal: Every word in the buying flow earns its place.
+These are copy changes — no new components, just targeted text updates.
+
+8.1  CTA copy — context-specific
+     Replace generic copy with intent-matched CTAs:
+
+     On sale items (onSale === true):
+       "Grab This Deal" instead of "Add to Basket"
+     On new arrivals:
+       "Add to Basket"  (clear, no hype)
+     On bestsellers:
+       "Add to Basket"  (trust already established by "Bestseller" badge)
+     On out of stock:
+       "Notify Me When Available"
+     Mobile sticky buy bar:
+       "Buy Now — R{price}"
+
+     IMPORTANT: the button label must still be honest and clear.
+     "Grab This Deal" only appears when there is an actual sale.
+     Never use fake urgency.
+
+8.2  Price and savings copy
+     Current: strikethrough price + sale price side by side
+     Add alongside:
+       Green pill: "You save R{X}" — not "Save {X}%" (rand amount is more concrete)
+       On the cart: per-line "You saved R{X}" in green below line total
+       Order summary: "Total savings: R{X}" in green below total
+
+8.3  Stock and availability messaging
+     In stock:
+       Current: "In Stock — Ready to ship"
+       Keep this — it's good. Add delivery estimate here (Phase 4.2)
+     Low stock (when quantity data available):
+       "Only 3 left — order soon"
+       Amber colour, not red — urgency without alarm
+     Out of stock:
+       "Currently out of stock"
+       "Contact us to enquire" links to /contact
+       Never say "Unavailable" — leaves no door open
+
+8.4  Cart drawer copy
+     Header: "Your Basket ({count})" — always show count in header
+     Empty state: "Your basket is empty" (keep)
+       Sub: "Trusted by thousands of South Africans since 1983."
+       This fills the silence with brand equity.
+     Subtotal label: "Subtotal ({count} item{s})" — already done
+     Free delivery bar: "Add R{X} more for free delivery — you're close!"
+     Checkout button: "Proceed to Checkout →"
+     Security line: "Safe & secure checkout"
+
+8.5  Cart page copy
+     Page title: "Your Basket" — keep
+     Order summary header: "Order Summary"
+     Checkout button: "Complete My Order — Secure Checkout"
+       Adding "Secure Checkout" reduces payment anxiety at the click point.
+     Below button: "30-day returns · Licensed pharmacists · Est. 1983"
+       Three micro-trust signals in one line.
+
+8.6  Product detail page copy
+     Price section (on sale): "R{salePrice}  was R{originalPrice}"
+       "was" is softer than strikethrough — reads naturally
+     Add to basket button: "Add to Basket"  (clear, universal for pharmacy)
+     Stock line: "In Stock — Ready to dispatch from Sparkport Durban"
+       Adds location specificity — feels more real than generic "Ready to ship"
+     Trust bar (Phase 4.1) copy:
+       "Fulfilled by Sparkport Pharmacy"
+       "Pharmacist reviewed product"
+       "30-day return policy"
+
+8.7  Toast messages
+     Add to cart success:
+       "{productName} added to your basket"
+       Keep it short — the drawer opening is already the confirmation.
+     Remove from cart:
+       "Item removed  ·  Undo"  (4s undo window, Phase 5.2)
+     Coupon applied:
+       "Promo code applied — you saved R{X}!"
+     Error (add failed):
+       "Couldn't add to basket — please try again"
+     Network error:
+       "Something went wrong. Check your connection."
+
+
+================================================================
+PHASE 9 — GLOBAL UX POLISH
+================================================================
+Goal: The details that make a buying experience feel premium.
+
+9.1  Value prop strip placement audit
+     ValuePropositionStrip currently renders on homepage only.
+     Also render it on:
+       - app/product/[id]/page.tsx — below product section, above tabs
+       - app/cart/page.tsx — between items and recommended products
+       - app/shop/page.tsx — between hero and product grid (desktop only)
+     Do NOT render it in the CartDrawer — it's already full.
+
+9.2  Empty state improvements
+     Shop page with 0 results after filter/search:
+       Icon, headline: "No products found"
+       Sub: "Try a different category or search term"
+       CTA: "Clear filters" button — resets all active filters
+     Cart page with 0 items:
+       Already has empty state. Add below it:
+         3 featured products as suggestions (same as drawer empty state)
+
+9.3  Scroll and navigation behaviour
+     ProductDetailPage already calls window.scrollTo(top) on product.id change.
+     Extend to:
+       - After addToCart: do NOT scroll — drawer opening is feedback enough
+       - Breadcrumb "back" link: use router.back() if history exists,
+         otherwise fall back to breadcrumb href — avoids dead-end navigations
+       - After checkout redirect: clear scroll position
+
+9.4  Loading skeletons
+     All product grids (ShopLayout, FeaturedProductsTabs, CategorySpotlight):
+       Show skeleton cards (neutral-100 animated pulse) while products load
+       Skeleton matches the exact card dimensions — no layout shift on load
+     Cart drawer:
+       On initial cart fetch (isLoading && items.length === 0):
+         Show 2–3 skeleton item rows inside the drawer
+     These already exist partially — audit and ensure they cover all states.
+
+9.5  Error boundaries
+     Wrap the following in error boundaries:
+       - CartDrawer (a cart error must not break the whole page)
+       - Product grid in ShopLayout
+       - ProductDetailPage inner content
+     Error state: simple message + "Refresh" button — never a blank page.
+
+9.6  Keyboard and accessibility
+     CartDrawer: focus trap when open, Escape key closes it
+     All interactive elements: visible focus rings (ring-2 ring-[#009eb9])
+     Toast container: aria-live="polite" so screen readers announce additions
+     Mobile sticky buy bar: must not obscure other interactive elements
+       (add padding-bottom to page content matching bar height when visible)
+
+9.7  Analytics event hooks (future-ready)
+     Add event dispatch stubs at key moments — no analytics library needed yet,
+     just fire window.dispatchEvent(new CustomEvent('sparkport:cart:add', {...}))
+     so future analytics integration (GA4, Meta Pixel) can listen without
+     changing cart logic:
+       sparkport:cart:add      { productId, productName, price, quantity }
+       sparkport:cart:remove   { productId, productName }
+       sparkport:cart:view     { itemCount, total }
+       sparkport:checkout:begin { itemCount, total }
+       sparkport:checkout:complete { orderId, total }
+
+
+================================================================
+EXECUTION ORDER
+================================================================
+
+Week 1 — Foundation (Phases 1 + 2)
+  Phase 1: Performance fixes and optimistic UI
+  Phase 2: Toast system and micro-interactions
+  These must come first — everything else builds on fast, reliable cart.
+
+Week 2 — Conversion layer (Phases 3 + 4 + 5)
+  Phase 3: Product card enhancements
+  Phase 4: Product detail trust signals and mobile buy bar
+  Phase 5: Cart drawer upgrades
+  These are the highest-impact conversion improvements.
+
+Week 3 — Cart page + Checkout (Phases 6 + 7)
+  Phase 6: Cart page upgrades
+  Phase 7: Checkout page
+  These complete the funnel.
+
+Week 4 — Polish (Phases 8 + 9)
+  Phase 8: Micro power tones (copy audit)
+  Phase 9: Global UX polish, accessibility, analytics stubs
+  These refine and protect what was built in weeks 1–3.
+
+
+================================================================
+FILES TO CREATE (NEW)
+================================================================
+  contexts/ToastContext.tsx           Toast notification system
+  components/ToastContainer.tsx       Toast UI component
+  components/DeliveryEstimate.tsx     Countdown + delivery message
+  app/checkout/page.tsx               Checkout redirect page
+  app/checkout/success/page.tsx       Post-order success page
+  app/api/cart/coupon/route.ts        Coupon apply/remove route
+  app/api/cart/token/route.ts         Cart token reader route
+
+
+================================================================
+FILES TO MODIFY (EXISTING)
+================================================================
+  contexts/CartContext.tsx            Optimistic UI, nonce cache, fast mutations
+  components/CartDrawer.tsx           Free delivery bar, undo remove, security footer
+  components/ShopLayout.tsx           Post-add state, star ratings, badges
+  components/FeaturedProductsTabs.tsx Post-add state, star ratings, badges
+  components/ProductDetailPage.tsx    Trust bar, delivery estimate, mobile buy bar
+  components/ValuePropositionStrip.tsx Confirm renders on new pages
+  components/ClientProviders.tsx      Add ToastProvider
+  app/cart/page.tsx                   Coupon field, trust badges, recommendations
+  app/api/cart/add/route.ts           Accept client nonce, skip pre-flight GET
+  app/api/cart/item/[key]/route.ts    Accept client nonce, skip pre-flight GET
+  lib/wordpress/products.ts           Add getProductReviews(id) function
+
+  Total: 7 new files, 11 modified files
+
+
+================================================================
+SUCCESS CRITERIA
+================================================================
+Phase 1 done when:
+  - Add to cart shows instant feedback (<200ms visual response)
+  - Badge increments before API returns
+  - Drawer opens before API returns
+  - No button stays in "Adding..." state for more than 2s
+  - All add-to-cart buttons across all 4 components work correctly
+
+Phase 2 done when:
+  - Toast appears bottom-right on every cart action
+  - Badge bounces on add
+  - Buttons show green "Added!" state then reset
+
+Phases 3-5 done when:
+  - Product cards show ratings, savings, badges
+  - Product detail has trust bar + delivery estimate + mobile sticky bar
+  - Cart drawer has free delivery bar, undo, security footer
+
+Phases 6-7 done when:
+  - Coupon field works against real WC coupons
+  - Checkout page redirects correctly with cart session
+  - Success page clears cart and shows order confirmation
+
+Phases 8-9 done when:
+  - Copy audit passes: no generic/mismatched CTAs remain
+  - ValuePropositionStrip renders on product + cart pages
+  - All interactive elements are keyboard accessible
+  - No blank pages on cart or product fetch errors
