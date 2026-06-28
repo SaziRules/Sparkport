@@ -17,6 +17,7 @@ type Props = {
   hero: React.ReactNode;
   linkSource: string;
   initialCategory?: string;
+  initialQuery?: string;
 };
 
 const PAGE_SIZE = 24;
@@ -47,12 +48,12 @@ function StarRating({ productId }: { productId: number }) {
   );
 }
 
-export default function ShopLayout({ products, categories, hero, linkSource, initialCategory }: Props) {
+export default function ShopLayout({ products, categories, hero, linkSource, initialCategory, initialQuery }: Props) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'All Products');
   const [priceRange, setPriceRange] = useState([0, 500]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery ?? '');
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
   const [quantities, setQuantities] = useState<Record<number, number>>({});

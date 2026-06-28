@@ -25,17 +25,19 @@ const hero = (
 );
 
 interface PageProps {
-  searchParams?: Promise<{ category?: string }> | { category?: string };
+  searchParams?: Promise<{ category?: string; q?: string }> | { category?: string; q?: string };
 }
 
 export default async function ShopPage(props: PageProps) {
   const searchParams = await Promise.resolve(props.searchParams ?? {});
-  const categorySlug = (searchParams as { category?: string }).category;
+  const { category: categorySlug, q } = searchParams as { category?: string; q?: string };
 
   const categories = await getProductCategories();
   const categoryObj = categorySlug ? categories.find(c => c.slug === categorySlug) : undefined;
 
-  const products = await getAllProducts(categoryObj ? { category: categoryObj.id } : undefined);
+  const products = q
+    ? await getAllProducts({ search: q })
+    : await getAllProducts(categoryObj ? { category: categoryObj.id } : undefined);
 
   return (
     <ShopLayout
@@ -44,6 +46,7 @@ export default async function ShopPage(props: PageProps) {
       hero={hero}
       linkSource="shop"
       initialCategory={categoryObj?.name}
+      initialQuery={q}
     />
   );
 }

@@ -152,12 +152,14 @@ export async function getProductReviews(productId: number): Promise<ProductRevie
 export async function getAllProducts(params?: {
   category?: number;
   on_sale?: boolean;
+  search?: string;
 }): Promise<Product[]> {
   const base = new URLSearchParams({
     status: 'publish',
     per_page: '100',
     ...(params?.category ? { category: String(params.category) } : {}),
     ...(params?.on_sale ? { on_sale: '1' } : {}),
+    ...(params?.search ? { search: params.search } : {}),
   });
 
   const firstRes = await fetch(`${WC_API}/products?${base}&page=1`, {
