@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from '@/contexts/CartContext';
+import { useSearch } from '@/lib/hooks/useSearch';
+import { useSearchKeyboard } from '@/lib/hooks/useSearchKeyboard';
+import SearchDropdown from '@/components/SearchDropdown';
 
 // Mobile version of SparkportHeader - matches desktop functionality
 // Shows on screens smaller than lg (1024px)
@@ -13,6 +17,36 @@ export default function SparkportMobileHeader() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { count: cartCount, openDrawer } = useCart();
   const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+  const isSearchActive = query.trim().length >= 2;
+  const { results, isLoading, error } = useSearch(query);
+
+  const closeSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    setQuery('');
+  }, [setIsSearchOpen]);
+
+  const navigateToShop = useCallback(() => {
+    const q = query.trim();
+    closeSearch();
+    if (q) router.push(`/shop?q=${encodeURIComponent(q)}`);
+  }, [query, closeSearch, router]);
+
+  const handleResultClick = useCallback((slug: string) => {
+    closeSearch();
+    router.push(`/product/${slug}`);
+  }, [closeSearch, router]);
+
+  const { highlightedIndex, handleKeyDown, resetHighlight } = useSearchKeyboard({
+    resultCount: results.length,
+    onSelectHighlighted: () => {
+      const hit = results[highlightedIndex];
+      if (hit) handleResultClick(hit.slug);
+    },
+    onSubmit: navigateToShop,
+    onClose: closeSearch,
+  });
   const prevCountRef = useRef(cartCount);
   const [badgeAnim, setBadgeAnim] = useState<'bounce' | 'pop' | null>(null);
 
@@ -135,7 +169,7 @@ export default function SparkportMobileHeader() {
             {/* Search Header */}
             <div className="flex items-center gap-3 mb-4">
               <button
-                onClick={() => setIsSearchOpen(false)}
+                onClick={closeSearch}
                 className="w-10 h-10 flex items-center justify-center text-[#184363] hover:bg-neutral-100 rounded-lg transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,34 +180,54 @@ export default function SparkportMobileHeader() {
             </div>
 
             {/* Search Input */}
-            <div className="relative mb-6">
+            <form onSubmit={(e) => { e.preventDefault(); navigateToShop(); }} className="relative mb-6">
               <input
                 type="search"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); resetHighlight(); }}
+                onKeyDown={handleKeyDown}
                 placeholder="What are you looking for?"
                 autoFocus
                 className="w-full h-14 pl-5 pr-14 bg-neutral-100 border-2 border-neutral-200 rounded-2xl text-base text-[#184363] placeholder-neutral-500 focus:outline-none focus:border-[#009eb9] transition-colors"
               />
-              <button className="absolute right-2 top-2 w-10 h-10 flex items-center justify-center bg-[#009eb9] text-white rounded-xl hover:bg-[#007a8f] transition-colors">
+              <button
+                type="submit"
+                className="absolute right-2 top-2 w-10 h-10 flex items-center justify-center bg-[#009eb9] text-white rounded-xl hover:bg-[#007a8f] transition-colors"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
-            </div>
+            </form>
 
-            {/* Popular Searches */}
-            <div>
-              <p className="text-sm font-bold! text-[#184363] mb-3">Popular Searches</p>
-              <div className="flex flex-wrap gap-2">
-                {['Vitamins', 'Pain Relief', 'Baby Care', 'Cold & Flu', 'Supplements'].map((term) => (
-                  <button
-                    key={term}
-                    className="px-4 py-2 bg-neutral-100 text-neutral-700 text-sm font-medium! rounded-full hover:bg-[#009eb9] hover:text-white transition-colors"
-                  >
-                    {term}
-                  </button>
-                ))}
+            {/* Live results or Popular Searches */}
+            {isSearchActive ? (
+              <SearchDropdown
+                query={query}
+                results={results}
+                isLoading={isLoading}
+                error={error}
+                highlightedIndex={highlightedIndex}
+                onResultClick={handleResultClick}
+                onSeeAll={navigateToShop}
+                className="mt-0"
+              />
+            ) : (
+              <div>
+                <p className="text-sm font-bold! text-[#184363] mb-3">Popular Searches</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Vitamins', 'Pain Relief', 'Baby Care', 'Cold & Flu', 'Supplements'].map((term) => (
+                    <button
+                      key={term}
+                      onClick={() => setQuery(term)}
+                      className="px-4 py-2 bg-neutral-100 text-neutral-700 text-sm font-medium! rounded-full hover:bg-[#009eb9] hover:text-white transition-colors"
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
