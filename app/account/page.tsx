@@ -161,12 +161,16 @@ function AuthPageSplitInner() {
           <div className="absolute inset-0 bg-linear-to-br from-[#009eb9]/70 to-white/50" />
         </div>
         
-        <div className="relative z-10 flex flex-col justify-center items-center w-full px-12 text-white">
+        <div className="relative z-10 flex flex-col w-full px-12 py-10 text-white">
+          <Link href="/" className="text-white/50 hover:text-white text-xs flex items-center gap-1.5 transition-colors self-start mb-8">
+            ← Back to Sparkport
+          </Link>
+          <div className="flex-1 flex flex-col justify-center items-center">
           <div className="max-w-md">
-            <h2 className="text-7xl font-extrabold mb-6">
+            <h2 className="text-7xl font-extrabold! mb-6">
               Welcome to Sparkport
             </h2>
-            <p className="text-xl text-white/90 mb-8">
+            <p className="text-xl! text-white/90! mb-8">
               Your trusted partner in health and wellness. Access your orders, wishlist, and personalized recommendations.
             </p>
             <div className="space-y-4">
@@ -190,23 +194,31 @@ function AuthPageSplitInner() {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
 
       {/* Right Column: Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 bg-white overflow-y-auto">
         <div className="w-full max-w-xl">
-          
+
+          {/* Mobile home link */}
+          <div className="lg:hidden mb-6">
+            <Link href="/" className="text-neutral-400 hover:text-[#184363] text-xs flex items-center gap-1.5 transition-colors">
+              ← Back to Sparkport
+            </Link>
+          </div>
+
           {/* Success/Error Messages */}
           {submitSuccess && (
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 text-sm">{submitSuccess}</p>
+              <p className="text-green-800! text-sm">{submitSuccess}</p>
             </div>
           )}
           
           {submitError && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800 text-sm">{submitError}</p>
+              <p className="text-red-800! text-sm">{submitError}</p>
             </div>
           )}
 
@@ -216,7 +228,7 @@ function AuthPageSplitInner() {
               <h1 className="text-3xl lg:text-4xl font-extrabold! text-[#184363] mb-2">
                 Sign Up
               </h1>
-              <p className="text-neutral-600 mb-8">
+              <p className="text-neutral-600! mb-8">
                 Sign up with us to get access to your Orders, Wishlist and Recommendations!
               </p>
 
@@ -237,7 +249,7 @@ function AuthPageSplitInner() {
                       }`}
                       placeholder="First name"
                     />
-                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+                    {errors.firstName && <p className="text-red-500! text-xs mt-1">{errors.firstName}</p>}
                   </div>
 
                   <div>
@@ -254,7 +266,7 @@ function AuthPageSplitInner() {
                       }`}
                       placeholder="Last name"
                     />
-                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+                    {errors.lastName && <p className="text-red-500! text-xs mt-1">{errors.lastName}</p>}
                   </div>
                 </div>
 
@@ -274,7 +286,7 @@ function AuthPageSplitInner() {
                       }`}
                       placeholder="0821234567"
                     />
-                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                    {errors.phone && <p className="text-red-500! text-xs mt-1">{errors.phone}</p>}
                   </div>
 
                   <div>
@@ -291,7 +303,7 @@ function AuthPageSplitInner() {
                       }`}
                       placeholder="your@email.com"
                     />
-                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                    {errors.email && <p className="text-red-500! text-xs mt-1">{errors.email}</p>}
                   </div>
                 </div>
 
@@ -330,7 +342,7 @@ function AuthPageSplitInner() {
                         )}
                       </button>
                     </div>
-                    {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                    {errors.password && <p className="text-red-500! text-xs mt-1">{errors.password}</p>}
                   </div>
 
                   <div>
@@ -366,7 +378,7 @@ function AuthPageSplitInner() {
                         )}
                       </button>
                     </div>
-                    {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+                    {errors.confirmPassword && <p className="text-red-500! text-xs mt-1">{errors.confirmPassword}</p>}
                   </div>
                 </div>
 
@@ -404,7 +416,7 @@ function AuthPageSplitInner() {
                       </Link>
                     </span>
                   </label>
-                  {errors.agreeToTerms && <p className="text-red-500 text-xs">{errors.agreeToTerms}</p>}
+                  {errors.agreeToTerms && <p className="text-red-500! text-xs">{errors.agreeToTerms}</p>}
                 </div>
 
                 {/* Submit Button */}
@@ -450,7 +462,7 @@ function AuthPageSplitInner() {
               <h1 className="text-3xl lg:text-4xl font-extrabold! text-[#184363] mb-2">
                 Sign in to your account
               </h1>
-              <p className="text-neutral-600 mb-8">
+              <p className="text-neutral-600! mb-8">
                 Welcome back! Please enter your details
               </p>
 
@@ -506,7 +518,7 @@ function AuthPageSplitInner() {
                     }`}
                     placeholder="Enter your email"
                   />
-                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                  {errors.email && <p className="text-red-500! text-sm mt-1">{errors.email}</p>}
                 </div>
 
                 <div>
@@ -542,7 +554,7 @@ function AuthPageSplitInner() {
                       )}
                     </button>
                   </div>
-                  {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                  {errors.password && <p className="text-red-500! text-sm mt-1">{errors.password}</p>}
                 </div>
 
                 <div className="flex items-center justify-between">
