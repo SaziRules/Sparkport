@@ -4,10 +4,10 @@ import { usePathname } from 'next/navigation';
 
 export default function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAccountPage = pathname?.startsWith('/account');
+  const isFullWidth = pathname?.startsWith('/account') || pathname?.startsWith('/fill-script');
 
   return (
-    <main className={isAccountPage ? 'mx-auto max-w-full px-0' : 'mx-auto max-w-385 px-6'}>
+    <main className={isFullWidth ? 'mx-auto max-w-full px-0' : 'mx-auto max-w-385 px-6'}>
       {children}
     </main>
   );

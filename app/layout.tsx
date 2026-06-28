@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import SparkportMobileHeader from "@/components/SparkportMobileHeader";
 import MainWrapper from "@/components/MainWrapper";
 import ClientProviders from "@/components/ClientProviders";
+import NavVisibility from "@/components/NavVisibility";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,20 +31,23 @@ export default function RootLayout({
         <ClientProviders>
 
           {/* FULL-BLEED HEADER */}
-          <div className="hidden lg:block">
-            <KlaasHeader />
-          </div>
-
-          <SparkportMobileHeader />
+          <NavVisibility>
+            <div className="hidden lg:block">
+              <KlaasHeader />
+            </div>
+            <SparkportMobileHeader />
+          </NavVisibility>
 
           <Analytics />
 
-          {/* CONSTRAINED PAGE CONTENT - full width on /account */}
+          {/* CONSTRAINED PAGE CONTENT - full width on /account and /fill-script */}
           <MainWrapper>
             {children}
           </MainWrapper>
 
-          <Footer />
+          <NavVisibility>
+            <Footer />
+          </NavVisibility>
 
         </ClientProviders>
       </body>
