@@ -62,6 +62,8 @@ export interface WCProduct {
   tags: { id: number; name: string; slug: string }[];
   attributes: { name: string; options: string[] }[];
   meta_data: { key: string; value: string }[];
+  average_rating: string;
+  rating_count:   number;
 }
 
 export interface WCProductCategory {
@@ -91,6 +93,8 @@ export interface Product {
   shortDescription: string;
   description: string;
   sku: string;
+  averageRating: number;
+  ratingCount:   number;
 }
 
 export interface BlogPost {

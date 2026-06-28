@@ -15,6 +15,7 @@ const mockProduct: Product = {
   image: 'https://sparkport.co.za/wp-content/uploads/img.jpg',
   imageAlt: 'Vitamin C', inStock: true, onSale: true, featured: false,
   shortDescription: '', description: '', sku: 'VC001',
+  averageRating: 4.5, ratingCount: 12,
 };
 
 function makeRequest(q: string, limit?: string): Request {

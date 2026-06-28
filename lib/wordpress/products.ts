@@ -19,6 +19,8 @@ function mapProduct(p: WCProduct): Product {
     shortDescription: p.short_description,
     description: p.description,
     sku: p.sku,
+    averageRating: parseFloat(p.average_rating) || 0,
+    ratingCount:   p.rating_count,
   };
 }
 
