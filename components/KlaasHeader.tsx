@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from "next/image";
 import Link from "next/link";
 import CategoryMegaMenu from './CategoryMegaMenu';
 import ShopMegaMenu from './ShopMegaMenu';
 import { useCart } from '@/contexts/CartContext';
+import { useSearch } from '@/lib/hooks/useSearch';
+import { useSearchKeyboard } from '@/lib/hooks/useSearchKeyboard';
+import SearchDropdown from '@/components/SearchDropdown';
 
 export default function SparkportHeader() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -14,6 +18,25 @@ export default function SparkportHeader() {
   const shopCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCountRef = useRef(cartCount);
   const [badgeAnim, setBadgeAnim] = useState<'bounce' | 'pop' | null>(null);
+
+  const router = useRouter();
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState('');
+  const isOpen = query.trim().length >= 2;
+  const { results, isLoading, error } = useSearch(query);
+
+  const navigateToShop = useCallback(() => {
+    const q = query.trim();
+    if (q) {
+      router.push(`/shop?q=${encodeURIComponent(q)}`);
+      setQuery('');
+    }
+  }, [query, router]);
+
+  const handleResultClick = useCallback((slug: string) => {
+    router.push(`/product/${slug}`);
+    setQuery('');
+  }, [router]);
 
   useEffect(() => {
     const prev = prevCountRef.current;
@@ -24,6 +47,30 @@ export default function SparkportHeader() {
     }
     prevCountRef.current = cartCount;
   }, [cartCount]);
+
+  const { highlightedIndex, handleKeyDown, resetHighlight } = useSearchKeyboard({
+    resultCount: results.length,
+    onSelectHighlighted: () => {
+      const hit = results[highlightedIndex];
+      if (hit) handleResultClick(hit.slug);
+    },
+    onSubmit: navigateToShop,
+    onClose: () => {
+      setQuery('');
+      resetHighlight();
+    },
+  });
+
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        setQuery('');
+        resetHighlight();
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [resetHighlight]);
 
   const handleShopEnter = () => {
     if (shopCloseTimer.current) clearTimeout(shopCloseTimer.current);
@@ -55,43 +102,64 @@ export default function SparkportHeader() {
             </Link>
 
             {/* Search Bar with Mega Menu */}
-            <div className="flex-1 max-w-2xl mx-12 relative">
-              <div className="relative flex items-center bg-[#f0f7f7] rounded-full overflow-hidden">
-                {/* Category Button - Opens Mega Menu */}
-                <button
-                  onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                  className="h-12 pl-4 pr-2 bg-transparent border-0 text-sm font-medium text-neutral-500 hover:text-[#009eb9] focus:outline-none cursor-pointer transition-colors flex items-center gap-2"
-                >
-                  <span>Category</span>
-                  <svg 
-                    className={`w-4 h-4 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
+            <div ref={searchWrapperRef} className="flex-1 max-w-2xl mx-12 relative">
+              <form onSubmit={(e) => { e.preventDefault(); navigateToShop(); }}>
+                <div className="relative flex items-center bg-[#f0f7f7] rounded-full overflow-hidden">
+                  {/* Category Button - Opens Mega Menu */}
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                    className="h-12 pl-4 pr-2 bg-transparent border-0 text-sm font-medium text-neutral-500 hover:text-[#009eb9] focus:outline-none cursor-pointer transition-colors flex items-center gap-2"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {/* Divider */}
-                <div className="h-6 w-px bg-neutral-300"></div>
-                
-                <input
-                  type="search"
-                  placeholder="What are you looking for?"
-                  className="flex-1 h-12 pl-2 pr-4 bg-transparent border-0 text-sm text-neutral-700 placeholder-neutral-500 focus:outline-none"
+                    <span>Category</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Divider */}
+                  <div className="h-6 w-px bg-neutral-300"></div>
+
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => { setQuery(e.target.value); resetHighlight(); }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="What are you looking for?"
+                    className="flex-1 h-12 pl-2 pr-4 bg-transparent border-0 text-sm text-neutral-700 placeholder-neutral-500 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="h-12 px-5 bg-[#009eb9] text-white hover:bg-[#184363] transition-colors flex items-center justify-center"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                </div>
+              </form>
+
+              {isOpen && (
+                <SearchDropdown
+                  query={query}
+                  results={results}
+                  isLoading={isLoading}
+                  error={error}
+                  highlightedIndex={highlightedIndex}
+                  onResultClick={handleResultClick}
+                  onSeeAll={navigateToShop}
                 />
-                <button className="h-12 px-5 bg-[#009eb9] text-white hover:bg-[#184363] transition-colors flex items-center justify-center">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
-              </div>
+              )}
 
               {/* Category Mega Menu */}
-              <CategoryMegaMenu 
-                isOpen={isCategoryOpen} 
-                onClose={() => setIsCategoryOpen(false)} 
+              <CategoryMegaMenu
+                isOpen={isCategoryOpen}
+                onClose={() => setIsCategoryOpen(false)}
               />
             </div>
 
