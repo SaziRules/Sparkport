@@ -2,11 +2,12 @@ import { cookies } from 'next/headers';
 
 const STORE = `${process.env.NEXT_PUBLIC_WP_API_URL}/wc/store/v1`;
 
-async function getNonce(cartToken: string | undefined): Promise<{ nonce: string; token: string }> {
+async function getNonce(cartToken: string | undefined): Promise<{ nonce: string; token: string } | null> {
   const res = await fetch(`${STORE}/cart`, {
     headers: { ...(cartToken ? { 'Cart-Token': cartToken } : {}) },
     cache: 'no-store',
   });
+  if (!res.ok) return null;
   return {
     nonce: res.headers.get('Nonce') ?? '',
     token: res.headers.get('Cart-Token') ?? cartToken ?? '',
@@ -19,7 +20,14 @@ export async function POST(request: Request) {
 
   const { billing, payment_method, customer_note } = await request.json();
 
-  const { nonce, token } = await getNonce(cartToken);
+  const nonceResult = await getNonce(cartToken);
+  if (!nonceResult) {
+    return Response.json(
+      { message: 'Checkout temporarily unavailable. Please try again.' },
+      { status: 502 }
+    );
+  }
+  const { nonce, token } = nonceResult;
 
   const res = await fetch(`${STORE}/checkout`, {
     method: 'POST',

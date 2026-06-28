@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { calcTimeLeft } from '@/lib/deliveryTime';
 
 export default function DeliveryEstimate() {
   const [timeLeft, setTimeLeft] = useState('');
@@ -16,13 +17,11 @@ export default function DeliveryEstimate() {
       const minutes = sast.getUTCMinutes();
 
       const isWeekday = day >= 1 && day <= 5;
-      const beforeCutoff = hours < 14;
+      const result = calcTimeLeft(hours, minutes);
 
-      if (isWeekday && beforeCutoff) {
+      if (isWeekday && result) {
         setIsSameDay(true);
-        const hoursLeft = 13 - hours;
-        const minutesLeft = 59 - minutes;
-        setTimeLeft(`${hoursLeft}h ${minutesLeft}m`);
+        setTimeLeft(`${result.hoursLeft}h ${result.minutesLeft}m`);
       } else {
         setIsSameDay(false);
         setTimeLeft('');

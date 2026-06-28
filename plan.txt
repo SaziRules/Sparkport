@@ -713,3 +713,283 @@ Phases 8-9 done when:
   - ValuePropositionStrip renders on product + cart pages
   - All interactive elements are keyboard accessible
   - No blank pages on cart or product fetch errors
+
+
+================================================================
+BUG REPORT — Full Buying Flow Audit (2026-06-26)
+================================================================
+Build: clean (npx tsc --noEmit, npm run build — zero errors)
+Audit method: full code review of every file in the buying flow
+
+Severity key:
+  CRITICAL  — breaks the flow entirely for some/all users
+  BUG       — wrong visible behaviour the user can observe
+  UX ISSUE  — confusing or misleading but not outright broken
+  MINOR     — edge-case or cosmetic problem
+
+
+----------------------------------------------------------------
+CRITICAL
+----------------------------------------------------------------
+
+C1. addToCart swallows errors; callers always show "Added!" on failure
+    Files: contexts/CartContext.tsx (lines ~185-203)
+           components/ProductDetailPage.tsx (~line 43)
+           components/ShopLayout.tsx (~line 70)
+    Problem: After a failed API call the callback rolls back cart state
+    but does NOT re-throw. All callers (ProductDetailPage.handleAdd,
+    ShopLayout.handleAdd) unconditionally set isAdded=true after awaiting
+    addToCart. Result: the user sees the green "Added!" check and the
+    drawer opens — but the item was never added. Silent checkout failure.
+    Fix: addToCart should re-throw (or return { success: false }) on
+    terminal failure so callers can branch; also call showToast error;
+    callers must not set isAdded=true on error.
+
+C2. Same silent-failure pattern applies to updateQuantity and removeFromCart
+    File: contexts/CartContext.tsx
+    All three mutation callbacks only console.error on failure. Zero user
+    feedback for any cart error. The toast infrastructure is wired into
+    ClientProviders.tsx but showToast is never called anywhere in the
+    cart flow. Every failure — network error, 403, out-of-stock rejection
+    — is silent.
+    Fix: Wire showToast into all three mutation catch blocks.
+
+C3. Checkout hand-off will break if Next.js app and WooCommerce are on
+    different hosts / subdomains
+    File: app/checkout/page.tsx
+    Problem: wc_cart_token is an HttpOnly cookie set by the Next.js API
+    routes on the Next app's host with no explicit Domain attribute (so
+    it is host-only). The redirect target is https://sparkport.co.za/
+    checkout/. If the Next app is on a different subdomain (e.g.
+    app.sparkport.co.za or a Vercel deployment URL), the cookie is NOT
+    sent to sparkport.co.za and the WooCommerce checkout loads an empty
+    cart. There is no fallback.
+    Fix: Confirm deployment: the Next app and WooCommerce must be on the
+    same host or the Set-Cookie headers must include a shared Domain=.
+    sparkport.co.za attribute. If hosts differ, switch to a server-side
+    redirect (Next.js redirect) that passes the session via URL token.
+
+C4. Drawer "Proceed to Checkout" stays enabled during 4s undo window
+    File: components/CartDrawer.tsx (~line 137)
+    When the user removes their last item, showFooter=true because
+    pendingRemoval exists, so the checkout CTA is still clickable. But
+    the optimistic cart is now empty (count=0), so clicking "Proceed to
+    Checkout" navigates to /checkout → redirects to WC with an empty
+    session.
+    Fix: Disable / hide the checkout button when activeItems.length === 0,
+    even while pendingRemoval is set.
+
+
+----------------------------------------------------------------
+BUG
+----------------------------------------------------------------
+
+B1. DeliveryEstimate countdown is off by 1 minute almost always
+    File: components/DeliveryEstimate.tsx (~lines 12-25)
+    minutesLeft = 59 - minutes is wrong. At 13:00 SAST it shows "0h 59m"
+    instead of "1h 0m". At 13:59 it shows "0h 0m" instead of "0h 1m".
+    The hours display also wraps incorrectly at the top of each hour
+    (shows 0h Xm instead of 1h 0m etc.).
+    Fix: Replace with:
+      const totalLeft = 14*60 - (hours*60 + minutes);
+      const hoursLeft = Math.floor(totalLeft / 60);
+      const minutesLeft = totalLeft % 60;
+
+B2. Free delivery progress bar ignores applied discounts/coupons
+    File: components/CartDrawer.tsx (~line 28)
+    parsedTotal = parseInt(total, 10) / 100 uses the raw item subtotal
+    (total_items), not the discounted total. A user with a R600 basket
+    and a R150 coupon sees "FREE delivery unlocked!" but their actual
+    chargeable total is R450 — below the R500 threshold.
+    Fix: Use (parseInt(cartTotals.total_items,10) -
+    parseInt(cartTotals.total_discount,10)) / 100 as parsedTotal.
+    This requires cartTotals to be destructured from useCart() in
+    CartDrawer (it's already exposed by the context).
+
+B3. lastAddedKey highlight timer fires 800ms after optimistic update,
+    not after API response — leaves permanent glow on slow connections
+    File: contexts/CartContext.tsx (~line 205)
+    setTimeout(() => setLastAddedKey(null), 800) is scheduled right after
+    setCart(optimisticCart). On a slow connection the API takes > 800ms,
+    so the timer clears lastAddedKey before the real cart response sets
+    it to the real WC key (line 184/194). After that the lastAddedKey is
+    set to the real key but no new timer clears it — the highlight stays
+    forever.
+    Fix: Move the 800ms clear timer to the success branch (after
+    setLastAddedKey(result._key or similar)), not the optimistic branch.
+
+B4. Cart page "Delivery: FREE" shows before user enters any address
+    File: app/cart/page.tsx (~line 246)
+    shipping === 0 when WC has not yet calculated a shipping rate (no
+    address), so the order summary always shows "FREE" delivery before
+    checkout. This may set false expectations.
+    Fix: Show "Calculated at checkout" when shipping === 0, only show
+    "FREE" when a positive qualifying condition is known (e.g. total above
+    threshold). Or add a note: "FREE on orders over R500".
+
+B5. Coupon success state never clears; no UI to remove an applied coupon
+    File: app/cart/page.tsx (~lines 56-78)
+    After a coupon is applied, "Coupon applied!" text stays until the
+    user types in the input (onChange resets to idle). There is no way
+    for the user to see which coupon is active or to remove it — the
+    DELETE route exists but there is no Remove button in the UI.
+    Fix: After refreshCart() resolves, reset couponCode to '' and
+    couponStatus to 'idle'. Add a "Remove" link/button when discount > 0.
+
+B6. isLoading in CartContext is never set to true on initial fetch
+    File: contexts/CartContext.tsx
+    The initial useEffect calls fetchCart() but never sets isLoading=true
+    before the call or =false after. isLoading only flips during
+    mutations (add/update/remove). Result: on first page load, count=0
+    and isLoading=false simultaneously, so cart/page.tsx shows the empty-
+    cart message briefly for users who have items — until fetchCart
+    resolves and count updates.
+    Fix: Set isLoading=true before the initial fetchCart() call inside
+    the mount effect, and false in the finally block.
+
+B7. handleRemove in CartDrawer does not handle rapid removes on same item
+    File: components/CartDrawer.tsx (~lines 116-127)
+    If the user clicks Remove, then clicks Remove again on a different
+    item within 4s, the first pending removal fires immediately (correct)
+    but if removeFromCart fails for the first item it rolls back —
+    however the UI is now showing pendingRemoval for item 2. The user
+    sees item 1 reappear unexpectedly with no explanation.
+
+B8. Cart page shows "You saved R0.00" lines for non-sale items
+    File: app/cart/page.tsx (~line 40)
+    savedPerUnit = (regular_price - price)/100. WC returns regular_price
+    equal to price when the item is not on sale, but only if the product
+    was ever indexed with a sale price. If regular_price is '0' (missing)
+    the math gives a negative saving, and if regular_price == price the
+    guard savedPerUnit > 0 correctly hides it. However if WC ever returns
+    regular_price as '' or null, parseInt gives NaN and the comparison
+    NaN > 0 is false — fine. Edge case, but worth a null-coalesce guard.
+
+
+----------------------------------------------------------------
+UX ISSUE
+----------------------------------------------------------------
+
+U1. Zero toast feedback across the entire cart flow
+    showToast is defined and wired (ClientProviders.tsx line 16) but
+    never called. No success confirmation when adding, no error when
+    failing, no "Coupon applied!" notification. The toast system built
+    in Phase 2 is completely unused.
+
+U2. Drawer opens on failed adds
+    contexts/CartContext.tsx (~line 171): openDrawer() is called as part
+    of the optimistic update, BEFORE the API result. If the API rejects
+    and rolls back, the drawer has already opened and the item disappears
+    mid-view with no explanation. Users see the drawer pop, then the item
+    vanish — very confusing.
+
+U3. /checkout/success trusts an unvalidated order_id URL param
+    File: app/checkout/success/page.tsx
+    Any URL /checkout/success?order_id=12345 shows a full "Order #12345
+    confirmed!" page and clears the local cart. No order verification
+    against WC. A user who bookmarks the URL or receives a bad redirect
+    has their cart cleared incorrectly.
+    Fix: Either don't display the order_id in the heading (just "Order
+    confirmed!") or validate it against the WC REST API.
+
+U4. clearCart() on success page only clears local state, not WC session
+    File: app/checkout/success/page.tsx
+    setCart(EMPTY_CART) wipes the React state, but the next CartContext
+    mount (new page/tab) calls fetchCart() which still returns the old
+    WC session cart. If the WC checkout actually cleared the session this
+    is fine, but if the session persists (e.g. failed payment, order
+    pending), the cart refills.
+
+U5. Qty stepper has no debounce — rapid clicks queue multiple concurrent
+    PUT requests that can apply out of order
+    File: components/CartDrawer.tsx (~lines 281-299)
+    Each +/- click fires updateQuantity immediately. Five rapid clicks
+    fire five PUTs; whichever resolves last wins and can set the wrong
+    quantity.
+    Fix: Debounce qty stepper (200-300ms) or track in-flight requests and
+    cancel stale ones.
+
+U6. Drawer suggestions fetch repeats on every open — no caching
+    File: components/CartDrawer.tsx (~line 65)
+    useEffect fires whenever isDrawerOpen becomes true with count=0.
+    Every time the user opens an empty drawer the same 3 products are
+    re-fetched from the API.
+    Fix: Only fetch once (check suggestions.length > 0 before fetching),
+    or store in sessionStorage.
+
+U7. Hard-coded R500 threshold label doesn't use the FREE_DELIVERY_THRESHOLD constant
+    File: components/CartDrawer.tsx (~line 360)
+    The visible label says "{symbol}500 threshold" as a string literal
+    while the actual threshold logic uses FREE_DELIVERY_THRESHOLD = 500.
+    If the constant changes the label drifts.
+    Fix: Interpolate: `${symbol}${FREE_DELIVERY_THRESHOLD} threshold`
+
+U8. Checkout page analytics event always reports itemCount=0 and total=''
+    File: app/checkout/page.tsx (~lines 13-17)
+    sparkport:checkout:begin fires with hardcoded empty detail because
+    useCart() is not called on that page.
+    Fix: Add useCart() to checkout/page.tsx and pass real count/total.
+
+U9. Applied coupon has no removal UI on cart page
+    See B5 — the DELETE /api/cart/coupon route exists and works but
+    there is no "Remove" button visible to the user once a coupon is
+    applied and discount shows in the order summary.
+
+
+----------------------------------------------------------------
+MINOR
+----------------------------------------------------------------
+
+M1. optimistic-${Date.now()} tempKey can collide on same-millisecond adds
+    Fix: Append Math.random() — e.g. `optimistic-${Date.now()}-${Math.random()}`
+
+M2. ToastContext: setTimeout for auto-dismiss is not cleared on unmount
+    File: contexts/ToastContext.tsx (~line 43)
+    Minor memory leak / stale setState on unmount.
+
+M3. Coupon API route does not validate empty code server-side
+    File: app/api/cart/coupon/route.ts
+    Client guards with couponCode.trim() but server accepts any string.
+
+M4. Coupon route does not return the new nonce to the client
+    File: app/api/cart/coupon/route.ts
+    Other cart routes include _nonce in response so CartContext can
+    update nonceRef. Coupon route does not. Masked by refreshCart() call
+    but the inconsistency is fragile.
+
+M5. ShopLayout useEffect dep array omits priceRange[0]
+    File: components/ShopLayout.tsx (~line 118)
+    Only [1] (max) is in deps. Benign now but brittle if min becomes
+    adjustable.
+
+M6. ProductDetailPage IntersectionObserver effect has empty dep array
+    File: components/ProductDetailPage.tsx (~lines 59-68)
+    The observer targets mainButtonRef.current, which is the same DOM
+    node across product navigations (client-side SPA routing). Works in
+    practice but a dep on product.id would be more explicit.
+
+M7. Cart page shows "Delivery: FREE" subtlety (see B4 above)
+    The R0.00 shipping from WC before address entry makes the order
+    summary always show FREE — even before the threshold is met.
+
+M8. Checkout success page order_id not length-capped in the heading
+    A very long order_id string in the URL would overflow the heading.
+    Fix: Slice to 20 chars or validate as digits-only.
+
+
+----------------------------------------------------------------
+PRIORITY ORDER FOR FIXES
+----------------------------------------------------------------
+
+  1. C1/C2 — Wire error handling + showToast into all mutation paths
+             and fix isAdded=true on failure in PDP and ShopLayout
+  2. C3     — Verify/fix the cross-host cookie issue before go-live
+  3. B1     — Fix DeliveryEstimate countdown formula (1-line fix)
+  4. C4     — Disable checkout CTA when activeItems.length === 0
+  5. B3     — Move lastAddedKey clear timer to API success branch
+  6. B6     — Set isLoading=true on initial cart fetch
+  7. B2     — Use discounted total in free-delivery progress bar
+  8. U5     — Debounce qty stepper
+  9. B5/U9  — Add coupon removal UI and reset state on apply
+ 10. U3/U4  — Harden success page (don't clear cart on bad redirect)
+ 11. Minors — Low risk, address in regular maintenance

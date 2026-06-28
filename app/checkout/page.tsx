@@ -69,10 +69,10 @@ export default function CheckoutPage() {
   const [submitError, setSubmitError] = useState('');
 
   const symbol = currencySymbol || 'R';
-  const subtotal = parseInt(cartTotals.total_items, 10) / 100;
-  const discount = parseInt(cartTotals.total_discount, 10) / 100;
+  const subtotal = parseInt(cartTotals.total_items ?? '0', 10) / 100;
+  const discount = parseInt(cartTotals.total_discount ?? '0', 10) / 100;
   const discountedSubtotal = subtotal - discount;
-  const grandTotal = parseInt(cartTotals.total_price, 10) / 100;
+  const grandTotal = parseInt(cartTotals.total_price ?? '0', 10) / 100;
   const isFreeDelivery = discountedSubtotal >= FREE_DELIVERY_THRESHOLD;
 
   const handleChange = (

@@ -9,13 +9,13 @@ import ToastContainer from '@/components/ToastContainer';
 export default function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <CartProvider>
-        <ToastProvider>
+      <ToastProvider>
+        <CartProvider>
           {children}
           <CartDrawer />
           <ToastContainer />
-        </ToastProvider>
-      </CartProvider>
+        </CartProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

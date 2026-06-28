@@ -40,16 +40,19 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
   const handleAdd = async () => {
     if (!product.inStock || isAdding || isAdded) return;
     setIsAdding(true);
-    await addToCart(product.id, quantity, {
-      name: product.name,
-      price: String(Math.round(product.salePrice * 100)),
-      image: product.image,
-    });
-    setIsAdding(false);
-    setIsAdded(true);
-    setTimeout(() => {
-      setIsAdded(false);
-    }, 1500);
+    try {
+      await addToCart(product.id, quantity, {
+        name: product.name,
+        price: String(Math.round(product.salePrice * 100)),
+        image: product.image,
+      });
+      setIsAdded(true);
+      setTimeout(() => setIsAdded(false), 1500);
+    } catch {
+      // error toast already shown by CartContext
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   useEffect(() => {

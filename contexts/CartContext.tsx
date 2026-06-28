@@ -9,6 +9,7 @@ import {
   removeCartItem as apiRemove,
   CartApiError,
 } from '@/lib/wordpress/cart';
+import { useToast } from '@/contexts/ToastContext';
 
 export interface ProductSnapshot {
   name: string;
@@ -143,6 +144,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
   const nonceRef = useRef<string>('');
   const cartRef = useRef<Cart | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => { cartRef.current = cart; }, [cart]);
 
@@ -157,9 +159,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
 
   useEffect(() => {
+    setIsLoading(true);
     fetchCart().then(data => {
       if (data._nonce) nonceRef.current = data._nonce;
       setCart(data);
+    }).finally(() => {
+      setIsLoading(false);
     });
   }, []);
 
@@ -181,7 +186,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       let result = await apiAdd(productId, quantity, nonceRef.current);
       if (result._nonce) nonceRef.current = result._nonce;
       setCart(result);
-      setLastAddedKey(result.items.find(i => i.id === productId)?.key ?? null);
+      const realKey = result.items.find(i => i.id === productId)?.key ?? null;
+      setLastAddedKey(realKey);
+      setTimeout(() => setLastAddedKey(null), 800);
     } catch (err) {
       if (err instanceof CartApiError && err.status === 403) {
         const refreshed = await fetchCart();
@@ -191,19 +198,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           const retryResult = await apiAdd(productId, quantity, nonceRef.current);
           if (retryResult._nonce) nonceRef.current = retryResult._nonce;
           setCart(retryResult);
-          setLastAddedKey(retryResult.items.find(i => i.id === productId)?.key ?? null);
-        } catch {
+          const realKey = retryResult.items.find(i => i.id === productId)?.key ?? null;
+          setLastAddedKey(realKey);
+          setTimeout(() => setLastAddedKey(null), 800);
+        } catch (retryErr) {
           setCart(prevCart);
-          console.error('addToCart failed after nonce refresh');
+          setLastAddedKey(null);
+          showToast("Couldn't add to basket — please try again", 'error');
+          throw retryErr;
         }
       } else {
         setCart(prevCart);
-        console.error('addToCart failed', err);
+        setLastAddedKey(null);
+        showToast("Couldn't add to basket — please try again", 'error');
+        throw err;
       }
     }
-
-    setTimeout(() => setLastAddedKey(null), 800);
-  }, []);
+  }, [showToast]);
 
   const updateQuantity = useCallback(async (key: string, quantity: number) => {
     const prevCart = cartRef.current;
@@ -224,14 +235,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           setCart(retryResult);
         } catch {
           setCart(prevCart);
-          console.error('updateQuantity failed after nonce refresh');
+          showToast("Couldn't update quantity — please try again", 'error');
         }
       } else {
         setCart(prevCart);
-        console.error('updateQuantity failed', err);
+        showToast("Couldn't update quantity — please try again", 'error');
       }
     }
-  }, []);
+  }, [showToast]);
 
   const removeFromCart = useCallback(async (key: string) => {
     const prevCart = cartRef.current;
@@ -266,11 +277,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           console.error('removeFromCart failed');
         }
       }
-    } catch (err) {
+    } catch {
       setCart(prevCart);
-      console.error('removeFromCart failed', err);
+      showToast("Couldn't remove item — please try again", 'error');
     }
-  }, []);
+  }, [showToast]);
 
   const clearCart = useCallback(() => {
     setCart(EMPTY_CART);

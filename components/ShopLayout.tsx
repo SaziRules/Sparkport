@@ -67,17 +67,22 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
     e.preventDefault();
     if (addingIds.has(product.id) || addedIds.has(product.id)) return;
     setAddingIds(prev => new Set(prev).add(product.id));
-    await addToCart(product.id, getQty(product.id), {
-      name: product.name,
-      price: String(Math.round(product.salePrice * 100)),
-      image: product.image,
-    });
-    setAddingIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
-    setAddedIds(prev => new Set(prev).add(product.id));
-    setQty(product.id, 1);
-    setTimeout(() => {
-      setAddedIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
-    }, 1500);
+    try {
+      await addToCart(product.id, getQty(product.id), {
+        name: product.name,
+        price: String(Math.round(product.salePrice * 100)),
+        image: product.image,
+      });
+      setAddedIds(prev => new Set(prev).add(product.id));
+      setQty(product.id, 1);
+      setTimeout(() => {
+        setAddedIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
+      }, 1500);
+    } catch {
+      // error toast already shown by CartContext
+    } finally {
+      setAddingIds(prev => { const s = new Set(prev); s.delete(product.id); return s; });
+    }
   };
 
   // Count products per category from actual loaded data (multi-category aware)
