@@ -9,7 +9,7 @@ interface SearchDropdownProps {
   isLoading: boolean;
   error: string;
   highlightedIndex: number;
-  onResultClick: (slug: string) => void;
+  onResultClick: (id: number) => void;
   onSeeAll: () => void;
   className?: string;
 }
@@ -57,7 +57,7 @@ export default function SearchDropdown({
               <li key={result.id}>
                 <button
                   type="button"
-                  onClick={() => onResultClick(result.slug)}
+                  onClick={() => onResultClick(result.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-colors ${
                     highlightedIndex === i ? 'bg-[#e8f5f7]' : 'hover:bg-neutral-50'
                   }`}

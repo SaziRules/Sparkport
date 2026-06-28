@@ -33,16 +33,16 @@ export default function SparkportMobileHeader() {
     if (q) router.push(`/shop?q=${encodeURIComponent(q)}`);
   }, [query, closeSearch, router]);
 
-  const handleResultClick = useCallback((slug: string) => {
+  const handleResultClick = useCallback((id: number) => {
     closeSearch();
-    router.push(`/product/${slug}`);
+    router.push(`/product/${id}`);
   }, [closeSearch, router]);
 
   const { highlightedIndex, handleKeyDown, resetHighlight } = useSearchKeyboard({
     resultCount: results.length,
     onSelectHighlighted: () => {
       const hit = results[highlightedIndex];
-      if (hit) handleResultClick(hit.slug);
+      if (hit) handleResultClick(hit.id);
     },
     onSubmit: navigateToShop,
     onClose: closeSearch,

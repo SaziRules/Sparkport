@@ -33,8 +33,8 @@ export default function SparkportHeader() {
     }
   }, [query, router]);
 
-  const handleResultClick = useCallback((slug: string) => {
-    router.push(`/product/${slug}`);
+  const handleResultClick = useCallback((id: number) => {
+    router.push(`/product/${id}`);
     setQuery('');
   }, [router]);
 
@@ -52,7 +52,7 @@ export default function SparkportHeader() {
     resultCount: results.length,
     onSelectHighlighted: () => {
       const hit = results[highlightedIndex];
-      if (hit) handleResultClick(hit.slug);
+      if (hit) handleResultClick(hit.id);
     },
     onSubmit: navigateToShop,
     onClose: () => {
