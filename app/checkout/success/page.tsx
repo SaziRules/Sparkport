@@ -5,21 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
+import { STORES } from '@/lib/stores';
 
-// ─── STORE CONFIGURATION ──────────────────────────────────────────────────────
-// Fill in real values before going live
 const EFT_DETAILS = {
-  bankName: 'FNB',                         // REPLACE
-  accountName: 'Sparkport Pharmacy',        // REPLACE
-  accountNumber: '62XXXXXXXXXX',            // REPLACE
-  branchCode: '250655',                     // REPLACE
+  bankName: 'FNB',
+  accountName: 'Sparkport Pharmacy',
+  accountNumber: '62XXXXXXXXXX',            // REPLACE with real account number
+  branchCode: '250655',
 };
-
-const STORE_DETAILS = {
-  address: 'REPLACE WITH STORE ADDRESS',   // REPLACE
-  hours: 'Mon–Fri: 08:00–17:00 | Sat: 08:00–13:00', // REPLACE
-};
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface OrderItem {
   name: string;
@@ -41,6 +34,8 @@ function SuccessInner() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id');
   const method = searchParams.get('method') ?? 'payfast';
+  const storeId = searchParams.get('store_id');
+  const selectedStore = storeId ? (STORES.find(s => s.id === storeId) ?? null) : null;
   const { clearCart } = useCart();
 
   const [order, setOrder] = useState<OrderData | null>(null);
@@ -140,25 +135,52 @@ function SuccessInner() {
 
         {method === 'cod' && (
           <div className="bg-[#e8f5f7] border border-[#009eb9]/30 rounded-2xl p-6">
-            <h2 className="text-base font-black! text-[#184363] mb-4">Collect In-Store</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex gap-3">
-                <svg className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <p className="text-[#184363]">{STORE_DETAILS.address}</p>
-              </div>
-              <div className="flex gap-3">
-                <svg className="w-5 h-5 text-[#009eb9] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-[#184363]">{STORE_DETAILS.hours}</p>
-              </div>
+            <h2 className="text-base font-black! text-[#184363] mb-1">Collect In-Store</h2>
+            {selectedStore ? (
+              <>
+                <p className="text-sm font-semibold! text-[#009eb9] mb-4">{selectedStore.name}</p>
+                <div className="space-y-3 text-sm">
+                  <div className="flex gap-3">
+                    <svg className="w-4 h-4 text-[#009eb9] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-[#184363]">{selectedStore.address}</p>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedStore.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#009eb9] font-semibold! hover:underline mt-0.5 inline-block"
+                      >
+                        Get directions →
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <svg className="w-4 h-4 text-[#009eb9] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-[#184363]">{selectedStore.hours}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <svg className="w-4 h-4 text-[#009eb9] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <a href={`tel:${selectedStore.phone.replace(/[^0-9]/g, '')}`} className="text-[#184363] hover:text-[#009eb9] transition-colors">
+                      {selectedStore.phone}
+                    </a>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-[#184363] mt-2">Visit any Sparkport branch to collect your order.</p>
+            )}
+            <div className="mt-4 pt-4 border-t border-[#009eb9]/20">
+              <p className="text-xs text-[#009eb9] font-semibold!">
+                Bring order number <strong>#{orderId}</strong> when you collect. Payment is due on collection.
+              </p>
             </div>
-            <p className="text-xs text-[#009eb9] mt-4 font-semibold!">
-              Bring order number <strong>#{orderId}</strong> when you collect.
-            </p>
           </div>
         )}
 

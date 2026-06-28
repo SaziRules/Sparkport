@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { validateCheckoutForm } from '@/lib/checkoutValidation';
 import type { CheckoutFormData, FormErrors } from '@/lib/checkoutValidation';
+import { STORES } from '@/lib/stores';
 
 const SA_PROVINCES = [
   'Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal',
@@ -36,7 +37,7 @@ const PAYMENT_METHODS = [
   {
     slug: 'cod' as const,
     name: 'In-store',
-    desc: 'Pay when you collect at our Durban pharmacy',
+    desc: 'Choose a branch and pay when you collect',
     icon: (
       <svg className="w-5 h-5 text-[#009eb9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -46,7 +47,7 @@ const PAYMENT_METHODS = [
   },
 ];
 
-const FREE_DELIVERY_THRESHOLD = 500;
+const FREE_DELIVERY_THRESHOLD = 1500;
 
 const EMPTY_FORM: CheckoutFormData = {
   firstName: '', lastName: '', email: '', phone: '',
@@ -65,6 +66,8 @@ export default function CheckoutPage() {
   const [form, setForm] = useState<CheckoutFormData>(EMPTY_FORM);
   const [errors, setErrors] = useState<FormErrors>({});
   const [paymentMethod, setPaymentMethod] = useState<'payfast' | 'bacs' | 'cod'>('payfast');
+  const [selectedStoreId, setSelectedStoreId] = useState('');
+  const [storeError, setStoreError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -95,6 +98,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (paymentMethod === 'cod' && !selectedStoreId) {
+      setStoreError('Please select a collection branch to continue');
+      document.getElementById('store-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError('');
 
@@ -117,6 +126,7 @@ export default function CheckoutPage() {
           },
           payment_method: paymentMethod,
           customer_note: form.orderNotes,
+          ...(paymentMethod === 'cod' && selectedStoreId ? { store_id: selectedStoreId } : {}),
         }),
       });
 
@@ -157,7 +167,6 @@ export default function CheckoutPage() {
       errors[field] ? 'border-red-400 bg-red-50' : 'border-neutral-200'
     }`;
 
-  const selectedMethod = PAYMENT_METHODS.find(m => m.slug === paymentMethod)!;
   const submitLabel = paymentMethod === 'payfast' ? 'Pay with PayFast' : 'Place Order';
 
   return (
@@ -405,7 +414,10 @@ export default function CheckoutPage() {
                         <input
                           type="radio" name="paymentMethod" value={method.slug}
                           checked={paymentMethod === method.slug}
-                          onChange={() => setPaymentMethod(method.slug)}
+                          onChange={() => {
+                            setPaymentMethod(method.slug);
+                            setStoreError('');
+                          }}
                           className="mt-0.5 accent-[#009eb9]"
                         />
                         <div className="flex items-start gap-3 flex-1">
@@ -418,6 +430,84 @@ export default function CheckoutPage() {
                       </label>
                     ))}
                   </div>
+
+                  {/* Store picker — revealed when In-store is selected */}
+                  {paymentMethod === 'cod' && (
+                    <div id="store-picker" className="mt-5 pt-5 border-t border-neutral-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-bold! text-neutral-700">
+                          Select your collection branch <span className="text-red-400">*</span>
+                        </p>
+                        {storeError && (
+                          <p className="text-xs text-red-500">{storeError}</p>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {STORES.map(store => {
+                          const isSelected = selectedStoreId === store.id;
+                          const shortName = store.name.replace('Sparkport ', '');
+                          const area = store.address.split(',').slice(1, 3).join(',').trim();
+                          const mainHours = store.hours.split('•')[0].trim();
+                          return (
+                            <button
+                              key={store.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedStoreId(store.id);
+                                setStoreError('');
+                              }}
+                              className={`relative text-left p-3 rounded-xl border-2 transition-all duration-150 ${
+                                isSelected
+                                  ? 'border-[#009eb9] bg-[#e8f5f7] shadow-sm'
+                                  : 'border-neutral-200 hover:border-[#009eb9]/50 hover:bg-neutral-50'
+                              }`}
+                            >
+                              {isSelected && (
+                                <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#009eb9] flex items-center justify-center">
+                                  <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </span>
+                              )}
+                              <p className={`text-xs font-bold! pr-5 leading-tight ${isSelected ? 'text-[#009eb9]' : 'text-[#184363]'}`}>
+                                {shortName}
+                              </p>
+                              <p className="text-[10px] text-neutral-500 mt-1 leading-tight">{area}</p>
+                              <p className="text-[10px] text-neutral-400 mt-1 leading-tight">{mainHours}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected store detail strip */}
+                      {selectedStoreId && (() => {
+                        const store = STORES.find(s => s.id === selectedStoreId)!;
+                        return (
+                          <div className="mt-3 p-3 bg-[#009eb9]/5 border border-[#009eb9]/20 rounded-xl">
+                            <div className="flex items-start gap-2">
+                              <svg className="w-3.5 h-3.5 text-[#009eb9] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold! text-[#184363]">{store.name}</p>
+                                <p className="text-[10px] text-neutral-500 mt-0.5">{store.address}</p>
+                                <p className="text-[10px] text-neutral-500 mt-0.5">{store.hours}</p>
+                                <a
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(store.address)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-[#009eb9] font-semibold! mt-1 inline-block hover:underline"
+                                >
+                                  Get directions →
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit */}
@@ -457,9 +547,11 @@ export default function CheckoutPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                     <span className="text-[10px] text-neutral-400">Secure checkout</span>
-                    {['VISA', 'MC', 'PayFast'].map(label => (
-                      <div key={label} className="px-1.5 py-0.5 border border-neutral-200 rounded text-[9px] font-bold! text-neutral-500 bg-neutral-50">{label}</div>
-                    ))}
+                    <div className="flex items-center gap-1.5 ml-1">
+                      <div className="px-1.5 py-0.5 border border-neutral-200 rounded text-[9px] font-black! text-neutral-500 bg-neutral-50">VISA</div>
+                      <div className="px-1.5 py-0.5 border border-neutral-200 rounded text-[9px] font-black! text-neutral-500 bg-neutral-50">MC</div>
+                      <div className="px-1.5 py-0.5 border border-neutral-200 rounded text-[9px] font-black! text-neutral-500 bg-neutral-50">EFT</div>
+                    </div>
                   </div>
                 </div>
 

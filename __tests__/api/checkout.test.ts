@@ -52,7 +52,7 @@ beforeEach(() => {
   vi.mocked(cookies).mockResolvedValue({
     get: (name: string) => (name === 'wc_cart_token' ? { value: MOCK_CART_TOKEN } : undefined),
     delete: vi.fn(),
-  } as ReturnType<typeof cookies> extends Promise<infer T> ? T : never);
+  } as unknown as ReturnType<typeof cookies> extends Promise<infer T> ? T : never);
 });
 
 describe('POST /api/checkout', () => {

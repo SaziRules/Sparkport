@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   const cookieStore = await cookies();
   const cartToken = cookieStore.get('wc_cart_token')?.value;
 
-  const { billing, payment_method, customer_note } = await request.json() as {
+  const { billing, payment_method, customer_note, store_id } = await request.json() as {
     billing: {
       first_name: string; last_name: string; email: string; phone: string;
       address_1: string; address_2: string; city: string; state: string;
@@ -85,6 +85,7 @@ export async function POST(request: Request) {
     };
     payment_method: string;
     customer_note:  string;
+    store_id?:      string;
   };
 
   const cartData = await getCart(cartToken);
@@ -123,6 +124,7 @@ export async function POST(request: Request) {
       })),
       coupon_lines: cartData.cart.coupons.map((c) => ({ code: c.code })),
       customer_note: customer_note ?? '',
+      ...(store_id ? { meta_data: [{ key: '_collection_store_id', value: store_id }] } : {}),
     }),
   });
 
@@ -152,7 +154,8 @@ export async function POST(request: Request) {
     });
   }
 
+  const storeParam = payment_method === 'cod' && store_id ? `&store_id=${store_id}` : '';
   return Response.json({
-    redirect: `/checkout/success?order_id=${order.id}&method=${payment_method}`,
+    redirect: `/checkout/success?order_id=${order.id}&method=${payment_method}${storeParam}`,
   });
 }
