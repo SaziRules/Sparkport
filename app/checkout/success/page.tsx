@@ -91,7 +91,10 @@ function SuccessInner() {
             Order #{orderId} confirmed!
           </h1>
           {order?.email && (
-            <p className="text-sm text-neutral-500">Confirmation sent to <span className="font-semibold! text-[#184363]">{order.email}</span></p>
+            <p className="text-sm text-neutral-500">
+              {method === 'payfast' ? 'Confirmation will be sent to' : 'Confirmation sent to'}{' '}
+              <span className="font-semibold! text-[#184363]">{order.email}</span>
+            </p>
           )}
           {error && (
             <p className="text-sm text-amber-600 mt-2">{error}</p>

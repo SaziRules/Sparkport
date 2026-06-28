@@ -105,8 +105,8 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       payment_method,
       payment_method_title: PAYMENT_TITLES[payment_method] ?? payment_method,
-      set_paid:     false,
-      status:       'pending',
+      set_paid: false,
+      status:   payment_method === 'bacs' ? 'on-hold' : payment_method === 'cod' ? 'processing' : 'pending',
       billing,
       shipping: {
         first_name: billing.first_name,
