@@ -93,6 +93,7 @@ export interface Product {
   shortDescription: string;
   description: string;
   sku: string;
+  brand: string;
   averageRating: number;
   ratingCount:   number;
 }

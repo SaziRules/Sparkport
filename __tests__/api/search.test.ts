@@ -14,7 +14,7 @@ const mockProduct: Product = {
   originalPrice: 39.99, salePrice: 29.99,
   image: 'https://sparkport.co.za/wp-content/uploads/img.jpg',
   imageAlt: 'Vitamin C', inStock: true, onSale: true, featured: false,
-  shortDescription: '', description: '', sku: 'VC001',
+  shortDescription: '', description: '', sku: 'VC001', brand: '',
   averageRating: 4.5, ratingCount: 12,
 };
 

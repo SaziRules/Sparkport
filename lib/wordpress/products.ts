@@ -19,6 +19,7 @@ function mapProduct(p: WCProduct): Product {
     shortDescription: p.short_description,
     description: p.description,
     sku: p.sku,
+    brand: p.attributes.find((a) => a.name.toLowerCase() === 'brand')?.options[0] ?? '',
     averageRating: parseFloat(p.average_rating) || 0,
     ratingCount:   p.rating_count,
   };
@@ -127,7 +128,7 @@ export async function getProductReviews(productId: number): Promise<ProductRevie
   try {
     const res = await fetch(`${WC_API}/products/${productId}/reviews?per_page=10&status=approved`, {
       headers: wcAuthHeaders(),
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     });
     if (!res.ok) return [];
     const data = await res.json();

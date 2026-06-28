@@ -182,6 +182,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
+  const [copied, setCopied] = useState(false);
   const mainButtonRef = useRef<HTMLButtonElement>(null);
   const { addToCart } = useCart();
 
@@ -370,6 +371,18 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
               )}
             </div>
 
+            {/* SKU + Brand */}
+            {(product.sku || product.brand) && (
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-neutral-500">
+                {product.brand && (
+                  <span><span className="font-semibold! text-[#184363]">Brand:</span> {product.brand}</span>
+                )}
+                {product.sku && (
+                  <span><span className="font-semibold! text-[#184363]">SKU:</span> {product.sku}</span>
+                )}
+              </div>
+            )}
+
             {/* Short Description */}
             {shortDesc && (
               <p className="text-lg text-neutral-600 leading-relaxed">{shortDesc}</p>
@@ -520,6 +533,66 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </a>
+
+            {/* Share */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold! text-[#184363]">Share:</span>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(product.name + ' — ')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Share on WhatsApp"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-[#25d366] text-white hover:scale-110 transition-transform"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.523 5.851L.057 23.882l6.19-1.424A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.812 9.812 0 01-5.006-1.37l-.36-.213-3.724.856.89-3.617-.234-.373A9.818 9.818 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/>
+                </svg>
+              </a>
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Share on Facebook"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1877f2] text-white hover:scale-110 transition-transform"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+              <a
+                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&text=${encodeURIComponent(product.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Share on X"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-black text-white hover:scale-110 transition-transform"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  });
+                }}
+                aria-label="Copy link"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-600 hover:scale-110 hover:bg-[#e8f5f7] hover:text-[#009eb9] transition-all"
+              >
+                {copied ? (
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
 
             {/* Trust Badges */}
             <div className="grid grid-cols-2 gap-3 pt-6">
