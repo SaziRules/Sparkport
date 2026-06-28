@@ -18,6 +18,154 @@ interface Props {
   reviews?: ProductReview[];
 }
 
+function ReviewForm({ productId }: { productId: number }) {
+  const [rating, setRating] = useState(0);
+  const [hovered, setHovered] = useState(0);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [body, setBody] = useState('');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (rating === 0) { setErrorMsg('Please select a star rating.'); return; }
+    if (body.trim().length < 10) { setErrorMsg('Review must be at least 10 characters.'); return; }
+    setStatus('submitting');
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/products/${productId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewer: name, reviewer_email: email, rating, review: body }),
+      });
+      const data = await res.json() as { message?: string };
+      if (!res.ok) {
+        setErrorMsg(data.message ?? 'Could not submit your review. Please try again.');
+        setStatus('error');
+      } else {
+        setStatus('success');
+      }
+    } catch {
+      setErrorMsg('Could not submit your review. Please try again.');
+      setStatus('error');
+    }
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-center border-t border-neutral-100">
+        <div className="w-14 h-14 rounded-full bg-[#e8f5f7] flex items-center justify-center">
+          <svg className="w-7 h-7 text-[#009eb9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <p className="text-[#184363] font-bold! text-lg">Thank you for your review!</p>
+        <p className="text-neutral-500 text-sm">Your review will appear once it&apos;s been approved.</p>
+      </div>
+    );
+  }
+
+  const disabled = status === 'submitting';
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5 pt-6 border-t border-neutral-100">
+      <h4 className="text-lg font-black! text-[#184363]">Write a Review</h4>
+
+      <div>
+        <label className="block text-sm font-semibold! text-[#184363] mb-2">
+          Your Rating <span className="text-red-500">*</span>
+        </label>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              disabled={disabled}
+              onClick={() => setRating(star)}
+              onMouseEnter={() => setHovered(star)}
+              onMouseLeave={() => setHovered(0)}
+              className="w-9 h-9 flex items-center justify-center disabled:opacity-50"
+            >
+              <svg
+                className={`w-7 h-7 transition-colors ${star <= (hovered || rating) ? 'text-amber-400' : 'text-neutral-200'}`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold! text-[#184363] mb-2">
+          Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          disabled={disabled}
+          placeholder="Your name"
+          className="w-full px-4 py-3 border border-neutral-300 rounded-xl text-sm text-[#184363] focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent disabled:opacity-50"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold! text-[#184363] mb-2">
+          Email <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={disabled}
+          placeholder="your@email.com"
+          className="w-full px-4 py-3 border border-neutral-300 rounded-xl text-sm text-[#184363] focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent disabled:opacity-50"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold! text-[#184363] mb-2">
+          Review <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          required
+          minLength={10}
+          disabled={disabled}
+          rows={4}
+          placeholder="Share your experience with this product..."
+          className="w-full px-4 py-3 border border-neutral-300 rounded-xl text-sm text-[#184363] focus:outline-none focus:ring-2 focus:ring-[#009eb9] focus:border-transparent disabled:opacity-50 resize-none"
+        />
+      </div>
+
+      {errorMsg && (
+        <p className="text-sm text-red-600">{errorMsg}</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={disabled}
+        className="w-full sm:w-auto px-8 py-3 bg-[#009eb9] text-white font-bold! rounded-xl hover:bg-[#007a8f] transition-colors disabled:opacity-50 flex items-center gap-2"
+      >
+        {disabled && (
+          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+        )}
+        {disabled ? 'Submitting...' : 'Submit Review'}
+      </button>
+    </form>
+  );
+}
+
 function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
   const searchParams = useSearchParams();
   const origin = searchParams.get('from');
@@ -72,8 +220,6 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
 
   const savings = product.originalPrice - product.salePrice;
   const savingsPercent = product.originalPrice > 0 ? Math.round((savings / product.originalPrice) * 100) : 0;
-  const rating = 4.5;
-  const reviewCount = 50 + ((product.id * 23) % 200);
   const shortDesc = stripHtml(product.shortDescription || '');
 
   return (
@@ -179,22 +325,27 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
             </h1>
 
             {/* Rating & Reviews */}
-            <div className="flex items-center gap-6 pb-6 border-b border-neutral-200">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className={`w-5 h-5 transition-colors ${i < Math.floor(rating) ? 'text-amber-400' : 'text-neutral-200'}`} fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
+            {product.ratingCount > 0 && (
+              <div className="flex items-center gap-6 pb-6 border-b border-neutral-200">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} className={`w-5 h-5 transition-colors ${i < Math.floor(product.averageRating) ? 'text-amber-400' : 'text-neutral-200'}`} fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="text-sm font-bold! text-[#184363]">{product.averageRating.toFixed(1)}</span>
                 </div>
-                <span className="text-sm font-bold! text-[#184363]">{rating}</span>
+                <div className="h-4 w-px bg-neutral-300"></div>
+                <button
+                  onClick={() => setActiveTab('reviews')}
+                  className="text-sm text-neutral-600 hover:text-[#009eb9] transition-colors duration-200 font-medium!"
+                >
+                  {product.ratingCount} reviews
+                </button>
               </div>
-              <div className="h-4 w-px bg-neutral-300"></div>
-              <button className="text-sm text-neutral-600 hover:text-[#009eb9] transition-colors duration-200 font-medium!">
-                {reviewCount} reviews
-              </button>
-            </div>
+            )}
 
             {/* Price */}
             <div className="space-y-2">
@@ -408,7 +559,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
               {[
                 { key: 'description', label: 'Description', icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
                 { key: 'usage', label: 'Usage & Dosage', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
-                { key: 'reviews', label: `Reviews (${reviewCount})`, icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
+                { key: 'reviews', label: `Reviews (${product.ratingCount})`, icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -481,26 +632,23 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
 
             {activeTab === 'reviews' && (
               <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pb-8 border-b border-neutral-100">
-                  <div>
-                    <h3 className="text-2xl font-black! text-[#184363] mb-3">Customer Reviews</h3>
+                <div className="pb-8 border-b border-neutral-100">
+                  <h3 className="text-2xl font-black! text-[#184363] mb-3">Customer Reviews</h3>
+                  {product.ratingCount > 0 && (
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <div className="flex">
                           {[...Array(5)].map((_, i) => (
-                            <svg key={i} className={`w-6 h-6 ${i < Math.floor(rating) ? 'text-amber-400' : 'text-neutral-200'}`} fill="currentColor" viewBox="0 0 20 20">
+                            <svg key={i} className={`w-6 h-6 ${i < Math.floor(product.averageRating) ? 'text-amber-400' : 'text-neutral-200'}`} fill="currentColor" viewBox="0 0 20 20">
                               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                             </svg>
                           ))}
                         </div>
-                        <span className="text-xl font-black! text-[#184363]">{rating}</span>
+                        <span className="text-xl font-black! text-[#184363]">{product.averageRating.toFixed(1)}</span>
                       </div>
-                      <span className="text-neutral-600">Based on {reviewCount} reviews</span>
+                      <span className="text-neutral-600">Based on {product.ratingCount} reviews</span>
                     </div>
-                  </div>
-                  <button className="px-6 py-3 bg-linear-to-r from-[#009eb9] to-[#00c9d7] text-white font-bold! rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105">
-                    Write a Review
-                  </button>
+                  )}
                 </div>
 
                 {reviews.length > 0 ? (
@@ -539,12 +687,10 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-neutral-500 mb-3">Be the first to review this product</p>
-                    <a href="/contact" className="text-[#009eb9] hover:underline font-semibold! text-sm">
-                      Contact us to leave a review
-                    </a>
+                    <p className="text-neutral-500">Be the first to review this product</p>
                   </div>
                 )}
+                <ReviewForm productId={product.id} />
               </div>
             )}
           </div>
