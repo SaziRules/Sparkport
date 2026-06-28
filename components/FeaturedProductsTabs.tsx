@@ -14,12 +14,10 @@ interface Props {
   newArrivals: Product[];
 }
 
-function StarRating({ productId }: { productId: number }) {
-  const rating = 4.0 + ((productId * 7) % 10) / 10;
-  const reviewCount = 50 + ((productId * 23) % 200);
+function StarRating({ rating, count }: { rating: number; count: number }) {
+  if (count === 0) return null;
   const fullStars = Math.floor(rating);
   const hasHalf = rating % 1 >= 0.5;
-
   return (
     <div className="flex items-center gap-1 mb-1.5">
       <div className="flex items-center gap-0.5">
@@ -35,7 +33,7 @@ function StarRating({ productId }: { productId: number }) {
         ))}
       </div>
       <span className="text-[10px] text-neutral-500 font-medium!">{rating.toFixed(1)}</span>
-      <span className="text-[10px] text-neutral-400">({reviewCount})</span>
+      <span className="text-[10px] text-neutral-400">({count})</span>
     </div>
   );
 }
@@ -164,7 +162,7 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
               <h3 className="text-sm font-bold! text-[#184363] mb-1 line-clamp-2 min-h-10">
                 {product.name}
               </h3>
-              <StarRating productId={product.id} />
+              <StarRating rating={product.averageRating} count={product.ratingCount} />
               <div className="flex items-baseline gap-2 mb-1">
                 {product.originalPrice !== product.salePrice && (
                   <span className="text-sm text-neutral-400 line-through">
