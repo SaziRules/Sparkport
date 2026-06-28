@@ -14,6 +14,7 @@ export default function CartDrawer() {
     count,
     total,
     currencySymbol,
+    cartTotals,
     isLoading,
     isDrawerOpen,
     lastAddedKey,
@@ -28,9 +29,11 @@ export default function CartDrawer() {
   const parsedTotal = parseInt(total, 10) / 100;
   const formattedTotal = parsedTotal.toFixed(2);
 
-  // Free delivery progress bar
-  const amountLeft = Math.max(0, FREE_DELIVERY_THRESHOLD - parsedTotal);
-  const progressPct = Math.min(100, (parsedTotal / FREE_DELIVERY_THRESHOLD) * 100);
+  // Free delivery progress bar — use discounted total (B2)
+  const discountedTotal =
+    (parseInt(cartTotals.total_items, 10) - parseInt(cartTotals.total_discount, 10)) / 100;
+  const amountLeft = Math.max(0, FREE_DELIVERY_THRESHOLD - discountedTotal);
+  const progressPct = Math.min(100, (discountedTotal / FREE_DELIVERY_THRESHOLD) * 100);
 
   // 5.2 Undo remove state
   const [pendingRemoval, setPendingRemoval] = useState<{
@@ -388,8 +391,11 @@ export default function CartDrawer() {
             <Link
               href="/checkout"
               onClick={closeDrawer}
+              aria-disabled={activeItems.length === 0}
               className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-black! text-white text-base transition-all ${
-                isLoading ? 'bg-neutral-300 pointer-events-none' : 'bg-[#009eb9] hover:bg-[#007a8f]'
+                isLoading || activeItems.length === 0
+                  ? 'bg-neutral-300 pointer-events-none'
+                  : 'bg-[#009eb9] hover:bg-[#007a8f]'
               }`}
             >
               {isLoading ? (
@@ -402,7 +408,7 @@ export default function CartDrawer() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               )}
-              Proceed to Checkout →
+              Proceed to Checkout
             </Link>
 
             <Link

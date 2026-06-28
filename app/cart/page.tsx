@@ -277,7 +277,7 @@ export default function CartPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 )}
-                Complete My Order — Secure Checkout
+                Proceed to Checkout
               </Link>
 
               <p className="text-xs text-center text-neutral-400 mt-2">
