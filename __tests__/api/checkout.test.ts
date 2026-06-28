@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock next/headers before importing the route
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }));
@@ -9,7 +8,6 @@ import { cookies } from 'next/headers';
 import { POST } from '@/app/api/checkout/route';
 
 const MOCK_CART_TOKEN = 'test-cart-token';
-const MOCK_NONCE = 'test-nonce-123';
 
 const VALID_BODY = {
   billing: {
@@ -21,6 +19,11 @@ const VALID_BODY = {
   },
   payment_method: 'payfast',
   customer_note: '',
+};
+
+const MOCK_CART = {
+  items: [{ id: 42, quantity: 1 }],
+  coupons: [],
 };
 
 function makeFetchMock(responses: Array<{ ok: boolean; headers?: Record<string, string>; body: unknown }>) {
@@ -38,21 +41,24 @@ function makeFetchMock(responses: Array<{ ok: boolean; headers?: Record<string, 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  process.env.NEXT_PUBLIC_WP_API_URL = 'https://sparkport.co.za/wp-json';
+  process.env.WC_CONSUMER_KEY = 'ck_test';
+  process.env.WC_CONSUMER_SECRET = 'cs_test';
   vi.mocked(cookies).mockResolvedValue({
     get: (name: string) => (name === 'wc_cart_token' ? { value: MOCK_CART_TOKEN } : undefined),
   } as ReturnType<typeof cookies> extends Promise<infer T> ? T : never);
 });
 
 describe('POST /api/checkout', () => {
-  it('PayFast: returns WC redirect_url', async () => {
+  it('PayFast: returns WC payment_url (order-pay page)', async () => {
     global.fetch = makeFetchMock([
-      // 1. nonce fetch (GET /cart)
-      { ok: true, headers: { Nonce: MOCK_NONCE, 'Cart-Token': MOCK_CART_TOKEN }, body: {} },
-      // 2. checkout POST
+      // 1. GET /wc/store/v1/cart — line items
+      { ok: true, headers: { 'Cart-Token': MOCK_CART_TOKEN }, body: MOCK_CART },
+      // 2. POST /wc/v3/orders
       {
         ok: true, body: {
-          order_id: 101,
-          payment_result: { redirect_url: 'https://www.payfast.co.za/eng/process?m=123' },
+          id: 101,
+          payment_url: 'https://sparkport.co.za/checkout/order-pay/101/?pay_for_order=true&key=wc_order_abc',
         },
       },
     ]);
@@ -67,13 +73,15 @@ describe('POST /api/checkout', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.redirect).toBe('https://www.payfast.co.za/eng/process?m=123');
+    expect(data.redirect).toBe(
+      'https://sparkport.co.za/checkout/order-pay/101/?pay_for_order=true&key=wc_order_abc'
+    );
   });
 
   it('EFT: returns /checkout/success redirect', async () => {
     global.fetch = makeFetchMock([
-      { ok: true, headers: { Nonce: MOCK_NONCE }, body: {} },
-      { ok: true, body: { order_id: 202, payment_result: { redirect_url: '' } } },
+      { ok: true, headers: { 'Cart-Token': MOCK_CART_TOKEN }, body: MOCK_CART },
+      { ok: true, body: { id: 202, payment_url: '' } },
     ]);
 
     const req = new Request('http://localhost/api/checkout', {
@@ -91,8 +99,8 @@ describe('POST /api/checkout', () => {
 
   it('In-store: returns /checkout/success redirect', async () => {
     global.fetch = makeFetchMock([
-      { ok: true, headers: { Nonce: MOCK_NONCE }, body: {} },
-      { ok: true, body: { order_id: 303, payment_result: { redirect_url: '' } } },
+      { ok: true, headers: { 'Cart-Token': MOCK_CART_TOKEN }, body: MOCK_CART },
+      { ok: true, body: { id: 303, payment_url: '' } },
     ]);
 
     const req = new Request('http://localhost/api/checkout', {
@@ -108,10 +116,25 @@ describe('POST /api/checkout', () => {
     expect(data.redirect).toBe('/checkout/success?order_id=303&method=cod');
   });
 
-  it('forwards WC error message to client', async () => {
+  it('returns 502 when cart cannot be read', async () => {
     global.fetch = makeFetchMock([
-      { ok: true, headers: { Nonce: MOCK_NONCE }, body: {} },
-      { ok: false, body: { message: 'Invalid payment method.' } },
+      { ok: false, body: {} },
+    ]);
+
+    const req = new Request('http://localhost/api/checkout', {
+      method: 'POST',
+      body: JSON.stringify(VALID_BODY),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(502);
+  });
+
+  it('forwards WC order creation error to client', async () => {
+    global.fetch = makeFetchMock([
+      { ok: true, headers: { 'Cart-Token': MOCK_CART_TOKEN }, body: MOCK_CART },
+      { ok: false, body: { message: 'Product is out of stock.' } },
     ]);
 
     const req = new Request('http://localhost/api/checkout', {
@@ -124,6 +147,6 @@ describe('POST /api/checkout', () => {
     const data = await res.json();
 
     expect(res.status).toBe(422);
-    expect(data.message).toBe('Invalid payment method.');
+    expect(data.message).toBe('Product is out of stock.');
   });
 });
