@@ -41,26 +41,24 @@ function makeFetchMock(responses: Array<{ ok: boolean; headers?: Record<string, 
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.NEXT_PUBLIC_WP_API_URL = 'https://sparkport.co.za/wp-json';
-  process.env.WC_CONSUMER_KEY = 'ck_test';
-  process.env.WC_CONSUMER_SECRET = 'cs_test';
+  process.env.NEXT_PUBLIC_WP_API_URL  = 'https://sparkport.co.za/wp-json';
+  process.env.WC_CONSUMER_KEY         = 'ck_test';
+  process.env.WC_CONSUMER_SECRET      = 'cs_test';
+  process.env.PAYFAST_MERCHANT_ID     = 'test_mid';
+  process.env.PAYFAST_MERCHANT_KEY    = 'test_mkey';
+  delete process.env.PAYFAST_PASSPHRASE;
+  process.env.PAYFAST_SANDBOX         = 'true';
+  process.env.NEXT_PUBLIC_SITE_URL    = 'http://localhost:3000';
   vi.mocked(cookies).mockResolvedValue({
     get: (name: string) => (name === 'wc_cart_token' ? { value: MOCK_CART_TOKEN } : undefined),
   } as ReturnType<typeof cookies> extends Promise<infer T> ? T : never);
 });
 
 describe('POST /api/checkout', () => {
-  it('PayFast: returns WC payment_url (order-pay page)', async () => {
+  it('PayFast: returns sandbox PayFast URL with correct params', async () => {
     global.fetch = makeFetchMock([
-      // 1. GET /wc/store/v1/cart — line items
       { ok: true, headers: { 'Cart-Token': MOCK_CART_TOKEN }, body: MOCK_CART },
-      // 2. POST /wc/v3/orders
-      {
-        ok: true, body: {
-          id: 101,
-          payment_url: 'https://sparkport.co.za/checkout/order-pay/101/?pay_for_order=true&key=wc_order_abc',
-        },
-      },
+      { ok: true, body: { id: 101, total: '299.99' } },
     ]);
 
     const req = new Request('http://localhost/api/checkout', {
@@ -73,15 +71,16 @@ describe('POST /api/checkout', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.redirect).toBe(
-      'https://sparkport.co.za/checkout/order-pay/101/?pay_for_order=true&key=wc_order_abc'
-    );
+    expect(data.redirect).toMatch(/^https:\/\/sandbox\.payfast\.co\.za\/eng\/process/);
+    expect(data.redirect).toContain('m_payment_id=101');
+    expect(data.redirect).toContain('amount=299.99');
+    expect(data.redirect).toContain('signature=');
   });
 
   it('EFT: returns /checkout/success redirect', async () => {
     global.fetch = makeFetchMock([
       { ok: true, headers: { 'Cart-Token': MOCK_CART_TOKEN }, body: MOCK_CART },
-      { ok: true, body: { id: 202, payment_url: '' } },
+      { ok: true, body: { id: 202, total: '150.00' } },
     ]);
 
     const req = new Request('http://localhost/api/checkout', {
@@ -100,7 +99,7 @@ describe('POST /api/checkout', () => {
   it('In-store: returns /checkout/success redirect', async () => {
     global.fetch = makeFetchMock([
       { ok: true, headers: { 'Cart-Token': MOCK_CART_TOKEN }, body: MOCK_CART },
-      { ok: true, body: { id: 303, payment_url: '' } },
+      { ok: true, body: { id: 303, total: '75.00' } },
     ]);
 
     const req = new Request('http://localhost/api/checkout', {

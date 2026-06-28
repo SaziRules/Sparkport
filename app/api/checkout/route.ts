@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { buildPayFastSignature } from '@/lib/payfastSignature';
 
 const STORE = `${process.env.NEXT_PUBLIC_WP_API_URL}/wc/store/v1`;
 const REST   = `${process.env.NEXT_PUBLIC_WP_API_URL}/wc/v3`;
@@ -28,6 +29,42 @@ async function getCart(cartToken: string | undefined): Promise<{
     cart,
     token: res.headers.get('Cart-Token') ?? cartToken ?? '',
   };
+}
+
+function buildPayFastUrl(params: {
+  orderId:   number;
+  amount:    string;
+  firstName: string;
+  lastName:  string;
+  email:     string;
+}): string {
+  const MERCHANT_ID  = process.env.PAYFAST_MERCHANT_ID  ?? '';
+  const MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY ?? '';
+  const PASSPHRASE   = process.env.PAYFAST_PASSPHRASE || undefined;
+  const SITE_URL     = (process.env.NEXT_PUBLIC_SITE_URL ?? '').replace(/\/$/, '');
+  const isSandbox    = process.env.PAYFAST_SANDBOX === 'true';
+
+  const pfBase = isSandbox
+    ? 'https://sandbox.payfast.co.za/eng/process'
+    : 'https://www.payfast.co.za/eng/process';
+
+  const data: [string, string][] = [
+    ['merchant_id',   MERCHANT_ID],
+    ['merchant_key',  MERCHANT_KEY],
+    ['return_url',    `${SITE_URL}/checkout/success?order_id=${params.orderId}&method=payfast`],
+    ['cancel_url',    `${SITE_URL}/checkout`],
+    ['notify_url',    `${SITE_URL}/api/checkout/payfast-notify`],
+    ['name_first',    params.firstName],
+    ['name_last',     params.lastName],
+    ['email_address', params.email],
+    ['m_payment_id',  String(params.orderId)],
+    ['amount',        parseFloat(params.amount).toFixed(2)],
+    ['item_name',     `Order #${params.orderId}`],
+  ];
+
+  const signature = buildPayFastSignature(data, PASSPHRASE);
+  const search = new URLSearchParams([...data, ['signature', signature]]);
+  return `${pfBase}?${search.toString()}`;
 }
 
 const PAYMENT_TITLES: Record<string, string> = {
@@ -67,8 +104,8 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       payment_method,
       payment_method_title: PAYMENT_TITLES[payment_method] ?? payment_method,
-      set_paid: false,
-      status: 'pending',
+      set_paid:     false,
+      status:       'pending',
       billing,
       shipping: {
         first_name: billing.first_name,
@@ -80,7 +117,7 @@ export async function POST(request: Request) {
         postcode:   billing.postcode,
         country:    billing.country,
       },
-      line_items: cartData.cart.items.map((item) => ({
+      line_items:   cartData.cart.items.map((item) => ({
         product_id: item.id,
         quantity:   item.quantity,
       })),
@@ -98,10 +135,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const order = await orderRes.json() as { id: number; payment_url?: string };
+  const order = await orderRes.json() as { id: number; total: string; payment_url?: string };
 
-  if (payment_method === 'payfast' && order.payment_url) {
-    return Response.json({ redirect: order.payment_url });
+  if (payment_method === 'payfast') {
+    return Response.json({
+      redirect: buildPayFastUrl({
+        orderId:   order.id,
+        amount:    order.total,
+        firstName: billing.first_name,
+        lastName:  billing.last_name,
+        email:     billing.email,
+      }),
+    });
   }
 
   return Response.json({
