@@ -137,6 +137,9 @@ export async function POST(request: Request) {
 
   const order = await orderRes.json() as { id: number; total: string; payment_url?: string };
 
+  // Clear the WC cart session so the user starts fresh after paying
+  cookieStore.delete('wc_cart_token');
+
   if (payment_method === 'payfast') {
     return Response.json({
       redirect: buildPayFastUrl({

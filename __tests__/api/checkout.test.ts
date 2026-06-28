@@ -51,6 +51,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL    = 'http://localhost:3000';
   vi.mocked(cookies).mockResolvedValue({
     get: (name: string) => (name === 'wc_cart_token' ? { value: MOCK_CART_TOKEN } : undefined),
+    delete: vi.fn(),
   } as ReturnType<typeof cookies> extends Promise<infer T> ? T : never);
 });
 

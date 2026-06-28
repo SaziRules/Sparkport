@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { decodeHtml } from '@/lib/wordpress';
 
-const FREE_DELIVERY_THRESHOLD = 500; // R500
+const FREE_DELIVERY_THRESHOLD = 1500; // R1500
 
 export default function CartDrawer() {
   const {
@@ -360,7 +360,7 @@ export default function CartDrawer() {
                 <>
                   <div className="flex justify-between text-xs mb-1.5">
                     <span className="text-neutral-500">Add <span className="font-semibold! text-[#009eb9]">{symbol}{amountLeft.toFixed(2)}</span> more for free delivery — you&apos;re close!</span>
-                    <span className="text-neutral-400">{symbol}500 threshold</span>
+                    <span className="text-neutral-400">{symbol}{FREE_DELIVERY_THRESHOLD} threshold</span>
                   </div>
                   <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
                     <div
