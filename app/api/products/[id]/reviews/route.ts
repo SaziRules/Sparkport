@@ -40,10 +40,11 @@ export async function POST(
   }
 
   try {
-    const res = await fetch(`${WC_API}/products/${productId}/reviews`, {
+    const res = await fetch(`${WC_API}/products/reviews`, {
       method: 'POST',
       headers: { ...wcAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        product_id: productId,
         reviewer: reviewer.trim(),
         reviewer_email: reviewer_email.trim(),
         rating: ratingNum,
@@ -53,6 +54,8 @@ export async function POST(
     });
 
     if (!res.ok) {
+      const errBody = await res.json().catch(() => null);
+      console.error('[reviews] WC error', res.status, errBody);
       return Response.json(
         { message: 'Could not submit your review. Please try again.' },
         { status: 502 }

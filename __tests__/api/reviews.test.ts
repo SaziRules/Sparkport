@@ -41,8 +41,9 @@ describe('POST /api/products/[id]/reviews', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     await POST(...makeRequest(VALID_BODY));
     const [url, opts] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toContain('/products/42/reviews');
+    expect(url).toContain('/products/reviews');
     const sent = JSON.parse(opts.body as string);
+    expect(sent.product_id).toBe(42);
     expect(sent.rating).toBe(5);
     expect(sent.reviewer).toBe('Jane Dlamini');
     expect(sent.status).toBe('approved');
