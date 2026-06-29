@@ -1,11 +1,30 @@
-// middleware.ts (SIMPLE VERSION - Just refreshes sessions, no route protection)
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Routes only accessible to managers
+const MANAGER_ROUTES = ['/manager/dashboard'];
+
+// Customer-facing routes managers are blocked from
+const CUSTOMER_ROUTES = [
+  '/account',
+  '/shop',
+  '/product',
+  '/categories',
+  '/cart',
+  '/checkout',
+  '/fill-script',
+];
+
+function isManagerRoute(path: string) {
+  return MANAGER_ROUTES.some(r => path === r || path.startsWith(r + '/'));
+}
+
+function isCustomerRoute(path: string) {
+  return CUSTOMER_ROUTES.some(r => path === r || path.startsWith(r + '/'));
+}
+
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,12 +35,10 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -30,21 +47,64 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // This just refreshes the session - no route protection
-  // Add route protection later when you create your account dashboard
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  const path = request.nextUrl.pathname;
+
+  // Forward any refreshed session cookies onto a redirect response
+  function makeRedirect(destination: string) {
+    const response = NextResponse.redirect(new URL(destination, request.url));
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) =>
+      response.cookies.set(name, value, opts)
+    );
+    return response;
+  }
+
+  // ── Unauthenticated user ──────────────────────────────────────
+  if (!user) {
+    if (isManagerRoute(path)) {
+      return makeRedirect('/manager/login');
+    }
+    // Let unauthenticated users through to public + customer pages
+    // (individual pages handle their own auth prompts)
+    return supabaseResponse;
+  }
+
+  // ── Authenticated user — check manager status once ───────────
+  const needsRoleCheck = isManagerRoute(path) || isCustomerRoute(path) || path === '/manager/login';
+
+  if (!needsRoleCheck) {
+    return supabaseResponse;
+  }
+
+  const { data: manager } = await supabase
+    .from('managers')
+    .select('role, is_active')
+    .eq('auth_user_id', user.id)
+    .eq('is_active', true)
+    .single();
+
+  const isManager = !!manager;
+
+  // Manager trying to access customer pages → send to dashboard
+  if (isManager && isCustomerRoute(path)) {
+    return makeRedirect('/manager/dashboard');
+  }
+
+  // Manager already logged in trying to hit /manager/login → send to dashboard
+  if (isManager && path === '/manager/login') {
+    return makeRedirect('/manager/dashboard');
+  }
+
+  // Non-manager trying to access manager dashboard → send home
+  if (!isManager && isManagerRoute(path)) {
+    return makeRedirect('/');
+  }
 
   return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

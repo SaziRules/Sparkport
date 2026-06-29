@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { submitPrescriptionNoAuth } from '@/lib/supabase/prescriptions';
+import { supabase } from '@/lib/supabase/client';
 
 interface FormData {
   // Personal Details
@@ -94,6 +95,50 @@ export default function FillYourScript() {
     hasAllergies: false,
     allergyDetails: '',
   });
+
+  type SessionUser = {
+    id: string
+    email: string
+    firstName: string
+  } | null
+
+  const [sessionUser, setSessionUser] = useState<SessionUser>(null);
+
+  useEffect(() => {
+    async function checkSession() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, phone, id_number, date_of_birth, medical_aid_provider, medical_aid_number')
+        .eq('id', user.id)
+        .single();
+
+      setSessionUser({ id: user.id, email: user.email!, firstName: profile?.first_name || '' });
+
+      if (profile) {
+        setFormData(prev => ({
+          ...prev,
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          email: user.email!,
+          whatsappNumber: profile.phone || '',
+          idNumber: profile.id_number || '',
+          dateOfBirth: profile.date_of_birth || '',
+          medicalAidProvider: profile.medical_aid_provider || '',
+          medicalAidNumber: profile.medical_aid_number || '',
+        }));
+      }
+    }
+    checkSession();
+  }, []);
+
+  useEffect(() => {
+    if (sessionUser && currentStep === 1) {
+      setCurrentStep(2);
+    }
+  }, [sessionUser]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [filePreview, setFilePreview] = useState<string>('');
@@ -370,6 +415,25 @@ export default function FillYourScript() {
               />
             </div>
           </div>
+
+          {/* Logged-in greeting */}
+          {sessionUser && currentStep === 2 && (
+            <div className="mb-6 p-4 bg-[#009eb9]/8 border border-[#009eb9]/20 rounded-lg flex items-center justify-between">
+              <p className="text-sm text-[#184363] font-medium">
+                Welcome back{sessionUser.firstName ? `, ${sessionUser.firstName}` : ''}. Your details are pre-filled.
+              </p>
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setSessionUser(null);
+                  setCurrentStep(1);
+                }}
+                className="text-xs text-neutral-500 hover:text-red-500 transition-colors ml-4 shrink-0"
+              >
+                Not you? Sign out
+              </button>
+            </div>
+          )}
 
           {/* Error alert */}
           {submitError && (

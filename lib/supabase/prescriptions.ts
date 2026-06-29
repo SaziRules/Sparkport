@@ -1,5 +1,7 @@
 import { supabase } from './client';
 import { uploadPrescriptionImage } from './storage';
+import { calculateTier } from '@/lib/rewards';
+import { createPrescriptionRecord, deletePrescriptionRecord } from '@/app/actions/prescriptions';
 
 interface PrescriptionFormData {
   // Personal Details
@@ -208,22 +210,17 @@ export async function submitPrescriptionNoAuth(
       status: 'submitted',
     };
 
-    const { data: prescriptionRecord, error: prescriptionError } = await supabase
-      .from('prescriptions')
-      .insert(prescriptionData)
-      .select()
-      .single();
+    // Use server action with service role to bypass RLS on prescriptions table
+    const prescriptionResult = await createPrescriptionRecord(prescriptionData);
 
-    if (prescriptionError) {
-      console.error('Prescription creation error:', prescriptionError);
-      console.error('Error details:', JSON.stringify(prescriptionError, null, 2));
-      console.error('Error message:', prescriptionError.message);
-      console.error('Error code:', prescriptionError.code);
+    if ('error' in prescriptionResult) {
       return {
         success: false,
-        error: `Failed to create prescription: ${prescriptionError.message || 'Unknown error'}`,
+        error: `Failed to create prescription: ${prescriptionResult.error}`,
       };
     }
+
+    const prescriptionRecord = prescriptionResult;
 
     // Step 4: Upload prescription image
     // For anonymous users, use prescription ID as temporary user ID
@@ -236,11 +233,8 @@ export async function submitPrescriptionNoAuth(
     });
 
     if (!uploadResult.success) {
-      // Rollback prescription if image upload fails
-      await supabase
-        .from('prescriptions')
-        .delete()
-        .eq('id', prescriptionRecord.id);
+      // Rollback prescription if image upload fails (service role bypasses RLS)
+      await deletePrescriptionRecord(prescriptionRecord.id);
 
       return {
         success: false,
@@ -257,6 +251,30 @@ export async function submitPrescriptionNoAuth(
         title: 'Prescription Submitted',
         message: `Your prescription ${prescriptionRecord.prescription_number} has been submitted successfully. Our pharmacist will review it shortly.`,
       });
+
+      // Step 6: Award prescription points
+      const points = formData.isChronic ? 50 : 25;
+      await supabase.from('rewards_transactions').insert({
+        user_id: user.id,
+        points,
+        type: 'prescription',
+        description: formData.isChronic ? 'Chronic prescription submitted' : 'Prescription submitted',
+        reference: prescriptionRecord.id,
+      });
+
+      const { data: currentRewards } = await supabase
+        .from('rewards')
+        .select('points')
+        .eq('user_id', user.id)
+        .single();
+
+      const newTotal = (currentRewards?.points ?? 0) + points;
+      await supabase.from('rewards').upsert({
+        user_id: user.id,
+        points: newTotal,
+        tier: calculateTier(newTotal),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
     }
 
     return {

@@ -1,20 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import StoreManagerDashboard from './StoreManagerDashboard';
 import FranchiseAdminDashboard from './FranchiseAdminDashboard';
 
 export default function ManagerDashboardPage() {
+  const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function checkRole() {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
-        window.location.href = '/manager/login';
+        router.replace('/manager/login');
         return;
       }
 
@@ -26,7 +28,7 @@ export default function ManagerDashboardPage() {
         .single();
 
       if (!manager) {
-        window.location.href = '/manager/login';
+        router.replace('/manager/login');
         return;
       }
 

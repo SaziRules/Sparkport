@@ -10,6 +10,12 @@ import { useCart } from '@/contexts/CartContext';
 import { useSearch } from '@/lib/hooks/useSearch';
 import { useSearchKeyboard } from '@/lib/hooks/useSearchKeyboard';
 import SearchDropdown from '@/components/SearchDropdown';
+import { supabase } from '@/lib/supabase/client';
+
+interface SessionUser {
+  firstName: string;
+  initial: string;
+}
 
 export default function SparkportHeader() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -18,6 +24,9 @@ export default function SparkportHeader() {
   const shopCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCountRef = useRef(cartCount);
   const [badgeAnim, setBadgeAnim] = useState<'bounce' | 'pop' | null>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
   const searchWrapperRef = useRef<HTMLDivElement>(null);
@@ -67,10 +76,50 @@ export default function SparkportHeader() {
         setQuery('');
         resetHighlight();
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', onMouseDown);
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, [resetHighlight]);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', user.id)
+          .single();
+        const firstName = profile?.first_name || user.email?.split('@')[0] || 'Account';
+        setSessionUser({ firstName, initial: firstName.charAt(0).toUpperCase() });
+      } else {
+        setSessionUser(null);
+      }
+    };
+
+    loadUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            const firstName = profile?.first_name || session.user.email?.split('@')[0] || 'Account';
+            setSessionUser({ firstName, initial: firstName.charAt(0).toUpperCase() });
+          });
+      } else {
+        setSessionUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleShopEnter = () => {
     if (shopCloseTimer.current) clearTimeout(shopCloseTimer.current);
@@ -225,12 +274,63 @@ export default function SparkportHeader() {
 
             {/* Right Icons - With labels and dividers */}
             <div className="flex items-center">
-              <Link href="/account" className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span className="text-xs font-medium">Sign in / Register</span>
-              </Link>
+              {sessionUser ? (
+                <div ref={userMenuRef} className="relative flex items-center border-r border-white/20">
+                  <button
+                    onClick={() => setIsUserMenuOpen(v => !v)}
+                    className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-[#009eb9] flex items-center justify-center text-[10px] font-bold text-white">
+                      {sessionUser.initial}
+                    </span>
+                    <span className="text-xs font-medium">Hi, {sessionUser.firstName}</span>
+                    <svg className={`w-3 h-3 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isUserMenuOpen && (
+                    <div className="absolute top-full right-0 mt-1 w-52 bg-white rounded-xl shadow-xl border border-neutral-100 py-1 z-50">
+                      <div className="px-4 py-3 border-b border-neutral-100">
+                        <p className="text-sm font-semibold text-[#184363]">{sessionUser.firstName}</p>
+                      </div>
+                      {[
+                        { href: '/account', label: 'My Account' },
+                        { href: '/account/prescriptions', label: 'My Prescriptions' },
+                        { href: '/account/orders', label: 'My Orders' },
+                        { href: '/account/rewards', label: 'Rewards' },
+                      ].map(({ href, label }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center px-4 py-2.5 text-sm text-neutral-700 hover:bg-[#009eb9]/10 hover:text-[#009eb9] transition-colors"
+                        >
+                          {label}
+                        </Link>
+                      ))}
+                      <div className="border-t border-neutral-100 mt-1">
+                        <button
+                          onClick={async () => {
+                            setIsUserMenuOpen(false);
+                            await supabase.auth.signOut();
+                          }}
+                          className="w-full flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link href="/account" className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-xs font-medium">Sign in / Register</span>
+                </Link>
+              )}
               
               <button className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
                 <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16.758 8.729">

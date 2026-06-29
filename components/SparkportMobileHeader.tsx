@@ -8,15 +8,19 @@ import { useCart } from '@/contexts/CartContext';
 import { useSearch } from '@/lib/hooks/useSearch';
 import { useSearchKeyboard } from '@/lib/hooks/useSearchKeyboard';
 import SearchDropdown from '@/components/SearchDropdown';
+import { supabase } from '@/lib/supabase/client';
 
-// Mobile version of SparkportHeader - matches desktop functionality
-// Shows on screens smaller than lg (1024px)
+interface SessionUser {
+  firstName: string;
+  initial: string;
+}
 
 export default function SparkportMobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { count: cartCount, openDrawer } = useCart();
   const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const router = useRouter();
   const [query, setQuery] = useState('');
   const isSearchActive = query.trim().length >= 2;
@@ -60,7 +64,6 @@ export default function SparkportMobileHeader() {
     prevCountRef.current = cartCount;
   }, [cartCount]);
 
-  // Prevent scroll when menu is open
   useEffect(() => {
     if (isMenuOpen) {
       document.body.style.overflow = 'hidden';
@@ -71,6 +74,43 @@ export default function SparkportMobileHeader() {
       document.body.style.overflow = 'unset';
     };
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', user.id)
+          .single();
+        const firstName = profile?.first_name || user.email?.split('@')[0] || 'Account';
+        setSessionUser({ firstName, initial: firstName.charAt(0).toUpperCase() });
+      } else {
+        setSessionUser(null);
+      }
+    };
+
+    loadUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            const firstName = profile?.first_name || session.user.email?.split('@')[0] || 'Account';
+            setSessionUser({ firstName, initial: firstName.charAt(0).toUpperCase() });
+          });
+      } else {
+        setSessionUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const categories = [
     'Vitamins & Supplements',
@@ -261,8 +301,24 @@ export default function SparkportMobileHeader() {
               </svg>
             </button>
             <div className="mt-8">
-              <p className="text-white/80! text-sm font-medium!">Welcome to</p>
-              <p className="text-white! text-2xl font-black!">Sparkport</p>
+              {sessionUser ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#009eb9] flex items-center justify-center text-white text-sm font-bold">
+                      {sessionUser.initial}
+                    </div>
+                    <div>
+                      <p className="text-white/80! text-xs font-medium!">Welcome back,</p>
+                      <p className="text-white! text-lg font-black!">{sessionUser.firstName}</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-white/80! text-sm font-medium!">Welcome to</p>
+                  <p className="text-white! text-2xl font-black!">Sparkport</p>
+                </>
+              )}
             </div>
           </div>
 
@@ -271,21 +327,50 @@ export default function SparkportMobileHeader() {
             
             {/* Account Section */}
             <div className="p-4 border-b border-neutral-200">
-              <Link
-                href="/account"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-4 p-4 bg-linear-to-r from-neutral-50 to-neutral-100 rounded-2xl hover:from-[#009eb9]/10 hover:to-[#00c9d7]/10 transition-all"
-              >
-                <div className="w-12 h-12 bg-linear-to-br from-[#009eb9] to-[#00c9d7] rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+              {sessionUser ? (
+                <div className="space-y-1">
+                  {[
+                    { href: '/account', label: 'My Account' },
+                    { href: '/account/prescriptions', label: 'My Prescriptions' },
+                    { href: '/account/orders', label: 'My Orders' },
+                    { href: '/account/rewards', label: 'Rewards' },
+                  ].map(({ href, label }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center px-4 py-3 text-sm font-semibold text-[#184363] hover:bg-[#009eb9]/10 hover:text-[#009eb9] rounded-xl transition-colors"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                  <button
+                    onClick={async () => {
+                      setIsMenuOpen(false);
+                      await supabase.auth.signOut();
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    Sign Out
+                  </button>
                 </div>
-                <div>
-                  <p className="font-bold! text-[#184363]">Sign In / Register</p>
-                  <p className="text-xs text-neutral-500">Access your account</p>
-                </div>
-              </Link>
+              ) : (
+                <Link
+                  href="/account"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-4 p-4 bg-linear-to-r from-neutral-50 to-neutral-100 rounded-2xl hover:from-[#009eb9]/10 hover:to-[#00c9d7]/10 transition-all"
+                >
+                  <div className="w-12 h-12 bg-linear-to-br from-[#009eb9] to-[#00c9d7] rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-bold! text-[#184363]">Sign In / Register</p>
+                    <p className="text-xs text-neutral-500">Access your account</p>
+                  </div>
+                </Link>
+              )}
             </div>
 
             {/* Main Navigation */}

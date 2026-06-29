@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { createPrescriptionImageRecord } from '@/app/actions/prescriptions';
 
 interface UploadPrescriptionImageParams {
   file: File;
@@ -61,19 +62,16 @@ export async function uploadPrescriptionImage({
       };
     }
 
-    // Save to prescription_images table
-    const { error: dbError } = await supabase
-      .from('prescription_images')
-      .insert({
-        prescription_id: prescriptionId,
-        storage_path: data.path,
-        file_name: file.name,
-        file_size: file.size,
-        mime_type: file.type,
-      });
+    // Save to prescription_images table via server action (service role bypasses RLS)
+    const { error: dbError } = await createPrescriptionImageRecord({
+      prescription_id: prescriptionId,
+      storage_path: data.path,
+      file_name: file.name,
+      file_size: file.size,
+      mime_type: file.type,
+    });
 
     if (dbError) {
-      console.error('Database error:', dbError);
       // Clean up uploaded file
       await supabase.storage.from('prescription-images').remove([data.path]);
       return {

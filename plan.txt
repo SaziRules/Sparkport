@@ -1,452 +1,77 @@
-SPARKPORT — FULL SYSTEM IMPLEMENTATION PLAN
-===========================================
-Data architecture, customer experience, admin dashboards,
-prescriptions, rewards, and WooCommerce integration.
-Written: 28 June 2026
-===========================================
+SPARKPORT — ACTION PLAN
+===================================
+Last updated: 29 June 2026
+Session resumed from: prescription dashboard world-class UX complete
+===================================
 
 
 ================================================================
-ARCHITECTURE DECISIONS (LOCKED IN)
+WHAT'S DONE (don't revisit)
 ================================================================
-
-WooCommerce (source of truth for commerce)
-  - All products, cart, checkout, payment, order fulfilment
-  - Orders linked to customers by billing_email
-  - No WC customer account registration required from headless app
-  - WC is the financial record — never override order data from Next.js
-
-Supabase (source of truth for everything else)
-  - Authentication (email/password, Google, Facebook)
-  - Customer profiles, prescriptions, delivery addresses, notifications
-  - Rewards system (points, transactions)
-  - Mirror tables for WC orders/customers (for fast analytics + joins)
-  - Manager roles and access control
-  - Admin analytics queries run here — not against WC API
-
-Bridge: email address
-  - Supabase user.email === WC billing_email
-  - Every WC order is queryable by user email
-  - Mirror tables sync WC data into Supabase via webhooks
-
-Manager auth: existing managers table (DO NOT CHANGE)
-  - Same Supabase auth as customers
-  - managers table: { auth_user_id, role, is_active, pharmacy_id }
-  - Roles: 'franchise_admin' | 'store_manager'
-  - /manager/login already checks managers table — keep it
+✅ Auth (login, signup, Google, Facebook, forgot password)
+✅ Header auth state (KlaasHeader + SparkportMobileHeader)
+✅ Login flash bug fixed (createBrowserClient, middleware cookies)
+✅ Prescription submit (server action, service role bypasses RLS)
+✅ Prescription image upload (server action)
+✅ /fill-script — session detection, step skip for logged-in users
+✅ /prescription-success — auth-aware CTA (logged-in vs anonymous)
+✅ /account/dashboard — world-class UX, status timeline, image viewer,
+     status filter tabs, rich cards, signed image URLs, copy Rx number
+✅ getUserPrescriptions — claims anonymous prescriptions on load
+✅ Manager login + dashboard (FranchiseAdmin + StoreManager)
+✅ Migrations 001–012 written (011 + 012 still need to be run in Supabase)
 
 
 ================================================================
-EXISTING STATE (what is already built and working)
+TASK 1 — Profile Save (30 min)
 ================================================================
+The profile modal in /account/dashboard renders inputs but Save does nothing.
 
-AUTH & ACCOUNTS
-  ✅ /account — Supabase login/signup (email, Google, Facebook)
-  ✅ /account/dashboard — prescription list, modal detail, submit CTA
-  ✅ /account/orders — fetches WC orders by email via /api/account/orders
-  ✅ /auth/forgot-password — password reset via Supabase email
-  ✅ Guest redirect to /account from protected pages
+CREATE: app/api/account/profile/route.ts
+  PATCH handler:
+    1. createServerClient from @supabase/ssr, get user (401 if none)
+    2. Parse body: { first_name, last_name, phone }
+    3. UPDATE profiles SET first_name, last_name, phone, updated_at = NOW()
+       WHERE id = user.id
+    4. Return { first_name, last_name, phone }
 
-MANAGER
-  ✅ /manager/login — Supabase auth + managers table check
-  ✅ /manager/dashboard — FranchiseAdminDashboard + StoreManagerDashboard
-  ✅ manager/actions.ts — managerSignIn, verifyManagerAccess, role checks
-  ✅ Prescription status view and update in manager dashboard
-
-PRESCRIPTIONS
-  ✅ /fill-script — 5-step form (FillYourScript.tsx)
-  ✅ lib/supabase/prescriptions.ts — submitPrescriptionNoAuth (works for
-       logged-in and guest, attaches user_id if session exists)
-  ✅ matchAnonymousPrescriptions — backfills user_id on signup by email/phone
-  ✅ Prescription image upload to Supabase Storage
-
-COMMERCE
-  ✅ WooCommerce cart, drawer, cart page
-  ✅ Checkout (PayFast + EFT + COD)
-  ✅ /checkout/success page with order detail
-  ✅ /api/account/orders — fetches WC orders via REST API by email
-  ✅ /api/checkout/order/[id] — single order fetch for success page
-
-TRUST PAGES
-  ✅ /privacy-policy, /shipping-policy, /terms-conditions
+MODIFY: app/account/dashboard/page.tsx  (profile modal section)
+  - Add state: firstName, lastName, phone initialised from profile
+  - Add state: isSaving, saveMsg
+  - Wire Save button to PATCH /api/account/profile
+  - On success: update profile state so sidebar name refreshes, show "Saved!"
+  - On error: show "Failed — please try again"
+  - Auto-clear saveMsg after 3 s
 
 
 ================================================================
-SUPABASE SCHEMA ADDITIONS REQUIRED
+TASK 2 — Dashboard "Coming Soon" → Real Data (45 min)
 ================================================================
+Replace the opacity-60 "Coming Soon" block with two real sections.
 
-Run these migrations in Supabase SQL Editor before any phase begins.
+2a. Recent Orders strip (last 3)
+  - On mount, fetch GET /api/account/orders (already built, returns WC orders)
+  - Show 3 cards: order number, status badge, date, total
+  - "View all orders →" link to /account/orders
+  - Empty state: "No orders yet — visit the shop"
 
-------------------------------------------------------------
-TABLE: wc_orders (mirror of WooCommerce orders)
-------------------------------------------------------------
-CREATE TABLE wc_orders (
-  id            INTEGER PRIMARY KEY,        -- WC order ID
-  number        TEXT NOT NULL,              -- WC order number (display)
-  status        TEXT NOT NULL,              -- pending|processing|completed|etc
-  customer_email TEXT NOT NULL,
-  customer_wc_id INTEGER,                   -- WC customer ID (0 = guest)
-  billing_name  TEXT,
-  billing_city  TEXT,
-  payment_method TEXT,
-  total         NUMERIC(10,2) NOT NULL,
-  subtotal      NUMERIC(10,2),
-  discount      NUMERIC(10,2) DEFAULT 0,
-  date_created  TIMESTAMPTZ NOT NULL,
-  date_modified TIMESTAMPTZ NOT NULL,
-  raw           JSONB,                      -- full WC payload for future fields
-  synced_at     TIMESTAMPTZ DEFAULT NOW()
-);
+2b. Remove Wishlist placeholder entirely (not built, not needed yet)
 
-CREATE INDEX idx_wc_orders_email    ON wc_orders(customer_email);
-CREATE INDEX idx_wc_orders_status   ON wc_orders(status);
-CREATE INDEX idx_wc_orders_date     ON wc_orders(date_created);
-CREATE INDEX idx_wc_orders_wc_id    ON wc_orders(customer_wc_id);
-
-------------------------------------------------------------
-TABLE: wc_order_items (mirror of WC line items)
-------------------------------------------------------------
-CREATE TABLE wc_order_items (
-  id            SERIAL PRIMARY KEY,
-  order_id      INTEGER NOT NULL REFERENCES wc_orders(id) ON DELETE CASCADE,
-  product_id    INTEGER NOT NULL,
-  product_name  TEXT NOT NULL,
-  quantity      INTEGER NOT NULL,
-  line_total    NUMERIC(10,2) NOT NULL,
-  image_url     TEXT
-);
-
-CREATE INDEX idx_wc_order_items_order  ON wc_order_items(order_id);
-CREATE INDEX idx_wc_order_items_prod   ON wc_order_items(product_id);
-
-------------------------------------------------------------
-TABLE: wc_customers (mirror of WooCommerce customers)
-------------------------------------------------------------
-CREATE TABLE wc_customers (
-  wc_id          INTEGER PRIMARY KEY,
-  email          TEXT NOT NULL UNIQUE,
-  first_name     TEXT,
-  last_name      TEXT,
-  total_spent    NUMERIC(10,2) DEFAULT 0,
-  orders_count   INTEGER DEFAULT 0,
-  date_registered TIMESTAMPTZ,
-  synced_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_wc_customers_email ON wc_customers(email);
-
-------------------------------------------------------------
-TABLE: rewards (current points balance per customer)
-------------------------------------------------------------
-CREATE TABLE rewards (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  points      INTEGER NOT NULL DEFAULT 0,
-  tier        TEXT NOT NULL DEFAULT 'bronze',  -- bronze|silver|gold|platinum
-  updated_at  TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id)
-);
-
-------------------------------------------------------------
-TABLE: rewards_transactions (points history)
-------------------------------------------------------------
-CREATE TABLE rewards_transactions (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  points      INTEGER NOT NULL,              -- positive = earn, negative = redeem
-  type        TEXT NOT NULL,                 -- 'order_completed'|'prescription'|'signup'|'redemption'
-  description TEXT NOT NULL,
-  reference   TEXT,                          -- WC order ID or prescription ID
-  created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_rewards_tx_user ON rewards_transactions(user_id);
-CREATE INDEX idx_rewards_tx_date ON rewards_transactions(created_at);
-
-------------------------------------------------------------
-POINTS RULES
-------------------------------------------------------------
-Earning:
-  - Account signup:            50 pts (once)
-  - WC order completed:        1 pt per R1 spent (rounded)
-  - Prescription submitted:    25 pts
-  - Chronic prescription:      50 pts (isChronic = true)
-
-Tiers (by total lifetime points):
-  - Bronze:   0–499 pts
-  - Silver:   500–1999 pts
-  - Gold:     2000–4999 pts
-  - Platinum: 5000+ pts
-
-Redemption (future):
-  - 100 pts = R1 discount on next order
+File: app/account/dashboard/page.tsx
 
 
 ================================================================
-PHASE 1 — WooCommerce → Supabase Sync
+TASK 3 — Signup Bonus Points (20 min)
 ================================================================
-Goal: Mirror WC orders and customers into Supabase for fast analytics.
-This is the foundation for everything in the admin dashboard.
+CHECK first: app/account/page.tsx — does the sign-up handler currently
+award 50 pts? If not, add it.
 
-Files to create:
-  app/api/webhooks/woocommerce/route.ts    Webhook receiver
-  scripts/wc-backfill.ts                   One-time backfill script
-  lib/supabase/wc-sync.ts                  Upsert helpers
-
-------------------------------------------------------------
-Task 1.1 — Webhook receiver
-------------------------------------------------------------
-File: app/api/webhooks/woocommerce/route.ts
-
-WooCommerce sends POST requests with HMAC-SHA256 signature in header
-  X-WC-Webhook-Signature: base64(HMAC(secret, body))
-
-Validate before processing:
-  const sig = request.headers.get('x-wc-webhook-signature')
-  const body = await request.text()
-  const expected = createHmac('sha256', process.env.WC_WEBHOOK_SECRET!)
-    .update(body).digest('base64')
-  if (sig !== expected) return Response.json({}, { status: 401 })
-
-Parse topic from header X-WC-Webhook-Topic:
-  'order.created'   → upsertOrder(payload)
-  'order.updated'   → upsertOrder(payload)
-  'customer.created'→ upsertCustomer(payload)
-  'customer.updated'→ upsertCustomer(payload)
-
-After upsert:
-  - If order.status === 'completed': awardOrderPoints(order)
-  - If order.status goes to 'completed' from something else: same
-
-Always return 200 immediately — WC retries on non-200.
-
-Steps:
-  - [ ] Create route.ts with HMAC validation
-  - [ ] Import upsert helpers from lib/supabase/wc-sync.ts
-  - [ ] Handle all four topics
-  - [ ] Add WC_WEBHOOK_SECRET to .env.local
-  - [ ] Test with WC webhook test button (WC Admin → Settings → Advanced → Webhooks)
-
-------------------------------------------------------------
-Task 1.2 — Upsert helpers
-------------------------------------------------------------
-File: lib/supabase/wc-sync.ts
-
-Uses Supabase service role key (process.env.SUPABASE_SERVICE_ROLE_KEY)
-to bypass RLS — webhooks are server-to-server.
-
-upsertOrder(wcOrder: WcWebhookOrder): Promise<void>
-  - Map WC fields to wc_orders columns
-  - supabase.from('wc_orders').upsert({ id: wcOrder.id, ... }, { onConflict: 'id' })
-  - Delete existing wc_order_items for this order_id, re-insert all line_items
-  - Upsert into wc_customers if customer_id > 0
-
-upsertCustomer(wcCustomer: WcWebhookCustomer): Promise<void>
-  - supabase.from('wc_customers').upsert({ wc_id: wcCustomer.id, ... }, { onConflict: 'wc_id' })
-
-awardOrderPoints(order: WcWebhookOrder): Promise<void>
-  - Find Supabase user by email: supabase.auth.admin.listUsers() filtered by email
-    OR: SELECT id FROM auth.users WHERE email = order.billing.email
-  - If no user found: skip (guest order, no rewards)
-  - Points to award: Math.floor(parseFloat(order.total))
-  - INSERT into rewards_transactions (type: 'order_completed', reference: order.id.toString())
-  - Upsert rewards table (increment points, recalculate tier)
-
-Helper: calculateTier(totalPoints: number): 'bronze'|'silver'|'gold'|'platinum'
-  if >= 5000 return 'platinum'
-  if >= 2000 return 'gold'
-  if >= 500  return 'silver'
-  return 'bronze'
-
-Steps:
-  - [ ] Define WcWebhookOrder and WcWebhookCustomer TypeScript interfaces
-  - [ ] Implement upsertOrder with order_items delete+re-insert
-  - [ ] Implement upsertCustomer
-  - [ ] Implement awardOrderPoints
-  - [ ] Implement calculateTier
-  - [ ] Add SUPABASE_SERVICE_ROLE_KEY to .env.local
-
-------------------------------------------------------------
-Task 1.3 — Backfill script (run once)
-------------------------------------------------------------
-File: scripts/wc-backfill.ts
-Run with: npx ts-node scripts/wc-backfill.ts
-
-Paginates WC REST API (100 per page) for:
-  - GET /wc/v3/orders?per_page=100&page=N&orderby=date&order=desc
-  - GET /wc/v3/customers?per_page=100&page=N
-
-For each order: call upsertOrder()
-For each customer: call upsertCustomer()
-Log progress: "Page N: upserted X orders"
-
-After orders are loaded — run points backfill:
-  For each completed order in wc_orders:
-    Call awardOrderPoints() if no existing rewards_transaction for that reference
-
-Steps:
-  - [ ] Write paginator function (generic, reusable for orders + customers)
-  - [ ] Run orders backfill, log count
-  - [ ] Run customers backfill, log count
-  - [ ] Run points backfill for historical completed orders
-  - [ ] Verify row counts in Supabase dashboard
-
-------------------------------------------------------------
-Task 1.4 — Configure WC Webhooks
-------------------------------------------------------------
-In WC Admin → Settings → Advanced → Webhooks, create four webhooks:
-
-  Name: Order Created
-  Status: Active
-  Topic: Order created
-  Delivery URL: https://[your-domain]/api/webhooks/woocommerce
-  Secret: [same as WC_WEBHOOK_SECRET env var]
-  API version: WP REST API Integration v3
-
-  Name: Order Updated
-  Topic: Order updated
-  (same URL and secret)
-
-  Name: Customer Created
-  Topic: Customer created
-  (same URL and secret)
-
-  Name: Customer Updated
-  Topic: Customer updated
-  (same URL and secret)
-
-Steps:
-  - [ ] Create all 4 webhooks in WC admin
-  - [ ] Click "Test" on each to verify 200 response
-  - [ ] Check Supabase table for test data
-
-
-================================================================
-PHASE 2 — Fill-Script Session Integration
-================================================================
-Goal: Logged-in users skip Step 1 (personal details already known).
-      All submissions attach user_id. Guest submissions are backfilled
-      on account creation (already implemented in matchAnonymousPrescriptions).
-
-File to modify: components/FillYourScript.tsx
-
-NOTE: lib/supabase/prescriptions.ts already handles user_id attachment
-correctly in submitPrescriptionNoAuth. The gap is only in the form UI.
-
-------------------------------------------------------------
-Task 2.1 — Detect session on mount
-------------------------------------------------------------
-Add to FillYourScript.tsx:
-
-  const [sessionUser, setSessionUser] = useState<{
-    id: string
-    email: string
-    profile: Profile | null
-  } | null>(null)
-
-  type Profile = {
-    first_name: string
-    last_name: string
-    phone: string
-    id_number: string
-    date_of_birth: string
-    medical_aid_provider: string
-    medical_aid_number: string
-  }
-
-  useEffect(() => {
-    async function checkSession() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, phone, id_number, date_of_birth, medical_aid_provider, medical_aid_number')
-        .eq('id', user.id)
-        .single()
-
-      setSessionUser({ id: user.id, email: user.email!, profile })
-
-      // Pre-fill form data from profile
-      if (profile) {
-        setFormData(prev => ({
-          ...prev,
-          firstName: profile.first_name || '',
-          lastName: profile.last_name || '',
-          email: user.email!,
-          whatsappNumber: profile.phone || '',
-          idNumber: profile.id_number || '',
-          dateOfBirth: profile.date_of_birth || '',
-          medicalAidProvider: profile.medical_aid_provider || '',
-          medicalAidNumber: profile.medical_aid_number || '',
-        }))
-      }
-    }
-    checkSession()
-  }, [])
-
-------------------------------------------------------------
-Task 2.2 — Skip Step 1 for logged-in users
-------------------------------------------------------------
-After sessionUser is set, if user is logged in, set currentStep to 2:
-
-  useEffect(() => {
-    if (sessionUser && currentStep === 1) {
-      setCurrentStep(2)
-    }
-  }, [sessionUser])
-
-Show a logged-in greeting in place of Step 1:
-  When currentStep === 2 AND sessionUser is set, show at the top of the form:
-    "Welcome back, {first_name}. Your details are pre-filled."
-    Small link: "Not you? Sign out"
-
-Step 1 is still fully rendered for guests — no change to that UI.
-
-------------------------------------------------------------
-Task 2.3 — Award prescription submission points
-------------------------------------------------------------
-After successful submitPrescriptionNoAuth, if user is logged in:
-
-In lib/supabase/prescriptions.ts, after the notification insert (Step 5):
-
-  if (user) {
-    const points = formData.isChronic ? 50 : 25
-    await supabase.from('rewards_transactions').insert({
-      user_id: user.id,
-      points,
-      type: 'prescription',
-      description: formData.isChronic
-        ? 'Chronic prescription submitted'
-        : 'Prescription submitted',
-      reference: prescriptionRecord.id,
-    })
-    // Upsert rewards balance
-    const { data: existing } = await supabase
-      .from('rewards').select('points').eq('user_id', user.id).single()
-    const newTotal = (existing?.points ?? 0) + points
-    await supabase.from('rewards').upsert({
-      user_id: user.id,
-      points: newTotal,
-      tier: calculateTier(newTotal),
-    }, { onConflict: 'user_id' })
-  }
-
-Import calculateTier from lib/supabase/wc-sync.ts (or move to lib/rewards.ts)
-
-------------------------------------------------------------
-Task 2.4 — Award signup bonus points
-------------------------------------------------------------
-File: app/auth/actions.ts (signUp server action)
-
-After successful Supabase auth signup and profile creation:
-
-  // Award signup bonus
+After successful signup (Supabase user created + profile inserted):
   await supabase.from('rewards_transactions').insert({
     user_id: newUser.id,
     points: 50,
     type: 'signup',
-    description: 'Welcome bonus — thanks for joining Sparkport!',
+    description: 'Welcome bonus',
     reference: null,
   })
   await supabase.from('rewards').insert({
@@ -455,399 +80,123 @@ After successful Supabase auth signup and profile creation:
     tier: 'bronze',
   })
 
-
-================================================================
-PHASE 3 — Customer Dashboard: Rewards Tab
-================================================================
-Goal: Customer can see their points balance, tier, and earn history.
-
-Files to create:
-  app/account/rewards/page.tsx    Customer rewards page
-
-------------------------------------------------------------
-Task 3.1 — Rewards page
-------------------------------------------------------------
-File: app/account/rewards/page.tsx
-
-Matches /account/orders layout exactly (same sidebar, background, hero).
-
-Sections:
-  Hero: "My Rewards" with teal/dark blue gradient
-
-  Tier card (full width):
-    Shows current tier name + badge icon + points
-    Progress bar to next tier:
-      Bronze → Silver: X of 500 pts
-      Silver → Gold: X of 2000 pts
-      Gold → Platinum: X of 5000 pts
-    Tier badge colours:
-      Bronze: amber/orange
-      Silver: neutral-400
-      Gold: yellow-500
-      Platinum: purple-500
-
-  Points summary cards (4 cols):
-    Total Points | Points This Month | Orders This Month | Prescriptions
-
-  Transaction history (list):
-    Each row: icon, description, date, +/- points
-    Types:
-      order_completed → shopping cart icon, green +
-      prescription → document icon, green +
-      signup → star icon, green +
-      redemption → gift icon, red -
-    Empty state: "No activity yet — start shopping to earn points"
-
-Data fetch:
-  GET /api/account/rewards
-    → select from rewards (balance, tier)
-    → select from rewards_transactions (last 50, ordered by date desc)
-
-------------------------------------------------------------
-Task 3.2 — API route for rewards
-------------------------------------------------------------
-File: app/api/account/rewards/route.ts
-
-GET:
-  1. Get Supabase user (401 if none)
-  2. Fetch rewards row for user_id
-  3. Fetch rewards_transactions for user_id, last 50
-  4. Return { balance, tier, transactions }
-
-------------------------------------------------------------
-Task 3.3 — Add Rewards to sidebar in all account pages
-------------------------------------------------------------
-Files: app/account/dashboard/page.tsx, app/account/orders/page.tsx, app/account/rewards/page.tsx
-
-Add to sidebar nav:
-  <Link href="/account/rewards" className="...">
-    <StarIcon />
-    My Rewards
-  </Link>
-
-Add rewards points badge to sidebar user card:
-  Below email: "{points} pts · {tier} member"
-  Fetch on mount alongside profile.
+Import calculateTier from lib/rewards.ts (already exists).
 
 
 ================================================================
-PHASE 4 — Manager Dashboard: WC Analytics
+TASK 4 — WooCommerce → Supabase Sync (2–3 hrs)
 ================================================================
-Goal: Franchise admin and store managers can see live analytics
-      from WC order data (queried from Supabase mirror tables).
-      All queries hit Supabase — not the WC API.
+Foundation for manager analytics. Do in order.
 
-Files to modify:
-  app/manager/dashboard/FranchiseAdminDashboard.tsx
-  app/manager/dashboard/StoreManagerDashboard.tsx
+4a. lib/supabase/wc-sync.ts
+  Uses adminClient (service role).
 
-Files to create:
-  app/api/manager/analytics/route.ts    Analytics data endpoint
-  app/api/manager/orders/route.ts       Order list for manager
-  lib/supabase/analytics.ts             Query functions
+  upsertOrder(wcOrder):
+    - Upsert wc_orders (onConflict: 'id')
+    - Delete wc_order_items for this order_id, re-insert all line_items
+    - If customer_id > 0: upsertCustomer from order billing data
 
-------------------------------------------------------------
-Task 4.1 — Analytics query functions
-------------------------------------------------------------
-File: lib/supabase/analytics.ts
+  upsertCustomer(wcCustomer):
+    - Upsert wc_customers (onConflict: 'wc_id')
 
-All functions use Supabase server client with service role.
+  awardOrderPoints(order):
+    - Look up Supabase user by email (adminClient.auth.admin.listUsers())
+    - If no user: skip (guest order)
+    - Check no existing rewards_transaction for reference = order.id.toString()
+    - Points = Math.floor(parseFloat(order.total))
+    - Insert rewards_transaction (type: 'order_completed')
+    - Upsert rewards (increment points, recalculate tier)
 
-getRevenueByPeriod(days: number): Promise<{ date: string, revenue: number }[]>
-  SELECT date_trunc('day', date_created) as date, SUM(total) as revenue
-  FROM wc_orders
-  WHERE status = 'completed'
-    AND date_created >= NOW() - INTERVAL '{days} days'
-  GROUP BY 1 ORDER BY 1
+4b. app/api/webhooks/woocommerce/route.ts
+  POST handler:
+    - Read raw body as text
+    - HMAC-SHA256 validate against WC_WEBHOOK_SECRET (401 if mismatch)
+    - Get topic from X-WC-Webhook-Topic header
+    - Route: order.created / order.updated → upsertOrder → awardOrderPoints if completed
+    - Route: customer.created / customer.updated → upsertCustomer
+    - Always return 200 immediately
 
-getOrderStatsByStatus(): Promise<{ status: string, count: number, total: number }[]>
-  SELECT status, COUNT(*) as count, SUM(total) as total
-  FROM wc_orders GROUP BY status
+  Add to .env.local: WC_WEBHOOK_SECRET=<random 32+ char string>
 
-getTopProducts(limit: number): Promise<{ product_name: string, qty: number, revenue: number }[]>
-  SELECT product_name, SUM(quantity) as qty, SUM(line_total) as revenue
-  FROM wc_order_items oi
-  JOIN wc_orders o ON o.id = oi.order_id
-  WHERE o.status = 'completed'
-  GROUP BY product_name ORDER BY revenue DESC LIMIT limit
+4c. scripts/wc-backfill.ts
+  - Paginate GET /wc/v3/orders?per_page=100&page=N until empty
+  - Paginate GET /wc/v3/customers?per_page=100&page=N until empty
+  - Call upsertOrder / upsertCustomer for each
+  - After: for each completed order missing a rewards_transaction, call awardOrderPoints
+  - Log progress per page
+  Run: npx ts-node scripts/wc-backfill.ts
 
-getCustomerGrowth(months: number): Promise<{ month: string, new_customers: number }[]>
-  SELECT date_trunc('month', date_registered) as month, COUNT(*) as new_customers
-  FROM wc_customers
-  WHERE date_registered >= NOW() - INTERVAL '{months} months'
-  GROUP BY 1 ORDER BY 1
-
-getPrescriptionMetrics(): Promise<{ status: string, count: number }[]>
-  SELECT status, COUNT(*) FROM prescriptions GROUP BY status
-
-getRecentOrders(limit: number): Promise<WcOrderRow[]>
-  SELECT * FROM wc_orders ORDER BY date_created DESC LIMIT limit
-
-getRevenueKPIs(): Promise<{ today, this_week, this_month, last_month, growth_pct }>
-  Four sub-queries with date filters, compute growth %
-
-------------------------------------------------------------
-Task 4.2 — Analytics API route
-------------------------------------------------------------
-File: app/api/manager/analytics/route.ts
-
-GET:
-  1. Verify Supabase session (401 if none)
-  2. Verify managers table entry for user (403 if not manager)
-  3. Call all analytics query functions in parallel (Promise.all)
-  4. Return combined analytics object
-
-Route is protected server-side — no client-side role leakage.
-
-------------------------------------------------------------
-Task 4.3 — FranchiseAdminDashboard analytics section
-------------------------------------------------------------
-File: app/manager/dashboard/FranchiseAdminDashboard.tsx
-
-Add a second tab or expandable section: "Commerce Analytics"
-
-Sections:
-  KPI Row (4 cards):
-    Today's Revenue | This Month's Revenue | MoM Growth % | Total Orders
-
-  Revenue chart (last 30 days):
-    Line chart using recharts or simple SVG bars
-    One bar per day, colored teal
-
-  Orders by status (donut or bar):
-    pending | processing | on-hold | completed | cancelled
-
-  Top 10 Products:
-    Table: Product Name | Units Sold | Revenue
-    Sortable columns
-
-  Customer Growth (last 6 months):
-    Bar chart: new customers per month
-
-  Prescription Pipeline (already exists):
-    Keep existing prescription status cards
-
-Data flow:
-  useEffect → fetch('/api/manager/analytics') → setAnalytics(data)
-  Show skeleton cards while loading
-
-------------------------------------------------------------
-Task 4.4 — StoreManagerDashboard (same data, filtered by branch)
-------------------------------------------------------------
-Store managers see the same analytics but their prescription pipeline
-is already filtered to their pharmacy. For now, WC analytics are
-NOT filtered by branch (WC orders don't have branch attribution yet).
-
-Future: add a `branch` field to wc_orders (set during checkout by
-reading the selected store from session) to enable per-branch filtering.
-
-For now: store managers see global WC analytics + their branch prescriptions.
-Add a note: "Sales figures represent all Sparkport branches."
+4d. WC Admin webhook setup (manual — do after 4b is deployed)
+  WC Admin → Settings → Advanced → Webhooks → Add:
+    Order created   → https://[domain]/api/webhooks/woocommerce
+    Order updated   → same
+    Customer created → same
+    Customer updated → same
+  Secret: same value as WC_WEBHOOK_SECRET
+  API version: WP REST API Integration v3
+  Click Test on each, verify 200.
 
 
 ================================================================
-PHASE 5 — Profile Settings (Save)
+TASK 5 — Manager Dashboard: WC Analytics (2–3 hrs)
 ================================================================
-Goal: The profile settings modal in the dashboard actually saves.
-      Currently the inputs render but the Save button does nothing.
+Depends on Task 4 (mirror tables must have data).
 
-Files to create: app/api/account/profile/route.ts
-Files to modify: app/account/dashboard/page.tsx
+5a. lib/supabase/analytics.ts  (all use adminClient)
+  getRevenueKPIs()         → today / this_week / this_month / last_month / growth_%
+  getRevenueByDay(days)    → [{date, revenue}] — last N days, status=completed
+  getOrdersByStatus()      → [{status, count, total}]
+  getTopProducts(limit)    → [{product_name, qty, revenue}]
+  getCustomerGrowth(months)→ [{month, new_customers}]
+  getPrescriptionMetrics() → [{status, count}]
+  getRecentOrders(limit)   → last N wc_orders rows
 
-------------------------------------------------------------
-Task 5.1 — Profile update API route
-------------------------------------------------------------
-File: app/api/account/profile/route.ts
+5b. app/api/manager/analytics/route.ts
+  GET:
+    1. Supabase server client, verify session (401)
+    2. Check managers table for auth_user_id = user.id (403 if not found)
+    3. Promise.all all analytics functions
+    4. Return combined object
 
-PATCH:
-  1. Get Supabase user (401 if none)
-  2. Parse body: { first_name, last_name, phone }
-  3. UPDATE profiles SET first_name, last_name, phone, updated_at = NOW()
-     WHERE id = user.id
-  4. Return updated profile
+5c. FranchiseAdminDashboard.tsx — add "Commerce Analytics" section
+  useEffect → fetch /api/manager/analytics → setAnalytics
+  Skeleton loaders while loading.
 
-------------------------------------------------------------
-Task 5.2 — Wire Save button in dashboard modal
-------------------------------------------------------------
-In DashboardPage Profile modal:
+  Layout:
+    KPI row: Today's Revenue | This Month | MoM Growth % | Total Orders
+    Revenue chart (last 30 days): simple bar chart with SVG or recharts
+    Orders by status: horizontal bar or badge grid
+    Top 10 Products: table (product name | qty | revenue)
+    Customer Growth: bar per month (last 6)
+    Prescription Pipeline: keep existing
 
-Add state: const [isSavingProfile, setIsSavingProfile] = useState(false)
-Add state: const [profileSaveMsg, setProfileSaveMsg] = useState('')
-
-Update Save button onClick:
-  async function saveProfile() {
-    setIsSavingProfile(true)
-    const res = await fetch('/api/account/profile', {
-      method: 'PATCH',
-      body: JSON.stringify({ first_name, last_name, phone }),
-      headers: { 'Content-Type': 'application/json' }
-    })
-    if (res.ok) {
-      setProfileSaveMsg('Saved!')
-      setProfile(prev => ({ ...prev!, first_name, last_name, phone }))
-    } else {
-      setProfileSaveMsg('Save failed — please try again.')
-    }
-    setIsSavingProfile(false)
-  }
-
-Show save message below buttons, auto-clear after 3s.
+5d. StoreManagerDashboard.tsx — same analytics section
+  Add note: "Sales figures represent all Sparkport branches."
+  Their prescription view already filters by pharmacy — keep that.
 
 
 ================================================================
-PHASE 6 — Customer Dashboard: Polish
+EXECUTION ORDER TOMORROW
 ================================================================
-Goal: The customer dashboard feels complete and connected.
-
-------------------------------------------------------------
-Task 6.1 — Show rewards balance in dashboard sidebar
-------------------------------------------------------------
-In app/account/dashboard/page.tsx:
-
-Fetch rewards on mount alongside profile:
-  const { data: rewards } = await supabase
-    .from('rewards').select('points, tier').eq('user_id', user.id).single()
-  setRewards(rewards)
-
-In sidebar user card, below email:
-  <div className="flex items-center justify-center gap-2 mt-2">
-    <span className="text-xs font-bold text-[#009eb9]">{rewards?.points ?? 0} pts</span>
-    <span className="text-xs text-neutral-500">·</span>
-    <span className="text-xs text-neutral-500 capitalize">{rewards?.tier ?? 'bronze'} member</span>
-  </div>
-
-------------------------------------------------------------
-Task 6.2 — Replace "Coming Soon" E-Commerce section
-------------------------------------------------------------
-In app/account/dashboard/page.tsx, replace the opacity-60 "Coming Soon" section
-with real data:
-
-  "My Recent Orders" (last 3 from wc_orders mirror):
-    Fetch: GET /api/account/orders (already built, returns WC orders)
-    Show 3 most recent with status badge and total
-    "View all orders →" link to /account/orders
-
-  "My Rewards" snapshot:
-    Show points balance, tier badge, and link to /account/rewards
-    Points earned this month vs last month
-
-Remove the Wishlist and legacy Rewards placeholder cards.
-
-------------------------------------------------------------
-Task 6.3 — Switch /account/orders to query Supabase mirror
-------------------------------------------------------------
-Currently /api/account/orders fetches from WC REST API directly.
-After Phase 1 (mirror tables exist), update it to query Supabase:
-
-File: app/api/account/orders/route.ts
-
-Change from:
-  fetch(`${WC_API}/orders?billing_email=${email}`)
-
-To:
-  supabase.from('wc_orders')
-    .select(`*, wc_order_items(*)`)
-    .eq('customer_email', email)
-    .order('date_created', { ascending: false })
-    .limit(50)
-
-Benefits: faster, no WC API rate limit, works offline from WC.
-
-Keep the WC REST API fallback for orders not yet in mirror
-(i.e., orders placed before the backfill ran).
+1. Task 1  — Profile save (quick, self-contained)
+2. Task 2  — Dashboard real orders (quick, uses existing API)
+3. Task 3  — Signup bonus (quick, check if already done first)
+4. Task 4  — WC sync (do 4a → 4b → 4c in order, 4d after deploy)
+5. Task 5  — Manager analytics (after Task 4 has data)
 
 
 ================================================================
-EXECUTION ORDER
+PENDING MIGRATIONS TO RUN IN SUPABASE SQL EDITOR
 ================================================================
+011_drop_security_definer_functions.sql  ← fixes manager RLS recursion
+012_prescription_images_insert_policy.sql ← belt-and-suspenders INSERT policies
 
-Sprint 1 — Foundation (Phases 0 + 1)
-  Schema migrations first (wc_orders, wc_order_items, wc_customers, rewards, rewards_transactions)
-  WC webhook endpoint + upsert helpers
-  Backfill script
-  Configure WC webhooks
-  Verify sync is working with test orders
-
-Sprint 2 — Customer Experience (Phases 2 + 3)
-  Fill-script session detection + pre-fill + skip step 1
-  Signup bonus points
-  Prescription points
-  Rewards page (/account/rewards)
-  Rewards sidebar in all account pages
-
-Sprint 3 — Admin Analytics (Phase 4)
-  Analytics query functions (lib/supabase/analytics.ts)
-  Manager analytics API route
-  FranchiseAdminDashboard commerce section
-  StoreManagerDashboard commerce section
-
-Sprint 4 — Polish (Phases 5 + 6)
-  Profile save
-  Dashboard "Coming Soon" replacement
-  Orders page switch to Supabase mirror
+Run both before starting tomorrow's session.
 
 
 ================================================================
-FILES TO CREATE (NEW)
+ENV VARS NEEDED
 ================================================================
-  app/api/webhooks/woocommerce/route.ts     WC webhook receiver
-  app/api/manager/analytics/route.ts        Manager analytics endpoint
-  app/api/manager/orders/route.ts           Manager order list
-  app/api/account/rewards/route.ts          Customer rewards endpoint
-  app/api/account/profile/route.ts          Profile update endpoint
-  app/account/rewards/page.tsx              Customer rewards page
-  lib/supabase/wc-sync.ts                   Upsert + points helpers
-  lib/supabase/analytics.ts                 Analytics query functions
-  lib/rewards.ts                            calculateTier helper
-  scripts/wc-backfill.ts                    One-time backfill script
-
-
-================================================================
-FILES TO MODIFY (EXISTING)
-================================================================
-  components/FillYourScript.tsx             Session detection, pre-fill, skip step 1
-  lib/supabase/prescriptions.ts             Award points on prescription submit
-  app/auth/actions.ts                       Award signup bonus points
-  app/account/dashboard/page.tsx            Rewards balance, real recent orders
-  app/account/orders/page.tsx               Add rewards to sidebar
-  app/account/dashboard/page.tsx            Profile save, rewards sidebar
-  app/api/account/orders/route.ts           Switch to Supabase mirror (Sprint 4)
-  app/manager/dashboard/FranchiseAdminDashboard.tsx   Analytics section
-  app/manager/dashboard/StoreManagerDashboard.tsx     Analytics section
-
-
-================================================================
-ENVIRONMENT VARIABLES NEEDED
-================================================================
-  WC_WEBHOOK_SECRET         Random secret set in WC webhook config (min 32 chars)
-  SUPABASE_SERVICE_ROLE_KEY Already in .env.local? Confirm — needed for webhook upserts
-
-
-================================================================
-SUCCESS CRITERIA
-================================================================
-
-Phase 1 done when:
-  - New WC order appears in wc_orders within 5 seconds of being placed
-  - wc_order_items has line items for that order
-  - rewards_transactions shows points awarded on order completion
-
-Phase 2 done when:
-  - Logged-in user visits /fill-script and sees step 2 immediately
-  - Their name, email, phone are pre-filled
-  - Submitted prescription has user_id set in Supabase
-
-Phase 3 done when:
-  - /account/rewards loads with correct points balance and tier
-  - Transaction history shows prescription and order events
-  - Sidebar shows points across all account pages
-
-Phase 4 done when:
-  - /manager/dashboard shows revenue chart, order status breakdown, top products
-  - All data loads from Supabase (no WC API calls on the dashboard)
-  - Franchise admin sees all-branch data, store manager sees their Rx + global sales
-
-Phase 5 + 6 done when:
-  - Profile settings modal saves and shows confirmation
-  - Dashboard "Coming Soon" replaced with real recent orders + rewards snapshot
-  - /account/orders queries Supabase mirror (fast, no WC dependency)
+WC_WEBHOOK_SECRET   — generate random 32+ char string, add to .env.local
+                       and set same value in WC webhook config
+SUPABASE_SERVICE_ROLE_KEY — confirm already in .env.local (needed for sync)

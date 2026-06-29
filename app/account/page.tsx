@@ -1,10 +1,11 @@
 // app/account/page.tsx (UPDATED - Clears fields & redirects to dashboard)
 'use client';
 
-import { useState, useTransition, Suspense } from 'react';
+import { useState, useTransition, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signUp, signIn, signInWithGoogle, signInWithFacebook } from '@/app/auth/actions';
+import { supabase } from '@/lib/supabase/client';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -38,6 +39,13 @@ function AuthPageSplitInner() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string>('');
   const [submitSuccess, setSubmitSuccess] = useState<string>('');
+
+  // Redirect already-authenticated users to their dashboard
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) router.replace(returnTo);
+    });
+  }, []);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -101,7 +109,6 @@ function AuthPageSplitInner() {
               setSubmitSuccess('Account created successfully! Redirecting to dashboard...');
               setTimeout(() => {
                 router.push(returnTo);
-                router.refresh();
               }, 1500);
             }
           } else {
@@ -128,7 +135,6 @@ function AuthPageSplitInner() {
             setSubmitSuccess('Signed in successfully! Redirecting to dashboard...');
             setTimeout(() => {
               router.push(returnTo);
-              router.refresh();
             }, 1000);
           } else {
             setSubmitError(result.error || 'Failed to sign in');
