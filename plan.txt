@@ -1,995 +1,853 @@
-SPARKPORT — UX BUYING EXPERIENCE IMPROVEMENT PLAN
-==================================================
-Goal: Serve users with absolute buying power — fast, trustworthy,
-frictionless from first product view to completed order.
-==================================================
-
-
-CURRENT STATE SUMMARY
-----------------------
-All phases from the original infrastructure/integration plan (Phases 0–9)
-are complete: WordPress/WooCommerce API layer is live, products and blog
-are dynamic, cart is integrated with WooCommerce Store API v1, CartContext
-manages global state, CartDrawer is animated, cart page and product detail
-page are fully built.
-
-The buying journey now works end-to-end but has real gaps that affect
-conversion and user trust:
-
-  - Add to cart takes 3 sequential network requests (~1.5–3s per click)
-  - Button labels are inconsistent across components
-  - No instant feedback — user stares at a spinner after clicking
-  - No toast / confirmation that anything happened
-  - No trust signals, delivery info, or pharmacist cues on product pages
-  - No free shipping progress, no urgency, no scarcity signals
-  - Cart drawer and cart page are functional but not persuasive
-  - No checkout page — "Proceed to Checkout" goes nowhere
-  - Micro-copy is generic — no pharmacy voice, no power triggers
+SPARKPORT — FULL SYSTEM IMPLEMENTATION PLAN
+===========================================
+Data architecture, customer experience, admin dashboards,
+prescriptions, rewards, and WooCommerce integration.
+Written: 28 June 2026
+===========================================
 
 
 ================================================================
-PHASE 1 — PERFORMANCE & SPEED
+ARCHITECTURE DECISIONS (LOCKED IN)
 ================================================================
-Goal: Make add-to-cart feel instant. Fix all slow paths.
-Target: <200ms perceived response on every add-to-cart click.
 
-1.1  Fix the 3-request add-to-cart chain
-     Current flow (SLOW):
-       Click → getFreshNonce() [GET /wc/store/v1/cart]
-             → POST /wc/store/v1/cart/add-item
-             → fetchCart() [GET /wc/store/v1/cart re-fetch]
-     That is 3 sequential server-to-WC round-trips before UI updates.
+WooCommerce (source of truth for commerce)
+  - All products, cart, checkout, payment, order fulfilment
+  - Orders linked to customers by billing_email
+  - No WC customer account registration required from headless app
+  - WC is the financial record — never override order data from Next.js
 
-     Fix in contexts/CartContext.tsx:
-       a) Implement optimistic UI — update cart state immediately on click
-          before any network request completes. Show the item in the cart,
-          increment the badge, open the drawer. If the API fails, roll back.
-       b) Cache the nonce in CartContext state. On initial fetchCart(), store
-          the nonce returned in response headers via the /api/cart route.
-          Pass it to mutations. Only re-fetch a nonce on 403 responses.
-       c) For add and update mutations: trust the WC response body (it
-          returns the updated cart). Only do a full re-fetch on remove
-          where WC sometimes returns CartItem instead of Cart.
+Supabase (source of truth for everything else)
+  - Authentication (email/password, Google, Facebook)
+  - Customer profiles, prescriptions, delivery addresses, notifications
+  - Rewards system (points, transactions)
+  - Mirror tables for WC orders/customers (for fast analytics + joins)
+  - Manager roles and access control
+  - Admin analytics queries run here — not against WC API
 
-     Fix in app/api/cart/add/route.ts and app/api/cart/item/[key]/route.ts:
-       Accept an optional nonce from the client request body. If provided
-       and valid, skip the getFreshNonce() pre-flight GET. Fall back to
-       fetching a fresh nonce only when no client nonce is given or on
-       403 from WC.
+Bridge: email address
+  - Supabase user.email === WC billing_email
+  - Every WC order is queryable by user email
+  - Mirror tables sync WC data into Supabase via webhooks
 
-     Result: add-to-cart drops from 3 requests to 1 in the happy path.
-     Optimistic update means the user sees instant feedback regardless.
-
-1.2  Optimistic UI implementation
-     In contexts/CartContext.tsx:
-
-     addToCart(productId, quantity):
-       1. Build an optimistic CartItem from the product data passed in
-       2. setCart(prev => optimisticallyAdd(prev, optimisticItem))
-       3. setIsDrawerOpen(true)                  ← drawer opens instantly
-       4. Fire the API call in the background
-       5. On success: replace optimistic state with real server response
-       6. On failure: rollback to previous cart state + show error toast
-
-     updateQuantity(key, quantity):
-       1. setCart(prev => optimisticallyUpdate(prev, key, quantity))
-       2. Fire API call
-       3. On success: sync with real response
-       4. On failure: rollback
-
-     removeFromCart(key):
-       1. setCart(prev => optimisticallyRemove(prev, key))
-       2. Fire API call (keep re-fetch here — WC DELETE is inconsistent)
-       3. On failure: rollback
-
-     Helper functions (pure, no side effects):
-       optimisticallyAdd(cart, item) → Cart
-       optimisticallyUpdate(cart, key, qty) → Cart
-       optimisticallyRemove(cart, key) → Cart
-       Each recalculates items_count and totals.total_items from items array.
-
-     addToCart signature change:
-       addToCart(productId, quantity, productSnapshot?) → Promise<void>
-       productSnapshot: { name, price, image, key } — used to build
-       the optimistic item. ShopLayout, FeaturedProductsTabs, and
-       ProductDetailPage already have the full Product object — pass it.
-
-1.3  Nonce lifecycle in CartContext
-     - On initial fetchCart() response: store the nonce from the
-       X-WC-Store-API-Nonce or Nonce header (returned by /api/cart route).
-       Store in a useRef (not state — nonce changes don't need re-renders).
-     - Pass nonceRef.current in the request body of each mutation call
-       to the Next.js API routes.
-     - API routes: if client provides nonce, skip getFreshNonce() pre-flight.
-     - If WC returns 403: CartContext catches it, calls fetchCart() to get
-       a fresh nonce, then retries the mutation once.
-
-1.4  Button consistency audit and fix
-     Every "Add to Basket" / "Add to Cart" button across the codebase
-     must call addToCart with the correct productId and quantity.
-
-     Files to audit and fix:
-       components/ShopLayout.tsx
-         - Both grid view card button and list view card button call handleAdd
-         - Confirm quantity from per-product quantities state is passed
-         - Button label: "Add to Basket" (consistent everywhere)
-         - Loading state: spinner, disabled, no double-submit
-         - Post-add state: green checkmark for 1500ms then reset
-
-       components/FeaturedProductsTabs.tsx
-         - handleAdd calls addToCart(product.id, getQty(product.id))
-         - Same post-add checkmark state as ShopLayout
-         - Confirm all three tab panels (hot-deals, bestsellers, new-arrivals)
-           each have working buttons — not just the first active tab
-
-       components/ProductDetailPage.tsx
-         - handleAdd calls addToCart(product.id, quantity)
-         - Already has isAdding state — extend with isAdded (checkmark phase)
-         - Confirm quantity stepper value is always passed
-
-       components/CategorySpotlight.tsx / CategorySpotlightTabs.tsx
-         - Audit whether Add to Basket buttons exist and are wired
-         - If product cards appear here without Add to Basket: add them
-
-     Post-add button state pattern (apply to all four components):
-       idle    → "Add to Basket"         [teal button]
-       adding  → spinner + "Adding..."   [teal, disabled]
-       added   → checkmark + "Added!"    [green, disabled, 1500ms]
-       idle    → back to default
-
-1.5  Cart drawer render performance
-     The drawer is always in the DOM (correct — enables CSS transitions).
-     Ensure the item list does not re-render expensively when closed.
-     Wrap the items list in React.memo or use a conditional render guard
-     so the expensive map() only runs when isDrawerOpen is true or items
-     have changed. Drawer open/close must feel instant — no jank.
-
-1.6  Image performance in cart and product cards
-     In CartDrawer.tsx and app/cart/page.tsx:
-       - All item images already use next/image with fill + sizes
-       - Add placeholder="blur" with a data URI blurDataURL for instant
-         placeholder while image loads (generate a 1x1 pixel in brand color)
-     In ShopLayout product cards:
-       - Confirm all product images use next/image
-       - Add sizes attribute matched to actual rendered size
-       - Add loading="eager" for above-the-fold products (first 4),
-         "lazy" for the rest
-
-1.7  Identify and remove any unnecessary re-renders
-     - CartContext value object is recreated on every render unless memoized
-       Wrap the context value in useMemo keyed on cart, isLoading, isDrawerOpen
-     - openDrawer and closeDrawer are already useCallback — keep them
-     - All mutation functions are already useCallback — keep them
+Manager auth: existing managers table (DO NOT CHANGE)
+  - Same Supabase auth as customers
+  - managers table: { auth_user_id, role, is_active, pharmacy_id }
+  - Roles: 'franchise_admin' | 'store_manager'
+  - /manager/login already checks managers table — keep it
 
 
 ================================================================
-PHASE 2 — ADD-TO-CART MICRO-INTERACTIONS
+EXISTING STATE (what is already built and working)
 ================================================================
-Goal: Every cart action gives instant, satisfying visual confirmation.
 
-2.1  Global toast notification system
-     Create contexts/ToastContext.tsx (new file):
-       State: toasts: Toast[]
-       Toast type: { id, message, type: 'success'|'error'|'info', duration }
-       showToast(message, type?, duration?) → void
-       Toasts auto-dismiss after duration (default 3000ms)
-       Max 3 toasts visible at once (oldest dismissed first)
+AUTH & ACCOUNTS
+  ✅ /account — Supabase login/signup (email, Google, Facebook)
+  ✅ /account/dashboard — prescription list, modal detail, submit CTA
+  ✅ /account/orders — fetches WC orders by email via /api/account/orders
+  ✅ /auth/forgot-password — password reset via Supabase email
+  ✅ Guest redirect to /account from protected pages
 
-     Create components/ToastContainer.tsx (new file):
-       Fixed position: bottom-right on desktop, bottom-center on mobile
-       Each toast slides up and fades in on entry, slides down on exit
-       Use CSS transitions (not a library — keep bundle small)
-       Success toast: green left border, checkmark icon, teal text
-       Error toast: red left border, X icon
-       Design: rounded-xl, white bg, shadow-lg, px-5 py-4
+MANAGER
+  ✅ /manager/login — Supabase auth + managers table check
+  ✅ /manager/dashboard — FranchiseAdminDashboard + StoreManagerDashboard
+  ✅ manager/actions.ts — managerSignIn, verifyManagerAccess, role checks
+  ✅ Prescription status view and update in manager dashboard
 
-     Add ToastProvider to components/ClientProviders.tsx
-     Export useToast() hook
+PRESCRIPTIONS
+  ✅ /fill-script — 5-step form (FillYourScript.tsx)
+  ✅ lib/supabase/prescriptions.ts — submitPrescriptionNoAuth (works for
+       logged-in and guest, attaches user_id if session exists)
+  ✅ matchAnonymousPrescriptions — backfills user_id on signup by email/phone
+  ✅ Prescription image upload to Supabase Storage
 
-2.2  Cart badge animation
-     In KlaasHeader.tsx and SparkportMobileHeader.tsx:
-       When cartCount changes from N to N+1:
-         Apply a CSS keyframe "bounce" to the badge (scale 1→1.4→1 over 300ms)
-       Use a useEffect that watches cartCount and applies/removes a CSS class
-       The badge already conditionally renders — ensure it doesn't unmount
-       between single-item additions (render badge with opacity-0 at count 0
-       instead of removing from DOM, so the animation plays on first add).
+COMMERCE
+  ✅ WooCommerce cart, drawer, cart page
+  ✅ Checkout (PayFast + EFT + COD)
+  ✅ /checkout/success page with order detail
+  ✅ /api/account/orders — fetches WC orders via REST API by email
+  ✅ /api/checkout/order/[id] — single order fetch for success page
 
-2.3  "Added!" button state (all product components)
-     Already designed in Phase 1.4. The visual:
-       - Background transitions from teal to green
-       - Checkmark SVG replaces cart SVG
-       - Text changes to "Added!"
-       - After 1500ms: transitions back to teal with cart SVG + "Add to Basket"
-     This must be per-product (not global) — each product card manages its
-     own added state independently.
-
-2.4  Cart drawer open behaviour
-     When an item is added (addToCart called):
-       - Drawer opens immediately (optimistic, before API response)
-       - The newly added item appears at the top of the list
-       - A subtle highlight pulse (ring/glow) plays on the new item for 800ms
-         then fades — to draw the eye to what was just added
-     Implementation: track lastAddedKey in CartContext, pass to CartDrawer,
-     apply highlight class to matching item, clear after animation.
-
-2.5  Cart count badge — first-add entrance
-     When cart goes from 0 to 1 item:
-       The badge appears with a "pop" animation (scale 0 → 1.2 → 1 with
-       an ease-out-back curve). This is the most delightful moment in the
-       buying flow — reward it visually.
+TRUST PAGES
+  ✅ /privacy-policy, /shipping-policy, /terms-conditions
 
 
 ================================================================
-PHASE 3 — PRODUCT CARD POWER-UPS
+SUPABASE SCHEMA ADDITIONS REQUIRED
 ================================================================
-Goal: Cards sell before the user even clicks through.
 
-3.1  Star rating on product cards
-     In ShopLayout.tsx and FeaturedProductsTabs.tsx:
-       Add a star rating row to each product card.
-       Source: deterministic pseudo-rating from product.id
-         rating = 4.0 + ((product.id * 7) % 10) / 10  → 4.0 to 4.9
-         reviewCount = 50 + ((product.id * 23) % 200)  → 50 to 249
-       Render: 5 stars (amber/grey fill), rating number, review count
-       Design: small (text-xs), below product name, above price
-       NOTE: replace with real WooCommerce review data once reviews
-       are collected (WC REST API endpoint: /wc/v3/products/{id}/reviews)
+Run these migrations in Supabase SQL Editor before any phase begins.
 
-3.2  Sale savings callout on cards
-     For products where product.onSale && product.originalPrice > product.salePrice:
-       Show a green savings badge on the card:
-         "Save R{savings}" or "Save {percent}%"
-       Place below the price, styled like a pill: green bg, white text, bold
-       This is more persuasive than just showing the strikethrough price.
+------------------------------------------------------------
+TABLE: wc_orders (mirror of WooCommerce orders)
+------------------------------------------------------------
+CREATE TABLE wc_orders (
+  id            INTEGER PRIMARY KEY,        -- WC order ID
+  number        TEXT NOT NULL,              -- WC order number (display)
+  status        TEXT NOT NULL,              -- pending|processing|completed|etc
+  customer_email TEXT NOT NULL,
+  customer_wc_id INTEGER,                   -- WC customer ID (0 = guest)
+  billing_name  TEXT,
+  billing_city  TEXT,
+  payment_method TEXT,
+  total         NUMERIC(10,2) NOT NULL,
+  subtotal      NUMERIC(10,2),
+  discount      NUMERIC(10,2) DEFAULT 0,
+  date_created  TIMESTAMPTZ NOT NULL,
+  date_modified TIMESTAMPTZ NOT NULL,
+  raw           JSONB,                      -- full WC payload for future fields
+  synced_at     TIMESTAMPTZ DEFAULT NOW()
+);
 
-3.3  Product energy badges
-     On the card image (top-left corner overlay):
-       - "Hot Deal" badge: for on-sale items in FeaturedProductsTabs hot-deals tab
-       - "Bestseller" badge: for items in bestsellers tab
-       - "New" badge: for items in new-arrivals tab
-       - "Low Stock" badge: trigger condition is product.inStock === true but
-         low stock flag will be added when WC stock quantity API is used.
-         For now: show on a deterministic subset (product.id % 5 === 0) as
-         a placeholder until real stock quantity data is available.
-       Badges: small, pill-shaped, top-left, brand-coloured or amber for Low Stock.
+CREATE INDEX idx_wc_orders_email    ON wc_orders(customer_email);
+CREATE INDEX idx_wc_orders_status   ON wc_orders(status);
+CREATE INDEX idx_wc_orders_date     ON wc_orders(date_created);
+CREATE INDEX idx_wc_orders_wc_id    ON wc_orders(customer_wc_id);
 
-3.4  Out of stock card state
-     For products where product.inStock === false:
-       - Desaturate product image (filter: grayscale(40%))
-       - Replace "Add to Basket" button with "Out of Stock" (grey, disabled)
-       - Show "Notify Me" link that opens a simple email capture modal
-         (store email in Supabase against product.id, notify when re-stocked)
-       - Card still links through to product detail page
+------------------------------------------------------------
+TABLE: wc_order_items (mirror of WC line items)
+------------------------------------------------------------
+CREATE TABLE wc_order_items (
+  id            SERIAL PRIMARY KEY,
+  order_id      INTEGER NOT NULL REFERENCES wc_orders(id) ON DELETE CASCADE,
+  product_id    INTEGER NOT NULL,
+  product_name  TEXT NOT NULL,
+  quantity      INTEGER NOT NULL,
+  line_total    NUMERIC(10,2) NOT NULL,
+  image_url     TEXT
+);
 
-3.5  Quantity stepper on cards (ShopLayout only)
-     The quantity stepper already exists. Ensure:
-       - Min is always 1, max is 99
-       - Stepper only appears when user hovers the card (desktop)
-         or always visible (mobile) to avoid clutter
-       - Value resets to 1 after successful add (don't leave 3 in the
-         stepper after adding 3 — that would re-add 3 on next click)
+CREATE INDEX idx_wc_order_items_order  ON wc_order_items(order_id);
+CREATE INDEX idx_wc_order_items_prod   ON wc_order_items(product_id);
 
+------------------------------------------------------------
+TABLE: wc_customers (mirror of WooCommerce customers)
+------------------------------------------------------------
+CREATE TABLE wc_customers (
+  wc_id          INTEGER PRIMARY KEY,
+  email          TEXT NOT NULL UNIQUE,
+  first_name     TEXT,
+  last_name      TEXT,
+  total_spent    NUMERIC(10,2) DEFAULT 0,
+  orders_count   INTEGER DEFAULT 0,
+  date_registered TIMESTAMPTZ,
+  synced_at      TIMESTAMPTZ DEFAULT NOW()
+);
 
-================================================================
-PHASE 4 — PRODUCT DETAIL PAGE TRUST & SUPPORT
-================================================================
-Goal: The product page closes the sale by removing every objection.
+CREATE INDEX idx_wc_customers_email ON wc_customers(email);
 
-4.1  Pharmacy trust bar
-     Location: directly below the "Add to Basket" button
-     Component: inline, 3 columns, icon + text each
-     Items:
-       [Checkmark] Dispatched by Sparkport Pharmacy
-       [Shield]    Licensed pharmacist reviewed
-       [Return]    30-day returns accepted
-     Style: small text, neutral-600, icon in teal, no border — clean
-     This is the single most important trust element on the page.
+------------------------------------------------------------
+TABLE: rewards (current points balance per customer)
+------------------------------------------------------------
+CREATE TABLE rewards (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  points      INTEGER NOT NULL DEFAULT 0,
+  tier        TEXT NOT NULL DEFAULT 'bronze',  -- bronze|silver|gold|platinum
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
 
-4.2  Delivery estimate block
-     Location: below trust bar
-     Content (two states):
-       Weekday before 14:00:
-         "Order within {X}h {Y}m for same-day dispatch (DBN)"
-         Show a countdown to 14:00 SAST
-       After 14:00 or weekend:
-         "Order today — dispatches next business day"
-         "Nationwide delivery 3–5 working days"
-     Component: DeliveryEstimate.tsx (new client component)
-       Uses Date to calculate current SAST time
-       Displays a small clock icon + delivery truck icon
-       Styled with a subtle teal-tinted background, rounded-xl
+------------------------------------------------------------
+TABLE: rewards_transactions (points history)
+------------------------------------------------------------
+CREATE TABLE rewards_transactions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  points      INTEGER NOT NULL,              -- positive = earn, negative = redeem
+  type        TEXT NOT NULL,                 -- 'order_completed'|'prescription'|'signup'|'redemption'
+  description TEXT NOT NULL,
+  reference   TEXT,                          -- WC order ID or prescription ID
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 
-4.3  "Ask a pharmacist" CTA
-     Location: below delivery estimate
-     Design: outlined button (border-teal), pharmacist icon, text:
-       "Have a question? Ask our pharmacist →"
-     Action: opens WhatsApp (wa.me/27XXXXXXXXXX) or links to /contact
-     This is a high-trust signal for a pharmacy — people want human advice
-     before purchasing health products.
+CREATE INDEX idx_rewards_tx_user ON rewards_transactions(user_id);
+CREATE INDEX idx_rewards_tx_date ON rewards_transactions(created_at);
 
-4.4  Mobile sticky buy bar
-     On mobile (< lg breakpoint):
-       A fixed bottom bar appears when the main "Add to Basket" button
-       scrolls out of view (use IntersectionObserver on the main button).
-       Bar contains: product name (truncated), price, "Add to Basket" button
-       Height: 72px, white bg, shadow-up, safe-area-inset padding
-       Taps the same handleAdd function — same loading/added states.
-     This recovers conversions from users who scroll down to read
-     descriptions and then have to scroll back up to buy.
+------------------------------------------------------------
+POINTS RULES
+------------------------------------------------------------
+Earning:
+  - Account signup:            50 pts (once)
+  - WC order completed:        1 pt per R1 spent (rounded)
+  - Prescription submitted:    25 pts
+  - Chronic prescription:      50 pts (isChronic = true)
 
-4.5  Value prop strip on product page
-     The ValuePropositionStrip component already exists and renders on
-     the homepage. Render it on product detail pages too, placed between
-     the product section and the tabs/description section.
-     This reinforces "Free Delivery", "Secure", "Expert Care" exactly
-     at the point of decision.
+Tiers (by total lifetime points):
+  - Bronze:   0–499 pts
+  - Silver:   500–1999 pts
+  - Gold:     2000–4999 pts
+  - Platinum: 5000+ pts
 
-4.6  Product tabs improvement
-     Current tabs: Description | Usage | Reviews
-     "Reviews" tab currently renders nothing real.
-     Update:
-       - Fetch reviews from WooCommerce: GET /wc/v3/products/{id}/reviews
-         Add getProductReviews(id) to lib/wordpress/products.ts
-       - If reviews exist: render them (reviewer name, rating, date, comment)
-       - If no reviews: render "Be the first to review" + link to /contact
-       - "Usage" tab: if product has no usage data in WC meta, hide the tab
-         rather than showing an empty panel.
+Redemption (future):
+  - 100 pts = R1 discount on next order
 
 
 ================================================================
-PHASE 5 — CART DRAWER UPGRADES
+PHASE 1 — WooCommerce → Supabase Sync
 ================================================================
-Goal: The drawer turns "viewing" into "buying" before the user leaves.
+Goal: Mirror WC orders and customers into Supabase for fast analytics.
+This is the foundation for everything in the admin dashboard.
 
-5.1  Free delivery progress bar
-     In CartDrawer.tsx footer section (above checkout button):
-       FREE_DELIVERY_THRESHOLD = 500 (R500 — confirm with store)
-       amountLeft = max(0, threshold - parsedTotal)
-       If amountLeft > 0:
-         Show: "Add R{amountLeft} more for FREE delivery"
-         Progress bar: teal fill, neutral bg, rounded-full, h-2
-         Width: (parsedTotal / threshold) * 100 + "%"
-       If amountLeft === 0:
-         Show: "You've unlocked FREE delivery!" with a celebration icon
-         Progress bar: full, green fill
-       This is the single highest-converting element you can add to a cart.
+Files to create:
+  app/api/webhooks/woocommerce/route.ts    Webhook receiver
+  scripts/wc-backfill.ts                   One-time backfill script
+  lib/supabase/wc-sync.ts                  Upsert helpers
 
-5.2  Undo remove
-     When removeFromCart is called from the drawer:
-       Instead of immediately calling the API, show a 4-second undo toast:
-         "Item removed — Undo"
-       Start a 4s timer. If user clicks Undo: cancel removal, re-add
-       optimistic item to cart state.
-       If timer expires: fire the actual API DELETE call.
-     Implementation:
-       In CartDrawer: manage pendingRemoval: { key, item, timer } state
-       Show an "Undo" inline link in the drawer where the item was
-       (keep the item slot visible but dimmed during the 4s window)
+------------------------------------------------------------
+Task 1.1 — Webhook receiver
+------------------------------------------------------------
+File: app/api/webhooks/woocommerce/route.ts
 
-5.3  Drawer security footer
-     Below the checkout button, a single row:
-       [Lock icon] Secure checkout  [Visa icon] [MC icon] [Maestro icon]
-     Keep it minimal — one line, icons small (h-5), neutral-400 text
-     This is the last thing eyes see before tapping "Proceed to Checkout."
+WooCommerce sends POST requests with HMAC-SHA256 signature in header
+  X-WC-Webhook-Signature: base64(HMAC(secret, body))
 
-5.4  Empty drawer improvement
-     Current: "Your basket is empty" + "Continue Shopping" button.
-     Add below that:
-       A row of 2–3 featured product suggestions (fetch on client when
-       drawer opens with 0 items — getOnSaleProducts(3) or getFeaturedProducts(3))
-       Display as mini horizontal cards: image + name + price + add button
-       Headline: "Bestsellers you might like"
-     This converts "browse" visits into "add" visits.
+Validate before processing:
+  const sig = request.headers.get('x-wc-webhook-signature')
+  const body = await request.text()
+  const expected = createHmac('sha256', process.env.WC_WEBHOOK_SECRET!)
+    .update(body).digest('base64')
+  if (sig !== expected) return Response.json({}, { status: 401 })
 
+Parse topic from header X-WC-Webhook-Topic:
+  'order.created'   → upsertOrder(payload)
+  'order.updated'   → upsertOrder(payload)
+  'customer.created'→ upsertCustomer(payload)
+  'customer.updated'→ upsertCustomer(payload)
 
-================================================================
-PHASE 6 — CART PAGE UPGRADES
-================================================================
-Goal: The cart page is the last stop before checkout — make it count.
+After upsert:
+  - If order.status === 'completed': awardOrderPoints(order)
+  - If order.status goes to 'completed' from something else: same
 
-6.1  Promo / coupon code field
-     Add a coupon input below the item list (or in the order summary):
-       Text input: "Enter promo code"
-       Apply button
-       API: POST /api/cart/coupon → proxies to /wc/store/v1/cart/coupons
-       On success: show discount line in order summary, green confirmation
-       On error: show "Code not valid" in red below input
-     Add route: app/api/cart/coupon/route.ts (new file)
-       POST: apply coupon → WC POST /wc/store/v1/cart/coupons
-       DELETE: remove coupon → WC DELETE /wc/store/v1/cart/coupons/{code}
+Always return 200 immediately — WC retries on non-200.
 
-6.2  Full order summary breakdown
-     Current summary shows subtotal + "Shipping calculated at checkout".
-     Expand to:
-       Subtotal:         R{subtotal}
-       Discount (code):  -R{discount}    ← only if coupon applied
-       Delivery:         FREE / R{rate}  ← "FREE" if above threshold
-       Total:            R{total}
-     Pull these from cart.totals fields (WC Store API returns them all).
+Steps:
+  - [ ] Create route.ts with HMAC validation
+  - [ ] Import upsert helpers from lib/supabase/wc-sync.ts
+  - [ ] Handle all four topics
+  - [ ] Add WC_WEBHOOK_SECRET to .env.local
+  - [ ] Test with WC webhook test button (WC Admin → Settings → Advanced → Webhooks)
 
-6.3  Trust badge row on cart page
-     Below the checkout button on the cart page:
-       Row of payment icons: Visa, Mastercard, PayFast, EFT
-       Line: "256-bit SSL encrypted checkout"
-       Small lock icon + text in neutral-400, centered
-     Same intent as drawer security footer — reassure at conversion point.
+------------------------------------------------------------
+Task 1.2 — Upsert helpers
+------------------------------------------------------------
+File: lib/supabase/wc-sync.ts
 
-6.4  Recommended products on cart page
-     Below the cart table, a "You might also need" section:
-       Fetch products from the same category as the first cart item
-       Display 4 products in a horizontal scroll row (mobile) or grid (desktop)
-       Each card: image, name, price, "Add to Basket" button
-       Wired to the same addToCart function
-     This is a high-intent upsell moment — user is already in buying mode.
+Uses Supabase service role key (process.env.SUPABASE_SERVICE_ROLE_KEY)
+to bypass RLS — webhooks are server-to-server.
 
-6.5  Value prop strip on cart page
-     Render ValuePropositionStrip between the cart items and the
-     recommended products. Reinforces trust at the exact moment
-     the user is deciding whether to proceed.
+upsertOrder(wcOrder: WcWebhookOrder): Promise<void>
+  - Map WC fields to wc_orders columns
+  - supabase.from('wc_orders').upsert({ id: wcOrder.id, ... }, { onConflict: 'id' })
+  - Delete existing wc_order_items for this order_id, re-insert all line_items
+  - Upsert into wc_customers if customer_id > 0
 
+upsertCustomer(wcCustomer: WcWebhookCustomer): Promise<void>
+  - supabase.from('wc_customers').upsert({ wc_id: wcCustomer.id, ... }, { onConflict: 'wc_id' })
 
-================================================================
-PHASE 7 — CHECKOUT PAGE
-================================================================
-Goal: Build a complete, conversion-optimised checkout at /checkout.
+awardOrderPoints(order: WcWebhookOrder): Promise<void>
+  - Find Supabase user by email: supabase.auth.admin.listUsers() filtered by email
+    OR: SELECT id FROM auth.users WHERE email = order.billing.email
+  - If no user found: skip (guest order, no rewards)
+  - Points to award: Math.floor(parseFloat(order.total))
+  - INSERT into rewards_transactions (type: 'order_completed', reference: order.id.toString())
+  - Upsert rewards table (increment points, recalculate tier)
 
-7.1  Research: WooCommerce Checkout approach
-     Two options:
-       A) WooCommerce Block Checkout API — POST /wc/store/v1/checkout
-          Accepts billing, shipping, payment_method, customer_note.
-          Returns order ID and payment URL on success.
-          Best for fully custom UI. Requires handling payment methods.
-       B) Redirect to WC hosted checkout — pass Cart-Token as query param
-          so WC session is linked. User completes payment on the WP site.
-          Simpler, handles all payment gateways automatically.
-     RECOMMENDATION: Option B for Phase 7 (redirect to WC hosted checkout).
-     The WC checkout page can be styled to match Sparkport branding.
-     Option A (fully custom checkout) can be built in a future phase once
-     the store is live and payment flows are validated.
+Helper: calculateTier(totalPoints: number): 'bronze'|'silver'|'gold'|'platinum'
+  if >= 5000 return 'platinum'
+  if >= 2000 return 'gold'
+  if >= 500  return 'silver'
+  return 'bronze'
 
-7.2  Build app/checkout/page.tsx (redirect approach)
-     'use client'
-     On mount: get Cart-Token from cookie (send via /api/cart/token GET route)
-     Redirect user to:
-       https://sparkport.co.za/checkout/?add-to-cart=redirect&source=headless
-     OR: construct WC checkout URL with session data
+Steps:
+  - [ ] Define WcWebhookOrder and WcWebhookCustomer TypeScript interfaces
+  - [ ] Implement upsertOrder with order_items delete+re-insert
+  - [ ] Implement upsertCustomer
+  - [ ] Implement awardOrderPoints
+  - [ ] Implement calculateTier
+  - [ ] Add SUPABASE_SERVICE_ROLE_KEY to .env.local
 
-     While redirecting: show a full-page loading state
-       Sparkport logo centered
-       Spinner
-       Text: "Taking you to secure checkout..."
-       Security badge row at bottom
+------------------------------------------------------------
+Task 1.3 — Backfill script (run once)
+------------------------------------------------------------
+File: scripts/wc-backfill.ts
+Run with: npx ts-node scripts/wc-backfill.ts
 
-7.3  New API route: app/api/cart/token/route.ts
-     GET: reads wc_cart_token cookie, returns { token: string }
-     Used by checkout page to pass session to WC hosted checkout
+Paginates WC REST API (100 per page) for:
+  - GET /wc/v3/orders?per_page=100&page=N&orderby=date&order=desc
+  - GET /wc/v3/customers?per_page=100&page=N
 
-7.4  Post-checkout success page: app/checkout/success/page.tsx
-     Shown after WC redirects back with ?order_id=N&key=wc_order_XXX
-     Display:
-       Large green checkmark animation
-       "Order #{orderId} confirmed!"
-       "We'll send a confirmation to your email."
-       Order summary (fetch from WC REST API by order key)
-       Two CTAs: "Continue Shopping" → /shop, "View Your Account" → /account
-     On this page: clear the local cart state (setCart(EMPTY_CART))
+For each order: call upsertOrder()
+For each customer: call upsertCustomer()
+Log progress: "Page N: upserted X orders"
 
+After orders are loaded — run points backfill:
+  For each completed order in wc_orders:
+    Call awardOrderPoints() if no existing rewards_transaction for that reference
 
-================================================================
-PHASE 8 — MICRO POWER TONES
-================================================================
-Goal: Every word in the buying flow earns its place.
-These are copy changes — no new components, just targeted text updates.
+Steps:
+  - [ ] Write paginator function (generic, reusable for orders + customers)
+  - [ ] Run orders backfill, log count
+  - [ ] Run customers backfill, log count
+  - [ ] Run points backfill for historical completed orders
+  - [ ] Verify row counts in Supabase dashboard
 
-8.1  CTA copy — context-specific
-     Replace generic copy with intent-matched CTAs:
+------------------------------------------------------------
+Task 1.4 — Configure WC Webhooks
+------------------------------------------------------------
+In WC Admin → Settings → Advanced → Webhooks, create four webhooks:
 
-     On sale items (onSale === true):
-       "Grab This Deal" instead of "Add to Basket"
-     On new arrivals:
-       "Add to Basket"  (clear, no hype)
-     On bestsellers:
-       "Add to Basket"  (trust already established by "Bestseller" badge)
-     On out of stock:
-       "Notify Me When Available"
-     Mobile sticky buy bar:
-       "Buy Now — R{price}"
+  Name: Order Created
+  Status: Active
+  Topic: Order created
+  Delivery URL: https://[your-domain]/api/webhooks/woocommerce
+  Secret: [same as WC_WEBHOOK_SECRET env var]
+  API version: WP REST API Integration v3
 
-     IMPORTANT: the button label must still be honest and clear.
-     "Grab This Deal" only appears when there is an actual sale.
-     Never use fake urgency.
+  Name: Order Updated
+  Topic: Order updated
+  (same URL and secret)
 
-8.2  Price and savings copy
-     Current: strikethrough price + sale price side by side
-     Add alongside:
-       Green pill: "You save R{X}" — not "Save {X}%" (rand amount is more concrete)
-       On the cart: per-line "You saved R{X}" in green below line total
-       Order summary: "Total savings: R{X}" in green below total
+  Name: Customer Created
+  Topic: Customer created
+  (same URL and secret)
 
-8.3  Stock and availability messaging
-     In stock:
-       Current: "In Stock — Ready to ship"
-       Keep this — it's good. Add delivery estimate here (Phase 4.2)
-     Low stock (when quantity data available):
-       "Only 3 left — order soon"
-       Amber colour, not red — urgency without alarm
-     Out of stock:
-       "Currently out of stock"
-       "Contact us to enquire" links to /contact
-       Never say "Unavailable" — leaves no door open
+  Name: Customer Updated
+  Topic: Customer updated
+  (same URL and secret)
 
-8.4  Cart drawer copy
-     Header: "Your Basket ({count})" — always show count in header
-     Empty state: "Your basket is empty" (keep)
-       Sub: "Trusted by thousands of South Africans since 1983."
-       This fills the silence with brand equity.
-     Subtotal label: "Subtotal ({count} item{s})" — already done
-     Free delivery bar: "Add R{X} more for free delivery — you're close!"
-     Checkout button: "Proceed to Checkout →"
-     Security line: "Safe & secure checkout"
-
-8.5  Cart page copy
-     Page title: "Your Basket" — keep
-     Order summary header: "Order Summary"
-     Checkout button: "Complete My Order — Secure Checkout"
-       Adding "Secure Checkout" reduces payment anxiety at the click point.
-     Below button: "30-day returns · Licensed pharmacists · Est. 1983"
-       Three micro-trust signals in one line.
-
-8.6  Product detail page copy
-     Price section (on sale): "R{salePrice}  was R{originalPrice}"
-       "was" is softer than strikethrough — reads naturally
-     Add to basket button: "Add to Basket"  (clear, universal for pharmacy)
-     Stock line: "In Stock — Ready to dispatch from Sparkport Durban"
-       Adds location specificity — feels more real than generic "Ready to ship"
-     Trust bar (Phase 4.1) copy:
-       "Fulfilled by Sparkport Pharmacy"
-       "Pharmacist reviewed product"
-       "30-day return policy"
-
-8.7  Toast messages
-     Add to cart success:
-       "{productName} added to your basket"
-       Keep it short — the drawer opening is already the confirmation.
-     Remove from cart:
-       "Item removed  ·  Undo"  (4s undo window, Phase 5.2)
-     Coupon applied:
-       "Promo code applied — you saved R{X}!"
-     Error (add failed):
-       "Couldn't add to basket — please try again"
-     Network error:
-       "Something went wrong. Check your connection."
+Steps:
+  - [ ] Create all 4 webhooks in WC admin
+  - [ ] Click "Test" on each to verify 200 response
+  - [ ] Check Supabase table for test data
 
 
 ================================================================
-PHASE 9 — GLOBAL UX POLISH
+PHASE 2 — Fill-Script Session Integration
 ================================================================
-Goal: The details that make a buying experience feel premium.
+Goal: Logged-in users skip Step 1 (personal details already known).
+      All submissions attach user_id. Guest submissions are backfilled
+      on account creation (already implemented in matchAnonymousPrescriptions).
 
-9.1  Value prop strip placement audit
-     ValuePropositionStrip currently renders on homepage only.
-     Also render it on:
-       - app/product/[id]/page.tsx — below product section, above tabs
-       - app/cart/page.tsx — between items and recommended products
-       - app/shop/page.tsx — between hero and product grid (desktop only)
-     Do NOT render it in the CartDrawer — it's already full.
+File to modify: components/FillYourScript.tsx
 
-9.2  Empty state improvements
-     Shop page with 0 results after filter/search:
-       Icon, headline: "No products found"
-       Sub: "Try a different category or search term"
-       CTA: "Clear filters" button — resets all active filters
-     Cart page with 0 items:
-       Already has empty state. Add below it:
-         3 featured products as suggestions (same as drawer empty state)
+NOTE: lib/supabase/prescriptions.ts already handles user_id attachment
+correctly in submitPrescriptionNoAuth. The gap is only in the form UI.
 
-9.3  Scroll and navigation behaviour
-     ProductDetailPage already calls window.scrollTo(top) on product.id change.
-     Extend to:
-       - After addToCart: do NOT scroll — drawer opening is feedback enough
-       - Breadcrumb "back" link: use router.back() if history exists,
-         otherwise fall back to breadcrumb href — avoids dead-end navigations
-       - After checkout redirect: clear scroll position
+------------------------------------------------------------
+Task 2.1 — Detect session on mount
+------------------------------------------------------------
+Add to FillYourScript.tsx:
 
-9.4  Loading skeletons
-     All product grids (ShopLayout, FeaturedProductsTabs, CategorySpotlight):
-       Show skeleton cards (neutral-100 animated pulse) while products load
-       Skeleton matches the exact card dimensions — no layout shift on load
-     Cart drawer:
-       On initial cart fetch (isLoading && items.length === 0):
-         Show 2–3 skeleton item rows inside the drawer
-     These already exist partially — audit and ensure they cover all states.
+  const [sessionUser, setSessionUser] = useState<{
+    id: string
+    email: string
+    profile: Profile | null
+  } | null>(null)
 
-9.5  Error boundaries
-     Wrap the following in error boundaries:
-       - CartDrawer (a cart error must not break the whole page)
-       - Product grid in ShopLayout
-       - ProductDetailPage inner content
-     Error state: simple message + "Refresh" button — never a blank page.
+  type Profile = {
+    first_name: string
+    last_name: string
+    phone: string
+    id_number: string
+    date_of_birth: string
+    medical_aid_provider: string
+    medical_aid_number: string
+  }
 
-9.6  Keyboard and accessibility
-     CartDrawer: focus trap when open, Escape key closes it
-     All interactive elements: visible focus rings (ring-2 ring-[#009eb9])
-     Toast container: aria-live="polite" so screen readers announce additions
-     Mobile sticky buy bar: must not obscure other interactive elements
-       (add padding-bottom to page content matching bar height when visible)
+  useEffect(() => {
+    async function checkSession() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-9.7  Analytics event hooks (future-ready)
-     Add event dispatch stubs at key moments — no analytics library needed yet,
-     just fire window.dispatchEvent(new CustomEvent('sparkport:cart:add', {...}))
-     so future analytics integration (GA4, Meta Pixel) can listen without
-     changing cart logic:
-       sparkport:cart:add      { productId, productName, price, quantity }
-       sparkport:cart:remove   { productId, productName }
-       sparkport:cart:view     { itemCount, total }
-       sparkport:checkout:begin { itemCount, total }
-       sparkport:checkout:complete { orderId, total }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, phone, id_number, date_of_birth, medical_aid_provider, medical_aid_number')
+        .eq('id', user.id)
+        .single()
+
+      setSessionUser({ id: user.id, email: user.email!, profile })
+
+      // Pre-fill form data from profile
+      if (profile) {
+        setFormData(prev => ({
+          ...prev,
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          email: user.email!,
+          whatsappNumber: profile.phone || '',
+          idNumber: profile.id_number || '',
+          dateOfBirth: profile.date_of_birth || '',
+          medicalAidProvider: profile.medical_aid_provider || '',
+          medicalAidNumber: profile.medical_aid_number || '',
+        }))
+      }
+    }
+    checkSession()
+  }, [])
+
+------------------------------------------------------------
+Task 2.2 — Skip Step 1 for logged-in users
+------------------------------------------------------------
+After sessionUser is set, if user is logged in, set currentStep to 2:
+
+  useEffect(() => {
+    if (sessionUser && currentStep === 1) {
+      setCurrentStep(2)
+    }
+  }, [sessionUser])
+
+Show a logged-in greeting in place of Step 1:
+  When currentStep === 2 AND sessionUser is set, show at the top of the form:
+    "Welcome back, {first_name}. Your details are pre-filled."
+    Small link: "Not you? Sign out"
+
+Step 1 is still fully rendered for guests — no change to that UI.
+
+------------------------------------------------------------
+Task 2.3 — Award prescription submission points
+------------------------------------------------------------
+After successful submitPrescriptionNoAuth, if user is logged in:
+
+In lib/supabase/prescriptions.ts, after the notification insert (Step 5):
+
+  if (user) {
+    const points = formData.isChronic ? 50 : 25
+    await supabase.from('rewards_transactions').insert({
+      user_id: user.id,
+      points,
+      type: 'prescription',
+      description: formData.isChronic
+        ? 'Chronic prescription submitted'
+        : 'Prescription submitted',
+      reference: prescriptionRecord.id,
+    })
+    // Upsert rewards balance
+    const { data: existing } = await supabase
+      .from('rewards').select('points').eq('user_id', user.id).single()
+    const newTotal = (existing?.points ?? 0) + points
+    await supabase.from('rewards').upsert({
+      user_id: user.id,
+      points: newTotal,
+      tier: calculateTier(newTotal),
+    }, { onConflict: 'user_id' })
+  }
+
+Import calculateTier from lib/supabase/wc-sync.ts (or move to lib/rewards.ts)
+
+------------------------------------------------------------
+Task 2.4 — Award signup bonus points
+------------------------------------------------------------
+File: app/auth/actions.ts (signUp server action)
+
+After successful Supabase auth signup and profile creation:
+
+  // Award signup bonus
+  await supabase.from('rewards_transactions').insert({
+    user_id: newUser.id,
+    points: 50,
+    type: 'signup',
+    description: 'Welcome bonus — thanks for joining Sparkport!',
+    reference: null,
+  })
+  await supabase.from('rewards').insert({
+    user_id: newUser.id,
+    points: 50,
+    tier: 'bronze',
+  })
+
+
+================================================================
+PHASE 3 — Customer Dashboard: Rewards Tab
+================================================================
+Goal: Customer can see their points balance, tier, and earn history.
+
+Files to create:
+  app/account/rewards/page.tsx    Customer rewards page
+
+------------------------------------------------------------
+Task 3.1 — Rewards page
+------------------------------------------------------------
+File: app/account/rewards/page.tsx
+
+Matches /account/orders layout exactly (same sidebar, background, hero).
+
+Sections:
+  Hero: "My Rewards" with teal/dark blue gradient
+
+  Tier card (full width):
+    Shows current tier name + badge icon + points
+    Progress bar to next tier:
+      Bronze → Silver: X of 500 pts
+      Silver → Gold: X of 2000 pts
+      Gold → Platinum: X of 5000 pts
+    Tier badge colours:
+      Bronze: amber/orange
+      Silver: neutral-400
+      Gold: yellow-500
+      Platinum: purple-500
+
+  Points summary cards (4 cols):
+    Total Points | Points This Month | Orders This Month | Prescriptions
+
+  Transaction history (list):
+    Each row: icon, description, date, +/- points
+    Types:
+      order_completed → shopping cart icon, green +
+      prescription → document icon, green +
+      signup → star icon, green +
+      redemption → gift icon, red -
+    Empty state: "No activity yet — start shopping to earn points"
+
+Data fetch:
+  GET /api/account/rewards
+    → select from rewards (balance, tier)
+    → select from rewards_transactions (last 50, ordered by date desc)
+
+------------------------------------------------------------
+Task 3.2 — API route for rewards
+------------------------------------------------------------
+File: app/api/account/rewards/route.ts
+
+GET:
+  1. Get Supabase user (401 if none)
+  2. Fetch rewards row for user_id
+  3. Fetch rewards_transactions for user_id, last 50
+  4. Return { balance, tier, transactions }
+
+------------------------------------------------------------
+Task 3.3 — Add Rewards to sidebar in all account pages
+------------------------------------------------------------
+Files: app/account/dashboard/page.tsx, app/account/orders/page.tsx, app/account/rewards/page.tsx
+
+Add to sidebar nav:
+  <Link href="/account/rewards" className="...">
+    <StarIcon />
+    My Rewards
+  </Link>
+
+Add rewards points badge to sidebar user card:
+  Below email: "{points} pts · {tier} member"
+  Fetch on mount alongside profile.
+
+
+================================================================
+PHASE 4 — Manager Dashboard: WC Analytics
+================================================================
+Goal: Franchise admin and store managers can see live analytics
+      from WC order data (queried from Supabase mirror tables).
+      All queries hit Supabase — not the WC API.
+
+Files to modify:
+  app/manager/dashboard/FranchiseAdminDashboard.tsx
+  app/manager/dashboard/StoreManagerDashboard.tsx
+
+Files to create:
+  app/api/manager/analytics/route.ts    Analytics data endpoint
+  app/api/manager/orders/route.ts       Order list for manager
+  lib/supabase/analytics.ts             Query functions
+
+------------------------------------------------------------
+Task 4.1 — Analytics query functions
+------------------------------------------------------------
+File: lib/supabase/analytics.ts
+
+All functions use Supabase server client with service role.
+
+getRevenueByPeriod(days: number): Promise<{ date: string, revenue: number }[]>
+  SELECT date_trunc('day', date_created) as date, SUM(total) as revenue
+  FROM wc_orders
+  WHERE status = 'completed'
+    AND date_created >= NOW() - INTERVAL '{days} days'
+  GROUP BY 1 ORDER BY 1
+
+getOrderStatsByStatus(): Promise<{ status: string, count: number, total: number }[]>
+  SELECT status, COUNT(*) as count, SUM(total) as total
+  FROM wc_orders GROUP BY status
+
+getTopProducts(limit: number): Promise<{ product_name: string, qty: number, revenue: number }[]>
+  SELECT product_name, SUM(quantity) as qty, SUM(line_total) as revenue
+  FROM wc_order_items oi
+  JOIN wc_orders o ON o.id = oi.order_id
+  WHERE o.status = 'completed'
+  GROUP BY product_name ORDER BY revenue DESC LIMIT limit
+
+getCustomerGrowth(months: number): Promise<{ month: string, new_customers: number }[]>
+  SELECT date_trunc('month', date_registered) as month, COUNT(*) as new_customers
+  FROM wc_customers
+  WHERE date_registered >= NOW() - INTERVAL '{months} months'
+  GROUP BY 1 ORDER BY 1
+
+getPrescriptionMetrics(): Promise<{ status: string, count: number }[]>
+  SELECT status, COUNT(*) FROM prescriptions GROUP BY status
+
+getRecentOrders(limit: number): Promise<WcOrderRow[]>
+  SELECT * FROM wc_orders ORDER BY date_created DESC LIMIT limit
+
+getRevenueKPIs(): Promise<{ today, this_week, this_month, last_month, growth_pct }>
+  Four sub-queries with date filters, compute growth %
+
+------------------------------------------------------------
+Task 4.2 — Analytics API route
+------------------------------------------------------------
+File: app/api/manager/analytics/route.ts
+
+GET:
+  1. Verify Supabase session (401 if none)
+  2. Verify managers table entry for user (403 if not manager)
+  3. Call all analytics query functions in parallel (Promise.all)
+  4. Return combined analytics object
+
+Route is protected server-side — no client-side role leakage.
+
+------------------------------------------------------------
+Task 4.3 — FranchiseAdminDashboard analytics section
+------------------------------------------------------------
+File: app/manager/dashboard/FranchiseAdminDashboard.tsx
+
+Add a second tab or expandable section: "Commerce Analytics"
+
+Sections:
+  KPI Row (4 cards):
+    Today's Revenue | This Month's Revenue | MoM Growth % | Total Orders
+
+  Revenue chart (last 30 days):
+    Line chart using recharts or simple SVG bars
+    One bar per day, colored teal
+
+  Orders by status (donut or bar):
+    pending | processing | on-hold | completed | cancelled
+
+  Top 10 Products:
+    Table: Product Name | Units Sold | Revenue
+    Sortable columns
+
+  Customer Growth (last 6 months):
+    Bar chart: new customers per month
+
+  Prescription Pipeline (already exists):
+    Keep existing prescription status cards
+
+Data flow:
+  useEffect → fetch('/api/manager/analytics') → setAnalytics(data)
+  Show skeleton cards while loading
+
+------------------------------------------------------------
+Task 4.4 — StoreManagerDashboard (same data, filtered by branch)
+------------------------------------------------------------
+Store managers see the same analytics but their prescription pipeline
+is already filtered to their pharmacy. For now, WC analytics are
+NOT filtered by branch (WC orders don't have branch attribution yet).
+
+Future: add a `branch` field to wc_orders (set during checkout by
+reading the selected store from session) to enable per-branch filtering.
+
+For now: store managers see global WC analytics + their branch prescriptions.
+Add a note: "Sales figures represent all Sparkport branches."
+
+
+================================================================
+PHASE 5 — Profile Settings (Save)
+================================================================
+Goal: The profile settings modal in the dashboard actually saves.
+      Currently the inputs render but the Save button does nothing.
+
+Files to create: app/api/account/profile/route.ts
+Files to modify: app/account/dashboard/page.tsx
+
+------------------------------------------------------------
+Task 5.1 — Profile update API route
+------------------------------------------------------------
+File: app/api/account/profile/route.ts
+
+PATCH:
+  1. Get Supabase user (401 if none)
+  2. Parse body: { first_name, last_name, phone }
+  3. UPDATE profiles SET first_name, last_name, phone, updated_at = NOW()
+     WHERE id = user.id
+  4. Return updated profile
+
+------------------------------------------------------------
+Task 5.2 — Wire Save button in dashboard modal
+------------------------------------------------------------
+In DashboardPage Profile modal:
+
+Add state: const [isSavingProfile, setIsSavingProfile] = useState(false)
+Add state: const [profileSaveMsg, setProfileSaveMsg] = useState('')
+
+Update Save button onClick:
+  async function saveProfile() {
+    setIsSavingProfile(true)
+    const res = await fetch('/api/account/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ first_name, last_name, phone }),
+      headers: { 'Content-Type': 'application/json' }
+    })
+    if (res.ok) {
+      setProfileSaveMsg('Saved!')
+      setProfile(prev => ({ ...prev!, first_name, last_name, phone }))
+    } else {
+      setProfileSaveMsg('Save failed — please try again.')
+    }
+    setIsSavingProfile(false)
+  }
+
+Show save message below buttons, auto-clear after 3s.
+
+
+================================================================
+PHASE 6 — Customer Dashboard: Polish
+================================================================
+Goal: The customer dashboard feels complete and connected.
+
+------------------------------------------------------------
+Task 6.1 — Show rewards balance in dashboard sidebar
+------------------------------------------------------------
+In app/account/dashboard/page.tsx:
+
+Fetch rewards on mount alongside profile:
+  const { data: rewards } = await supabase
+    .from('rewards').select('points, tier').eq('user_id', user.id).single()
+  setRewards(rewards)
+
+In sidebar user card, below email:
+  <div className="flex items-center justify-center gap-2 mt-2">
+    <span className="text-xs font-bold text-[#009eb9]">{rewards?.points ?? 0} pts</span>
+    <span className="text-xs text-neutral-500">·</span>
+    <span className="text-xs text-neutral-500 capitalize">{rewards?.tier ?? 'bronze'} member</span>
+  </div>
+
+------------------------------------------------------------
+Task 6.2 — Replace "Coming Soon" E-Commerce section
+------------------------------------------------------------
+In app/account/dashboard/page.tsx, replace the opacity-60 "Coming Soon" section
+with real data:
+
+  "My Recent Orders" (last 3 from wc_orders mirror):
+    Fetch: GET /api/account/orders (already built, returns WC orders)
+    Show 3 most recent with status badge and total
+    "View all orders →" link to /account/orders
+
+  "My Rewards" snapshot:
+    Show points balance, tier badge, and link to /account/rewards
+    Points earned this month vs last month
+
+Remove the Wishlist and legacy Rewards placeholder cards.
+
+------------------------------------------------------------
+Task 6.3 — Switch /account/orders to query Supabase mirror
+------------------------------------------------------------
+Currently /api/account/orders fetches from WC REST API directly.
+After Phase 1 (mirror tables exist), update it to query Supabase:
+
+File: app/api/account/orders/route.ts
+
+Change from:
+  fetch(`${WC_API}/orders?billing_email=${email}`)
+
+To:
+  supabase.from('wc_orders')
+    .select(`*, wc_order_items(*)`)
+    .eq('customer_email', email)
+    .order('date_created', { ascending: false })
+    .limit(50)
+
+Benefits: faster, no WC API rate limit, works offline from WC.
+
+Keep the WC REST API fallback for orders not yet in mirror
+(i.e., orders placed before the backfill ran).
 
 
 ================================================================
 EXECUTION ORDER
 ================================================================
 
-Week 1 — Foundation (Phases 1 + 2)
-  Phase 1: Performance fixes and optimistic UI
-  Phase 2: Toast system and micro-interactions
-  These must come first — everything else builds on fast, reliable cart.
+Sprint 1 — Foundation (Phases 0 + 1)
+  Schema migrations first (wc_orders, wc_order_items, wc_customers, rewards, rewards_transactions)
+  WC webhook endpoint + upsert helpers
+  Backfill script
+  Configure WC webhooks
+  Verify sync is working with test orders
 
-Week 2 — Conversion layer (Phases 3 + 4 + 5)
-  Phase 3: Product card enhancements
-  Phase 4: Product detail trust signals and mobile buy bar
-  Phase 5: Cart drawer upgrades
-  These are the highest-impact conversion improvements.
+Sprint 2 — Customer Experience (Phases 2 + 3)
+  Fill-script session detection + pre-fill + skip step 1
+  Signup bonus points
+  Prescription points
+  Rewards page (/account/rewards)
+  Rewards sidebar in all account pages
 
-Week 3 — Cart page + Checkout (Phases 6 + 7)
-  Phase 6: Cart page upgrades
-  Phase 7: Checkout page
-  These complete the funnel.
+Sprint 3 — Admin Analytics (Phase 4)
+  Analytics query functions (lib/supabase/analytics.ts)
+  Manager analytics API route
+  FranchiseAdminDashboard commerce section
+  StoreManagerDashboard commerce section
 
-Week 4 — Polish (Phases 8 + 9)
-  Phase 8: Micro power tones (copy audit)
-  Phase 9: Global UX polish, accessibility, analytics stubs
-  These refine and protect what was built in weeks 1–3.
+Sprint 4 — Polish (Phases 5 + 6)
+  Profile save
+  Dashboard "Coming Soon" replacement
+  Orders page switch to Supabase mirror
 
 
 ================================================================
 FILES TO CREATE (NEW)
 ================================================================
-  contexts/ToastContext.tsx           Toast notification system
-  components/ToastContainer.tsx       Toast UI component
-  components/DeliveryEstimate.tsx     Countdown + delivery message
-  app/checkout/page.tsx               Checkout redirect page
-  app/checkout/success/page.tsx       Post-order success page
-  app/api/cart/coupon/route.ts        Coupon apply/remove route
-  app/api/cart/token/route.ts         Cart token reader route
+  app/api/webhooks/woocommerce/route.ts     WC webhook receiver
+  app/api/manager/analytics/route.ts        Manager analytics endpoint
+  app/api/manager/orders/route.ts           Manager order list
+  app/api/account/rewards/route.ts          Customer rewards endpoint
+  app/api/account/profile/route.ts          Profile update endpoint
+  app/account/rewards/page.tsx              Customer rewards page
+  lib/supabase/wc-sync.ts                   Upsert + points helpers
+  lib/supabase/analytics.ts                 Analytics query functions
+  lib/rewards.ts                            calculateTier helper
+  scripts/wc-backfill.ts                    One-time backfill script
 
 
 ================================================================
 FILES TO MODIFY (EXISTING)
 ================================================================
-  contexts/CartContext.tsx            Optimistic UI, nonce cache, fast mutations
-  components/CartDrawer.tsx           Free delivery bar, undo remove, security footer
-  components/ShopLayout.tsx           Post-add state, star ratings, badges
-  components/FeaturedProductsTabs.tsx Post-add state, star ratings, badges
-  components/ProductDetailPage.tsx    Trust bar, delivery estimate, mobile buy bar
-  components/ValuePropositionStrip.tsx Confirm renders on new pages
-  components/ClientProviders.tsx      Add ToastProvider
-  app/cart/page.tsx                   Coupon field, trust badges, recommendations
-  app/api/cart/add/route.ts           Accept client nonce, skip pre-flight GET
-  app/api/cart/item/[key]/route.ts    Accept client nonce, skip pre-flight GET
-  lib/wordpress/products.ts           Add getProductReviews(id) function
+  components/FillYourScript.tsx             Session detection, pre-fill, skip step 1
+  lib/supabase/prescriptions.ts             Award points on prescription submit
+  app/auth/actions.ts                       Award signup bonus points
+  app/account/dashboard/page.tsx            Rewards balance, real recent orders
+  app/account/orders/page.tsx               Add rewards to sidebar
+  app/account/dashboard/page.tsx            Profile save, rewards sidebar
+  app/api/account/orders/route.ts           Switch to Supabase mirror (Sprint 4)
+  app/manager/dashboard/FranchiseAdminDashboard.tsx   Analytics section
+  app/manager/dashboard/StoreManagerDashboard.tsx     Analytics section
 
-  Total: 7 new files, 11 modified files
+
+================================================================
+ENVIRONMENT VARIABLES NEEDED
+================================================================
+  WC_WEBHOOK_SECRET         Random secret set in WC webhook config (min 32 chars)
+  SUPABASE_SERVICE_ROLE_KEY Already in .env.local? Confirm — needed for webhook upserts
 
 
 ================================================================
 SUCCESS CRITERIA
 ================================================================
+
 Phase 1 done when:
-  - Add to cart shows instant feedback (<200ms visual response)
-  - Badge increments before API returns
-  - Drawer opens before API returns
-  - No button stays in "Adding..." state for more than 2s
-  - All add-to-cart buttons across all 4 components work correctly
+  - New WC order appears in wc_orders within 5 seconds of being placed
+  - wc_order_items has line items for that order
+  - rewards_transactions shows points awarded on order completion
 
 Phase 2 done when:
-  - Toast appears bottom-right on every cart action
-  - Badge bounces on add
-  - Buttons show green "Added!" state then reset
+  - Logged-in user visits /fill-script and sees step 2 immediately
+  - Their name, email, phone are pre-filled
+  - Submitted prescription has user_id set in Supabase
 
-Phases 3-5 done when:
-  - Product cards show ratings, savings, badges
-  - Product detail has trust bar + delivery estimate + mobile sticky bar
-  - Cart drawer has free delivery bar, undo, security footer
+Phase 3 done when:
+  - /account/rewards loads with correct points balance and tier
+  - Transaction history shows prescription and order events
+  - Sidebar shows points across all account pages
 
-Phases 6-7 done when:
-  - Coupon field works against real WC coupons
-  - Checkout page redirects correctly with cart session
-  - Success page clears cart and shows order confirmation
+Phase 4 done when:
+  - /manager/dashboard shows revenue chart, order status breakdown, top products
+  - All data loads from Supabase (no WC API calls on the dashboard)
+  - Franchise admin sees all-branch data, store manager sees their Rx + global sales
 
-Phases 8-9 done when:
-  - Copy audit passes: no generic/mismatched CTAs remain
-  - ValuePropositionStrip renders on product + cart pages
-  - All interactive elements are keyboard accessible
-  - No blank pages on cart or product fetch errors
-
-
-================================================================
-BUG REPORT — Full Buying Flow Audit (2026-06-26)
-================================================================
-Build: clean (npx tsc --noEmit, npm run build — zero errors)
-Audit method: full code review of every file in the buying flow
-
-Severity key:
-  CRITICAL  — breaks the flow entirely for some/all users
-  BUG       — wrong visible behaviour the user can observe
-  UX ISSUE  — confusing or misleading but not outright broken
-  MINOR     — edge-case or cosmetic problem
-
-
-----------------------------------------------------------------
-CRITICAL
-----------------------------------------------------------------
-
-C1. addToCart swallows errors; callers always show "Added!" on failure
-    Files: contexts/CartContext.tsx (lines ~185-203)
-           components/ProductDetailPage.tsx (~line 43)
-           components/ShopLayout.tsx (~line 70)
-    Problem: After a failed API call the callback rolls back cart state
-    but does NOT re-throw. All callers (ProductDetailPage.handleAdd,
-    ShopLayout.handleAdd) unconditionally set isAdded=true after awaiting
-    addToCart. Result: the user sees the green "Added!" check and the
-    drawer opens — but the item was never added. Silent checkout failure.
-    Fix: addToCart should re-throw (or return { success: false }) on
-    terminal failure so callers can branch; also call showToast error;
-    callers must not set isAdded=true on error.
-
-C2. Same silent-failure pattern applies to updateQuantity and removeFromCart
-    File: contexts/CartContext.tsx
-    All three mutation callbacks only console.error on failure. Zero user
-    feedback for any cart error. The toast infrastructure is wired into
-    ClientProviders.tsx but showToast is never called anywhere in the
-    cart flow. Every failure — network error, 403, out-of-stock rejection
-    — is silent.
-    Fix: Wire showToast into all three mutation catch blocks.
-
-C3. Checkout hand-off will break if Next.js app and WooCommerce are on
-    different hosts / subdomains
-    File: app/checkout/page.tsx
-    Problem: wc_cart_token is an HttpOnly cookie set by the Next.js API
-    routes on the Next app's host with no explicit Domain attribute (so
-    it is host-only). The redirect target is https://sparkport.co.za/
-    checkout/. If the Next app is on a different subdomain (e.g.
-    app.sparkport.co.za or a Vercel deployment URL), the cookie is NOT
-    sent to sparkport.co.za and the WooCommerce checkout loads an empty
-    cart. There is no fallback.
-    Fix: Confirm deployment: the Next app and WooCommerce must be on the
-    same host or the Set-Cookie headers must include a shared Domain=.
-    sparkport.co.za attribute. If hosts differ, switch to a server-side
-    redirect (Next.js redirect) that passes the session via URL token.
-
-C4. Drawer "Proceed to Checkout" stays enabled during 4s undo window
-    File: components/CartDrawer.tsx (~line 137)
-    When the user removes their last item, showFooter=true because
-    pendingRemoval exists, so the checkout CTA is still clickable. But
-    the optimistic cart is now empty (count=0), so clicking "Proceed to
-    Checkout" navigates to /checkout → redirects to WC with an empty
-    session.
-    Fix: Disable / hide the checkout button when activeItems.length === 0,
-    even while pendingRemoval is set.
-
-
-----------------------------------------------------------------
-BUG
-----------------------------------------------------------------
-
-B1. DeliveryEstimate countdown is off by 1 minute almost always
-    File: components/DeliveryEstimate.tsx (~lines 12-25)
-    minutesLeft = 59 - minutes is wrong. At 13:00 SAST it shows "0h 59m"
-    instead of "1h 0m". At 13:59 it shows "0h 0m" instead of "0h 1m".
-    The hours display also wraps incorrectly at the top of each hour
-    (shows 0h Xm instead of 1h 0m etc.).
-    Fix: Replace with:
-      const totalLeft = 14*60 - (hours*60 + minutes);
-      const hoursLeft = Math.floor(totalLeft / 60);
-      const minutesLeft = totalLeft % 60;
-
-B2. Free delivery progress bar ignores applied discounts/coupons
-    File: components/CartDrawer.tsx (~line 28)
-    parsedTotal = parseInt(total, 10) / 100 uses the raw item subtotal
-    (total_items), not the discounted total. A user with a R600 basket
-    and a R150 coupon sees "FREE delivery unlocked!" but their actual
-    chargeable total is R450 — below the R500 threshold.
-    Fix: Use (parseInt(cartTotals.total_items,10) -
-    parseInt(cartTotals.total_discount,10)) / 100 as parsedTotal.
-    This requires cartTotals to be destructured from useCart() in
-    CartDrawer (it's already exposed by the context).
-
-B3. lastAddedKey highlight timer fires 800ms after optimistic update,
-    not after API response — leaves permanent glow on slow connections
-    File: contexts/CartContext.tsx (~line 205)
-    setTimeout(() => setLastAddedKey(null), 800) is scheduled right after
-    setCart(optimisticCart). On a slow connection the API takes > 800ms,
-    so the timer clears lastAddedKey before the real cart response sets
-    it to the real WC key (line 184/194). After that the lastAddedKey is
-    set to the real key but no new timer clears it — the highlight stays
-    forever.
-    Fix: Move the 800ms clear timer to the success branch (after
-    setLastAddedKey(result._key or similar)), not the optimistic branch.
-
-B4. Cart page "Delivery: FREE" shows before user enters any address
-    File: app/cart/page.tsx (~line 246)
-    shipping === 0 when WC has not yet calculated a shipping rate (no
-    address), so the order summary always shows "FREE" delivery before
-    checkout. This may set false expectations.
-    Fix: Show "Calculated at checkout" when shipping === 0, only show
-    "FREE" when a positive qualifying condition is known (e.g. total above
-    threshold). Or add a note: "FREE on orders over R500".
-
-B5. Coupon success state never clears; no UI to remove an applied coupon
-    File: app/cart/page.tsx (~lines 56-78)
-    After a coupon is applied, "Coupon applied!" text stays until the
-    user types in the input (onChange resets to idle). There is no way
-    for the user to see which coupon is active or to remove it — the
-    DELETE route exists but there is no Remove button in the UI.
-    Fix: After refreshCart() resolves, reset couponCode to '' and
-    couponStatus to 'idle'. Add a "Remove" link/button when discount > 0.
-
-B6. isLoading in CartContext is never set to true on initial fetch
-    File: contexts/CartContext.tsx
-    The initial useEffect calls fetchCart() but never sets isLoading=true
-    before the call or =false after. isLoading only flips during
-    mutations (add/update/remove). Result: on first page load, count=0
-    and isLoading=false simultaneously, so cart/page.tsx shows the empty-
-    cart message briefly for users who have items — until fetchCart
-    resolves and count updates.
-    Fix: Set isLoading=true before the initial fetchCart() call inside
-    the mount effect, and false in the finally block.
-
-B7. handleRemove in CartDrawer does not handle rapid removes on same item
-    File: components/CartDrawer.tsx (~lines 116-127)
-    If the user clicks Remove, then clicks Remove again on a different
-    item within 4s, the first pending removal fires immediately (correct)
-    but if removeFromCart fails for the first item it rolls back —
-    however the UI is now showing pendingRemoval for item 2. The user
-    sees item 1 reappear unexpectedly with no explanation.
-
-B8. Cart page shows "You saved R0.00" lines for non-sale items
-    File: app/cart/page.tsx (~line 40)
-    savedPerUnit = (regular_price - price)/100. WC returns regular_price
-    equal to price when the item is not on sale, but only if the product
-    was ever indexed with a sale price. If regular_price is '0' (missing)
-    the math gives a negative saving, and if regular_price == price the
-    guard savedPerUnit > 0 correctly hides it. However if WC ever returns
-    regular_price as '' or null, parseInt gives NaN and the comparison
-    NaN > 0 is false — fine. Edge case, but worth a null-coalesce guard.
-
-
-----------------------------------------------------------------
-UX ISSUE
-----------------------------------------------------------------
-
-U1. Zero toast feedback across the entire cart flow
-    showToast is defined and wired (ClientProviders.tsx line 16) but
-    never called. No success confirmation when adding, no error when
-    failing, no "Coupon applied!" notification. The toast system built
-    in Phase 2 is completely unused.
-
-U2. Drawer opens on failed adds
-    contexts/CartContext.tsx (~line 171): openDrawer() is called as part
-    of the optimistic update, BEFORE the API result. If the API rejects
-    and rolls back, the drawer has already opened and the item disappears
-    mid-view with no explanation. Users see the drawer pop, then the item
-    vanish — very confusing.
-
-U3. /checkout/success trusts an unvalidated order_id URL param
-    File: app/checkout/success/page.tsx
-    Any URL /checkout/success?order_id=12345 shows a full "Order #12345
-    confirmed!" page and clears the local cart. No order verification
-    against WC. A user who bookmarks the URL or receives a bad redirect
-    has their cart cleared incorrectly.
-    Fix: Either don't display the order_id in the heading (just "Order
-    confirmed!") or validate it against the WC REST API.
-
-U4. clearCart() on success page only clears local state, not WC session
-    File: app/checkout/success/page.tsx
-    setCart(EMPTY_CART) wipes the React state, but the next CartContext
-    mount (new page/tab) calls fetchCart() which still returns the old
-    WC session cart. If the WC checkout actually cleared the session this
-    is fine, but if the session persists (e.g. failed payment, order
-    pending), the cart refills.
-
-U5. Qty stepper has no debounce — rapid clicks queue multiple concurrent
-    PUT requests that can apply out of order
-    File: components/CartDrawer.tsx (~lines 281-299)
-    Each +/- click fires updateQuantity immediately. Five rapid clicks
-    fire five PUTs; whichever resolves last wins and can set the wrong
-    quantity.
-    Fix: Debounce qty stepper (200-300ms) or track in-flight requests and
-    cancel stale ones.
-
-U6. Drawer suggestions fetch repeats on every open — no caching
-    File: components/CartDrawer.tsx (~line 65)
-    useEffect fires whenever isDrawerOpen becomes true with count=0.
-    Every time the user opens an empty drawer the same 3 products are
-    re-fetched from the API.
-    Fix: Only fetch once (check suggestions.length > 0 before fetching),
-    or store in sessionStorage.
-
-U7. Hard-coded R500 threshold label doesn't use the FREE_DELIVERY_THRESHOLD constant
-    File: components/CartDrawer.tsx (~line 360)
-    The visible label says "{symbol}500 threshold" as a string literal
-    while the actual threshold logic uses FREE_DELIVERY_THRESHOLD = 500.
-    If the constant changes the label drifts.
-    Fix: Interpolate: `${symbol}${FREE_DELIVERY_THRESHOLD} threshold`
-
-U8. Checkout page analytics event always reports itemCount=0 and total=''
-    File: app/checkout/page.tsx (~lines 13-17)
-    sparkport:checkout:begin fires with hardcoded empty detail because
-    useCart() is not called on that page.
-    Fix: Add useCart() to checkout/page.tsx and pass real count/total.
-
-U9. Applied coupon has no removal UI on cart page
-    See B5 — the DELETE /api/cart/coupon route exists and works but
-    there is no "Remove" button visible to the user once a coupon is
-    applied and discount shows in the order summary.
-
-
-----------------------------------------------------------------
-MINOR
-----------------------------------------------------------------
-
-M1. optimistic-${Date.now()} tempKey can collide on same-millisecond adds
-    Fix: Append Math.random() — e.g. `optimistic-${Date.now()}-${Math.random()}`
-
-M2. ToastContext: setTimeout for auto-dismiss is not cleared on unmount
-    File: contexts/ToastContext.tsx (~line 43)
-    Minor memory leak / stale setState on unmount.
-
-M3. Coupon API route does not validate empty code server-side
-    File: app/api/cart/coupon/route.ts
-    Client guards with couponCode.trim() but server accepts any string.
-
-M4. Coupon route does not return the new nonce to the client
-    File: app/api/cart/coupon/route.ts
-    Other cart routes include _nonce in response so CartContext can
-    update nonceRef. Coupon route does not. Masked by refreshCart() call
-    but the inconsistency is fragile.
-
-M5. ShopLayout useEffect dep array omits priceRange[0]
-    File: components/ShopLayout.tsx (~line 118)
-    Only [1] (max) is in deps. Benign now but brittle if min becomes
-    adjustable.
-
-M6. ProductDetailPage IntersectionObserver effect has empty dep array
-    File: components/ProductDetailPage.tsx (~lines 59-68)
-    The observer targets mainButtonRef.current, which is the same DOM
-    node across product navigations (client-side SPA routing). Works in
-    practice but a dep on product.id would be more explicit.
-
-M7. Cart page shows "Delivery: FREE" subtlety (see B4 above)
-    The R0.00 shipping from WC before address entry makes the order
-    summary always show FREE — even before the threshold is met.
-
-M8. Checkout success page order_id not length-capped in the heading
-    A very long order_id string in the URL would overflow the heading.
-    Fix: Slice to 20 chars or validate as digits-only.
-
-
-----------------------------------------------------------------
-PRIORITY ORDER FOR FIXES
-----------------------------------------------------------------
-
-  1. C1/C2 — Wire error handling + showToast into all mutation paths
-             and fix isAdded=true on failure in PDP and ShopLayout
-  2. C3     — Verify/fix the cross-host cookie issue before go-live
-  3. B1     — Fix DeliveryEstimate countdown formula (1-line fix)
-  4. C4     — Disable checkout CTA when activeItems.length === 0
-  5. B3     — Move lastAddedKey clear timer to API success branch
-  6. B6     — Set isLoading=true on initial cart fetch
-  7. B2     — Use discounted total in free-delivery progress bar
-  8. U5     — Debounce qty stepper
-  9. B5/U9  — Add coupon removal UI and reset state on apply
- 10. U3/U4  — Harden success page (don't clear cart on bad redirect)
- 11. Minors — Low risk, address in regular maintenance
+Phase 5 + 6 done when:
+  - Profile settings modal saves and shows confirmation
+  - Dashboard "Coming Soon" replaced with real recent orders + rewards snapshot
+  - /account/orders queries Supabase mirror (fast, no WC dependency)

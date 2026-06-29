@@ -1,0 +1,367 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  email text NOT NULL,
+  full_name text,
+  phone text,
+  date_of_birth date,
+  id_number text,
+  medical_aid_provider text,
+  medical_aid_number text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  receive_marketing boolean DEFAULT false,
+  woocommerce_customer_id integer,
+  first_name text,
+  last_name text,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.delivery_addresses (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  label text DEFAULT 'Home'::text,
+  recipient_name text NOT NULL,
+  recipient_phone text NOT NULL,
+  street_address text NOT NULL,
+  suburb text,
+  city text NOT NULL,
+  province text NOT NULL,
+  postal_code text NOT NULL,
+  special_instructions text,
+  is_default boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT delivery_addresses_pkey PRIMARY KEY (id),
+  CONSTRAINT delivery_addresses_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.doctors (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  full_name text NOT NULL,
+  practice_number text NOT NULL UNIQUE,
+  specialization text,
+  practice_name text,
+  phone text,
+  email text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT doctors_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.pharmacies (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  street_address text NOT NULL,
+  suburb text,
+  city text NOT NULL,
+  province text NOT NULL,
+  postal_code text,
+  phone text,
+  email text,
+  latitude numeric,
+  longitude numeric,
+  opening_hours jsonb,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT pharmacies_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.prescriptions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  prescription_number text NOT NULL UNIQUE,
+  patient_name text NOT NULL,
+  patient_id_number text,
+  patient_phone text NOT NULL,
+  doctor_id uuid,
+  doctor_name text NOT NULL,
+  doctor_practice_number text,
+  prescription_date date NOT NULL,
+  expiry_date date,
+  is_chronic boolean DEFAULT false,
+  chronic_repeats_remaining integer,
+  delivery_method text NOT NULL CHECK (delivery_method = ANY (ARRAY['collection'::text, 'delivery'::text])),
+  collection_pharmacy_id uuid,
+  delivery_address_id uuid,
+  status text NOT NULL DEFAULT 'submitted'::text CHECK (status = ANY (ARRAY['submitted'::text, 'verifying'::text, 'verified'::text, 'dispensing'::text, 'ready_collect'::text, 'out_delivery'::text, 'completed'::text, 'rejected'::text, 'cancelled'::text])),
+  status_updated_at timestamp with time zone DEFAULT now(),
+  total_amount numeric,
+  medical_aid_claim boolean DEFAULT false,
+  payment_status text DEFAULT 'pending'::text CHECK (payment_status = ANY (ARRAY['pending'::text, 'paid'::text, 'medical_aid'::text, 'failed'::text])),
+  special_instructions text,
+  pharmacist_notes text,
+  rejection_reason text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  contact_email text,
+  is_anonymous boolean DEFAULT false,
+  preferred_pharmacy_id uuid,
+  CONSTRAINT prescriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT prescriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT prescriptions_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.doctors(id),
+  CONSTRAINT prescriptions_collection_pharmacy_id_fkey FOREIGN KEY (collection_pharmacy_id) REFERENCES public.pharmacies(id),
+  CONSTRAINT prescriptions_delivery_address_id_fkey FOREIGN KEY (delivery_address_id) REFERENCES public.delivery_addresses(id),
+  CONSTRAINT prescriptions_preferred_pharmacy_id_fkey FOREIGN KEY (preferred_pharmacy_id) REFERENCES public.pharmacies(id)
+);
+CREATE TABLE public.prescription_items (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  prescription_id uuid NOT NULL,
+  medication_name text NOT NULL,
+  medication_strength text,
+  medication_form text,
+  dosage_instructions text NOT NULL,
+  quantity integer NOT NULL,
+  unit_price numeric,
+  total_price numeric,
+  is_dispensed boolean DEFAULT false,
+  dispensed_at timestamp with time zone,
+  dispensed_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT prescription_items_pkey PRIMARY KEY (id),
+  CONSTRAINT prescription_items_prescription_id_fkey FOREIGN KEY (prescription_id) REFERENCES public.prescriptions(id),
+  CONSTRAINT prescription_items_dispensed_by_fkey FOREIGN KEY (dispensed_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.prescription_images (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  prescription_id uuid NOT NULL,
+  storage_path text NOT NULL,
+  file_name text NOT NULL,
+  file_size integer,
+  mime_type text,
+  uploaded_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT prescription_images_pkey PRIMARY KEY (id),
+  CONSTRAINT prescription_images_prescription_id_fkey FOREIGN KEY (prescription_id) REFERENCES public.prescriptions(id)
+);
+CREATE TABLE public.prescription_status_history (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  prescription_id uuid NOT NULL,
+  status text NOT NULL,
+  changed_by uuid,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT prescription_status_history_pkey PRIMARY KEY (id),
+  CONSTRAINT prescription_status_history_prescription_id_fkey FOREIGN KEY (prescription_id) REFERENCES public.prescriptions(id),
+  CONSTRAINT prescription_status_history_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  prescription_id uuid,
+  type text NOT NULL,
+  title text NOT NULL,
+  message text NOT NULL,
+  is_read boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT notifications_prescription_id_fkey FOREIGN KEY (prescription_id) REFERENCES public.prescriptions(id)
+);
+CREATE TABLE public.managers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text),
+  name text NOT NULL,
+  role text NOT NULL CHECK (role = ANY (ARRAY['store_manager'::text, 'franchise_admin'::text])),
+  assigned_pharmacy_id uuid,
+  phone text,
+  auth_user_id uuid,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT managers_pkey PRIMARY KEY (id),
+  CONSTRAINT managers_assigned_pharmacy_id_fkey FOREIGN KEY (assigned_pharmacy_id) REFERENCES public.pharmacies(id),
+  CONSTRAINT managers_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id)
+);
+
+
+## Table `profiles`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `email` | `text` |  |
+| `full_name` | `text` |  Nullable |
+| `phone` | `text` |  Nullable |
+| `date_of_birth` | `date` |  Nullable |
+| `id_number` | `text` |  Nullable |
+| `medical_aid_provider` | `text` |  Nullable |
+| `medical_aid_number` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `updated_at` | `timestamptz` |  Nullable |
+| `receive_marketing` | `bool` |  Nullable |
+| `woocommerce_customer_id` | `int4` |  Nullable |
+| `first_name` | `text` |  Nullable |
+| `last_name` | `text` |  Nullable |
+
+## Table `delivery_addresses`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  Nullable |
+| `label` | `text` |  Nullable |
+| `recipient_name` | `text` |  |
+| `recipient_phone` | `text` |  |
+| `street_address` | `text` |  |
+| `suburb` | `text` |  Nullable |
+| `city` | `text` |  |
+| `province` | `text` |  |
+| `postal_code` | `text` |  |
+| `special_instructions` | `text` |  Nullable |
+| `is_default` | `bool` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `updated_at` | `timestamptz` |  Nullable |
+
+## Table `doctors`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `full_name` | `text` |  |
+| `practice_number` | `text` |  Unique |
+| `specialization` | `text` |  Nullable |
+| `practice_name` | `text` |  Nullable |
+| `phone` | `text` |  Nullable |
+| `email` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `pharmacies`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `name` | `text` |  Unique |
+| `street_address` | `text` |  |
+| `suburb` | `text` |  Nullable |
+| `city` | `text` |  |
+| `province` | `text` |  |
+| `postal_code` | `text` |  Nullable |
+| `phone` | `text` |  Nullable |
+| `email` | `text` |  Nullable |
+| `latitude` | `numeric` |  Nullable |
+| `longitude` | `numeric` |  Nullable |
+| `opening_hours` | `jsonb` |  Nullable |
+| `is_active` | `bool` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `prescriptions`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  Nullable |
+| `prescription_number` | `text` |  Unique |
+| `patient_name` | `text` |  |
+| `patient_id_number` | `text` |  Nullable |
+| `patient_phone` | `text` |  |
+| `doctor_id` | `uuid` |  Nullable |
+| `doctor_name` | `text` |  |
+| `doctor_practice_number` | `text` |  Nullable |
+| `prescription_date` | `date` |  |
+| `expiry_date` | `date` |  Nullable |
+| `is_chronic` | `bool` |  Nullable |
+| `chronic_repeats_remaining` | `int4` |  Nullable |
+| `delivery_method` | `text` |  |
+| `collection_pharmacy_id` | `uuid` |  Nullable |
+| `delivery_address_id` | `uuid` |  Nullable |
+| `status` | `text` |  |
+| `status_updated_at` | `timestamptz` |  Nullable |
+| `total_amount` | `numeric` |  Nullable |
+| `medical_aid_claim` | `bool` |  Nullable |
+| `payment_status` | `text` |  Nullable |
+| `special_instructions` | `text` |  Nullable |
+| `pharmacist_notes` | `text` |  Nullable |
+| `rejection_reason` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `updated_at` | `timestamptz` |  Nullable |
+| `contact_email` | `text` |  Nullable |
+| `is_anonymous` | `bool` |  Nullable |
+| `preferred_pharmacy_id` | `uuid` |  Nullable |
+
+## Table `prescription_items`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `prescription_id` | `uuid` |  |
+| `medication_name` | `text` |  |
+| `medication_strength` | `text` |  Nullable |
+| `medication_form` | `text` |  Nullable |
+| `dosage_instructions` | `text` |  |
+| `quantity` | `int4` |  |
+| `unit_price` | `numeric` |  Nullable |
+| `total_price` | `numeric` |  Nullable |
+| `is_dispensed` | `bool` |  Nullable |
+| `dispensed_at` | `timestamptz` |  Nullable |
+| `dispensed_by` | `uuid` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `prescription_images`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `prescription_id` | `uuid` |  |
+| `storage_path` | `text` |  |
+| `file_name` | `text` |  |
+| `file_size` | `int4` |  Nullable |
+| `mime_type` | `text` |  Nullable |
+| `uploaded_at` | `timestamptz` |  Nullable |
+
+## Table `prescription_status_history`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `prescription_id` | `uuid` |  |
+| `status` | `text` |  |
+| `changed_by` | `uuid` |  Nullable |
+| `notes` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `notifications`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  |
+| `prescription_id` | `uuid` |  Nullable |
+| `type` | `text` |  |
+| `title` | `text` |  |
+| `message` | `text` |  |
+| `is_read` | `bool` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `managers`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `email` | `text` |  Unique |
+| `name` | `text` |  |
+| `role` | `text` |  |
+| `assigned_pharmacy_id` | `uuid` |  Nullable |
+| `phone` | `text` |  Nullable |
+| `auth_user_id` | `uuid` |  Nullable |
+| `is_active` | `bool` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `updated_at` | `timestamptz` |  Nullable |
+

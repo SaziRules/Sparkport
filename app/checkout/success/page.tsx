@@ -222,12 +222,12 @@ function SuccessInner() {
           >
             Continue Shopping
           </Link>
-          <span
-            title="Coming soon"
-            className="flex-1 flex items-center justify-center px-6 py-3 border-2 border-neutral-200 text-neutral-400 font-bold! rounded-xl cursor-not-allowed text-sm"
+          <Link
+            href="/account/orders"
+            className="flex-1 flex items-center justify-center px-6 py-3 border-2 border-[#184363] text-[#184363] font-bold! rounded-xl hover:bg-[#184363] hover:text-white transition-colors text-sm"
           >
-            View Order
-          </span>
+            View My Orders
+          </Link>
         </div>
 
       </div>

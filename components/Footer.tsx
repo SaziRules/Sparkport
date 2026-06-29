@@ -113,17 +113,17 @@ export default function Footer() {
               <h3 className="text-white font-semibold mb-4">Account details</h3>
               <ul className="space-y-2.5">
                 <li>
-                  <Link href="/my-account/orders" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/account/orders" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Orders
                   </Link>
                 </li>
                 <li>
-                  <Link href="/my-account/returns" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/terms-conditions#returns" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Returns
                   </Link>
                 </li>
                 <li>
-                  <Link href="/my-account/lost-password" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  <Link href="/auth/forgot-password" className="text-neutral-300 hover:text-white transition-colors text-sm">
                     Lost password
                   </Link>
                 </li>
