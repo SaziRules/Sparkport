@@ -1,8 +1,16 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+
+function serviceClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 /**
  * Manager Sign In
@@ -29,10 +37,10 @@ export async function managerSignIn(email: string, password: string) {
       return { error: 'Authentication failed. Please try again.' };
     }
 
-    // 2. Verify manager profile exists and is active
-    const { data: manager, error: managerError } = await supabase
+    // 2. Verify manager profile exists and is active (service role bypasses RLS)
+    const { data: manager, error: managerError } = await serviceClient()
       .from('managers')
-      .select('*')
+      .select('role')
       .eq('auth_user_id', authData.user.id)
       .eq('is_active', true)
       .single();

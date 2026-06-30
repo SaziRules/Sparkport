@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 
-const HIDDEN_PATHS = ['/account', '/fill-script'];
+const HIDDEN_PATHS = ['/account', '/fill-script', '/manager'];
 
 export default function NavVisibility({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

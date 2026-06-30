@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Routes only accessible to managers
@@ -76,7 +77,11 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const { data: manager } = await supabase
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data: manager } = await adminClient
     .from('managers')
     .select('role, is_active')
     .eq('auth_user_id', user.id)

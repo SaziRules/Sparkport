@@ -19,14 +19,15 @@ export async function POST(request: Request) {
   const { productId, quantity, clientNonce } = await request.json();
 
   let session: { nonce: string; token: string };
-  if (clientNonce && typeof clientNonce === 'string' && clientNonce.length > 0) {
-    session = { nonce: clientNonce, token: cartToken ?? '' };
-  } else {
-    session = await getFreshNonce(cartToken);
-    if (session.token) cartToken = session.token;
-  }
 
   try {
+    if (clientNonce && typeof clientNonce === 'string' && clientNonce.length > 0) {
+      session = { nonce: clientNonce, token: cartToken ?? '' };
+    } else {
+      session = await getFreshNonce(cartToken);
+      if (session.token) cartToken = session.token;
+    }
+
     const res = await fetch(`${STORE}/cart/add-item`, {
       method: 'POST',
       headers: {

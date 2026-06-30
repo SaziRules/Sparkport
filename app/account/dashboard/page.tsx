@@ -54,27 +54,49 @@ type Profile = {
   first_name: string;
   last_name: string;
   phone: string;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
+  province: string | null;
+  postcode: string | null;
+};
+
+type Order = {
+  id: number;
+  number: string;
+  status: string;
+  date: string;
+  total: string;
+  currency_symbol: string;
+  items: { id: number; name: string; quantity: number }[];
 };
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS: Record<string, { label: string; badge: string; dot: string; step: number; hint: string }> = {
-  submitted:  { label: 'Submitted',    badge: 'bg-teal-50    border-teal-200    text-teal-700',    dot: 'bg-teal-500',    step: 0, hint: 'Received — awaiting pharmacist review' },
-  pending:    { label: 'Under Review', badge: 'bg-amber-50   border-amber-200   text-amber-700',   dot: 'bg-amber-500',   step: 1, hint: 'Our pharmacist is reviewing your prescription' },
-  processing: { label: 'Processing',  badge: 'bg-blue-50    border-blue-200    text-blue-700',    dot: 'bg-blue-500',    step: 2, hint: 'Your medication is being prepared' },
-  ready:      { label: 'Ready',       badge: 'bg-green-50   border-green-200   text-green-700',   dot: 'bg-green-500',   step: 3, hint: 'Ready for collection or dispatch' },
-  dispatched: { label: 'Dispatched',  badge: 'bg-purple-50  border-purple-200  text-purple-700',  dot: 'bg-purple-500',  step: 4, hint: 'Your order is on its way' },
-  completed:  { label: 'Completed',   badge: 'bg-emerald-50 border-emerald-200 text-emerald-700', dot: 'bg-emerald-600', step: 5, hint: 'Prescription fulfilled successfully' },
-  cancelled:  { label: 'Cancelled',   badge: 'bg-red-50     border-red-200     text-red-700',     dot: 'bg-red-500',     step: -1, hint: 'Contact us for more information' },
-  on_hold:    { label: 'On Hold',     badge: 'bg-orange-50  border-orange-200  text-orange-700',  dot: 'bg-orange-500',  step: -1, hint: 'We may need to contact you for more details' },
+  submitted:     { label: 'Submitted',        badge: 'bg-teal-50    border-teal-200    text-teal-700',    dot: 'bg-teal-500',    step: 0, hint: 'Received — awaiting pharmacist review' },
+  verifying:     { label: 'Under Review',     badge: 'bg-amber-50   border-amber-200   text-amber-700',   dot: 'bg-amber-500',   step: 1, hint: 'Our pharmacist is reviewing your prescription' },
+  verified:      { label: 'Verified',         badge: 'bg-blue-50    border-blue-200    text-blue-700',    dot: 'bg-blue-500',    step: 1, hint: 'Your prescription has been verified' },
+  dispensing:    { label: 'Being Prepared',   badge: 'bg-indigo-50  border-indigo-200  text-indigo-700',  dot: 'bg-indigo-500',  step: 2, hint: 'Your medication is being dispensed' },
+  ready_collect: { label: 'Ready to Collect', badge: 'bg-green-50   border-green-200   text-green-700',   dot: 'bg-green-500',   step: 3, hint: 'Ready for collection from your pharmacy' },
+  out_delivery:  { label: 'Out for Delivery', badge: 'bg-purple-50  border-purple-200  text-purple-700',  dot: 'bg-purple-500',  step: 3, hint: 'Your order is on its way to you' },
+  completed:     { label: 'Completed',        badge: 'bg-emerald-50 border-emerald-200 text-emerald-700', dot: 'bg-emerald-600', step: 5, hint: 'Prescription fulfilled successfully' },
+  rejected:      { label: 'Rejected',         badge: 'bg-red-50     border-red-200     text-red-700',     dot: 'bg-red-500',     step: -1, hint: 'Please contact your pharmacy for more information' },
+  cancelled:     { label: 'Cancelled',        badge: 'bg-red-50     border-red-200     text-red-700',     dot: 'bg-red-500',     step: -1, hint: 'Contact us for more information' },
+  on_hold:       { label: 'On Hold',          badge: 'bg-orange-50  border-orange-200  text-orange-700',  dot: 'bg-orange-500',  step: -1, hint: 'We may need to contact you for more details' },
+  // legacy aliases
+  pending:       { label: 'Under Review',     badge: 'bg-amber-50   border-amber-200   text-amber-700',   dot: 'bg-amber-500',   step: 1, hint: 'Our pharmacist is reviewing your prescription' },
+  processing:    { label: 'Being Prepared',   badge: 'bg-indigo-50  border-indigo-200  text-indigo-700',  dot: 'bg-indigo-500',  step: 2, hint: 'Your medication is being prepared' },
+  ready:         { label: 'Ready',            badge: 'bg-green-50   border-green-200   text-green-700',   dot: 'bg-green-500',   step: 3, hint: 'Ready for collection or dispatch' },
+  dispatched:    { label: 'Out for Delivery', badge: 'bg-purple-50  border-purple-200  text-purple-700',  dot: 'bg-purple-500',  step: 3, hint: 'Your order is on its way' },
 };
 
 const TIMELINE = [
-  { key: 'submitted',  label: 'Submitted' },
-  { key: 'pending',    label: 'Reviewing' },
-  { key: 'processing', label: 'Preparing' },
-  { key: 'ready',      label: 'Ready' },
-  { key: 'completed',  label: 'Complete' },
+  { key: 'submitted',    label: 'Submitted' },
+  { key: 'verifying',   label: 'Reviewing' },
+  { key: 'dispensing',  label: 'Preparing' },
+  { key: 'ready_collect', label: 'Ready' },
+  { key: 'completed',   label: 'Complete' },
 ];
 
 function cfg(status: string) { return STATUS[status] ?? STATUS.submitted; }
@@ -309,6 +331,8 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+const SA_PROVINCES = ['Eastern Cape','Free State','Gauteng','KwaZulu-Natal','Limpopo','Mpumalanga','North West','Northern Cape','Western Cape'];
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -322,6 +346,18 @@ export default function DashboardPage() {
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [address1, setAddress1] = useState('');
+  const [address2, setAddress2] = useState('');
+  const [city, setCity]         = useState('');
+  const [province, setProvince] = useState('');
+  const [postcode, setPostcode] = useState('');
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -334,7 +370,40 @@ export default function DashboardPage() {
       ]);
 
       setProfile(profileData);
+      setFirstName(profileData?.first_name ?? '');
+      setLastName(profileData?.last_name ?? '');
+      setPhone(profileData?.phone ?? '');
+      setAddress1(profileData?.address1 ?? '');
+      setAddress2(profileData?.address2 ?? '');
+      setCity(profileData?.city ?? '');
+      setProvince(profileData?.province ?? '');
+      setPostcode(profileData?.postcode ?? '');
       setPrescriptions(prescriptionsData as Prescription[]);
+
+      fetch('/api/account/orders')
+        .then(r => r.ok ? r.json() : [])
+        .then((orders: Order[]) => setRecentOrders(orders.slice(0, 3)))
+        .finally(() => setOrdersLoading(false));
+
+      // Realtime: reflect status updates from manager immediately
+      const channel = supabase
+        .channel('patient-prescription-updates')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'prescriptions', filter: `user_id=eq.${user.id}` },
+          (payload) => {
+            const updated = payload.new as Partial<Prescription> & { id: string };
+            setPrescriptions(prev =>
+              prev.map(p => p.id === updated.id ? { ...p, ...updated } : p)
+            );
+            setSelected(prev =>
+              prev?.id === updated.id ? { ...prev, ...updated } : prev
+            );
+          }
+        )
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
     }
     loadData();
   }, []);
@@ -588,17 +657,70 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Coming soon */}
-            <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 opacity-60">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-lg font-bold text-[#184363]">E-Commerce Features</h2>
-                <span className="px-2.5 py-1 bg-neutral-200 text-neutral-600 text-xs font-bold rounded-full">Coming Soon</span>
+            {/* Recent Orders */}
+            <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold text-[#184363]">Recent Orders</h2>
+                <Link href="/account/orders" className="text-xs font-bold text-[#009eb9] hover:text-[#184363] transition-colors flex items-center gap-1">
+                  View all
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                </Link>
               </div>
-              <div className="grid grid-cols-3 gap-6 text-sm text-neutral-500">
-                <div><p className="font-bold text-neutral-600 mb-1">Orders</p><p>Track product orders</p></div>
-                <div><p className="font-bold text-neutral-600 mb-1">Wishlist</p><p>Save favourites</p></div>
-                <div><p className="font-bold text-neutral-600 mb-1">Rewards</p><p>Earn &amp; redeem points</p></div>
-              </div>
+
+              {ordersLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-16 bg-neutral-100 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : recentOrders.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-neutral-600 mb-1">No orders yet</p>
+                  <Link href="/" className="text-xs text-[#009eb9] font-bold hover:underline">Visit the shop →</Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentOrders.map(order => {
+                    const statusColor: Record<string, string> = {
+                      completed:  'bg-emerald-50 border-emerald-200 text-emerald-700',
+                      processing: 'bg-blue-50 border-blue-200 text-blue-700',
+                      'on-hold':  'bg-amber-50 border-amber-200 text-amber-700',
+                      pending:    'bg-neutral-100 border-neutral-200 text-neutral-600',
+                      cancelled:  'bg-red-50 border-red-200 text-red-600',
+                      refunded:   'bg-purple-50 border-purple-200 text-purple-700',
+                    };
+                    const badgeCls = statusColor[order.status] ?? 'bg-neutral-100 border-neutral-200 text-neutral-600';
+                    const label = order.status.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+                    return (
+                      <div key={order.id} className="flex items-center justify-between gap-4 p-4 rounded-xl border border-neutral-200 hover:border-[#009eb9]/30 hover:shadow-sm transition-all">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <p className="font-black text-[#184363] text-sm">#{order.number}</p>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeCls}`}>
+                              {label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-neutral-500 truncate">
+                            {order.items.length === 1
+                              ? order.items[0].name
+                              : `${order.items[0]?.name} +${order.items.length - 1} more`}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-[#184363] text-sm">{order.currency_symbol}{parseFloat(order.total).toFixed(2)}</p>
+                          <p className="text-[10px] text-neutral-400">{fmtDate(order.date)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </main>
         </div>
@@ -780,23 +902,136 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-neutral-700 mb-1">First Name</label>
-                  <input type="text" defaultValue={profile?.first_name} className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]" />
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-neutral-700 mb-1">Last Name</label>
-                  <input type="text" defaultValue={profile?.last_name} className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]" />
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-bold text-neutral-700 mb-1">Email</label>
-                <input type="email" defaultValue={profile?.email} className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]" />
+                <input
+                  type="email"
+                  value={profile?.email ?? ''}
+                  readOnly
+                  className="w-full px-3 py-2.5 border border-neutral-200 rounded-lg text-sm bg-neutral-50 text-neutral-500 cursor-not-allowed"
+                />
               </div>
               <div>
                 <label className="block text-sm font-bold text-neutral-700 mb-1">Phone</label>
-                <input type="tel" defaultValue={profile?.phone} className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                />
               </div>
+
+              {/* Address section */}
+              <div className="border-t border-neutral-100 pt-4 mt-2">
+                <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Delivery & Billing Address</p>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-bold text-neutral-700 mb-1">Street Address</label>
+                  <input
+                    type="text"
+                    value={address1}
+                    onChange={e => setAddress1(e.target.value)}
+                    placeholder="12 Main Road"
+                    className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-bold text-neutral-700 mb-1">
+                    Apartment / Unit <span className="font-normal text-neutral-400">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={address2}
+                    onChange={e => setAddress2(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-bold text-neutral-700 mb-1">City</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={e => setCity(e.target.value)}
+                      placeholder="Durban"
+                      className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-neutral-700 mb-1">Province</label>
+                    <select
+                      value={province}
+                      onChange={e => setProvince(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                    >
+                      <option value="">Select province</option>
+                      {SA_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-neutral-700 mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    value={postcode}
+                    onChange={e => setPostcode(e.target.value)}
+                    placeholder="4001"
+                    className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#009eb9]"
+                  />
+                </div>
+              </div>
+
+              {saveMsg && (
+                <p className={`text-sm font-semibold ${saveMsg === 'Saved!' ? 'text-green-600' : 'text-red-500'}`}>
+                  {saveMsg}
+                </p>
+              )}
               <div className="flex gap-3 pt-2">
-                <button className="flex-1 px-4 py-2.5 bg-[#009eb9] text-white font-bold rounded-lg hover:bg-[#184363] transition-colors text-sm">Save Changes</button>
+                <button
+                  disabled={isSaving}
+                  onClick={async () => {
+                    setIsSaving(true);
+                    setSaveMsg('');
+                    try {
+                      const res = await fetch('/api/account/profile', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ first_name: firstName, last_name: lastName, phone, address1, address2, city, province, postcode }),
+                      });
+                      if (!res.ok) throw new Error();
+                      setProfile(prev => prev ? { ...prev, first_name: firstName, last_name: lastName, phone, address1, address2, city, province, postcode } : prev);
+                      setSaveMsg('Saved!');
+                    } catch {
+                      setSaveMsg('Failed — please try again');
+                    } finally {
+                      setIsSaving(false);
+                      setTimeout(() => setSaveMsg(''), 3000);
+                    }
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-[#009eb9] text-white font-bold rounded-lg hover:bg-[#184363] transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? 'Saving…' : 'Save Changes'}
+                </button>
                 <button onClick={() => setActiveModal(null)} className="flex-1 px-4 py-2.5 border-2 border-neutral-300 text-neutral-700 font-semibold rounded-lg hover:border-neutral-400 transition-colors text-sm">Cancel</button>
               </div>
             </div>

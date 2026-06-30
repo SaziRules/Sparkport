@@ -7,13 +7,30 @@ import Image from 'next/image';
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [subLoading, setSubLoading] = useState(false);
+  const [subError, setSubError] = useState<string | null>(null);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && acceptedTerms) {
-      // TODO: Wire to newsletter service (Mailchimp / WordPress)
+    if (!email || !acceptedTerms) return;
+    setSubLoading(true);
+    setSubError(null);
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'newsletter' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Something went wrong');
+      setSubscribed(true);
       setEmail('');
       setAcceptedTerms(false);
+    } catch (err) {
+      setSubError(err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setSubLoading(false);
     }
   };
 
@@ -37,28 +54,40 @@ export default function Footer() {
               Stay tuned for latest updates and new features
             </p>
             
-            <form onSubmit={handleSubscribe} className="mb-4">
-              <div className="flex">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email address"
-                  className="flex-1 px-4 py-2.5 bg-white text-neutral-900 placeholder:text-neutral-500 focus:outline-none rounded-l-lg"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={!acceptedTerms}
-                  className="px-6 py-2.5 bg-[#00bcd4] text-white font-medium rounded-r-lg hover:bg-[#00acc1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                  Subscribe
-                </button>
+            {subscribed ? (
+              <div className="mb-4 flex items-center gap-2 text-sm text-emerald-400 font-medium">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                You&apos;re subscribed — thanks!
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleSubscribe} className="mb-4">
+                <div className="flex">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email address"
+                    className="flex-1 px-4 py-2.5 bg-white text-neutral-900 placeholder:text-neutral-500 focus:outline-none rounded-l-lg"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={!acceptedTerms || subLoading}
+                    className="px-6 py-2.5 bg-[#00bcd4] text-white font-medium rounded-r-lg hover:bg-[#00acc1] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    {subLoading ? '…' : 'Subscribe'}
+                  </button>
+                </div>
+                {subError && (
+                  <p className="mt-1.5 text-xs text-red-400">{subError}</p>
+                )}
+              </form>
+            )}
 
             <label className="flex items-start gap-2 cursor-pointer">
               <input

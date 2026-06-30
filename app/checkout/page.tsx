@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
-import { validateCheckoutForm } from '@/lib/checkoutValidation';
-import type { CheckoutFormData, FormErrors } from '@/lib/checkoutValidation';
+import { validateCheckoutForm, validateBillingData } from '@/lib/checkoutValidation';
+import type { CheckoutFormData, FormErrors, BillingData, BillingErrors } from '@/lib/checkoutValidation';
 import { STORES } from '@/lib/stores';
+import { supabase } from '@/lib/supabase/client';
 
 const SA_PROVINCES = [
   'Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal',
@@ -55,6 +56,10 @@ const EMPTY_FORM: CheckoutFormData = {
   orderNotes: '',
 };
 
+const EMPTY_BILLING: BillingData = {
+  firstName: '', lastName: '', address1: '', address2: '', city: '', province: '', postcode: '',
+};
+
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return <p className="text-xs text-red-500 mt-1">{msg}</p>;
@@ -70,6 +75,51 @@ export default function CheckoutPage() {
   const [storeError, setStoreError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // Profile / address state
+  const [isLoggedIn, setIsLoggedIn]              = useState(false);
+  const [hasProfileAddress, setHasProfileAddress] = useState(false);
+  const [editingAddress, setEditingAddress]       = useState(false);
+  const [saveToProfile, setSaveToProfile]         = useState(false);
+  const [useDifferentBilling, setUseDifferentBilling] = useState(false);
+  const [billingForm, setBillingForm]             = useState<BillingData>(EMPTY_BILLING);
+  const [billingErrors, setBillingErrors]         = useState<BillingErrors>({});
+
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setIsLoggedIn(true);
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, phone, address1, address2, city, province, postcode')
+        .eq('id', user.id)
+        .single();
+      if (p) {
+        setForm(prev => ({
+          ...prev,
+          firstName: p.first_name || '',
+          lastName:  p.last_name  || '',
+          email:     user.email   || '',
+          phone:     p.phone      || '',
+          address1:  p.address1   || '',
+          address2:  p.address2   || '',
+          city:      p.city       || '',
+          province:  p.province   || '',
+          postcode:  p.postcode   || '',
+        }));
+        const hasAddr = !!(p.address1 && p.city);
+        setHasProfileAddress(hasAddr);
+        setSaveToProfile(!hasAddr);
+      } else {
+        setForm(prev => ({ ...prev, email: user.email || '' }));
+        setSaveToProfile(true);
+      }
+    }
+    load();
+  }, []);
+
+  const isInStore = paymentMethod === 'cod';
 
   const symbol = currencySymbol || 'R';
   const subtotal = parseInt(cartTotals.total_items ?? '0', 10) / 100;
@@ -88,14 +138,32 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleBillingChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setBillingForm(prev => ({ ...prev, [name]: value }));
+    if (billingErrors[name as keyof BillingData]) {
+      setBillingErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationErrors = validateCheckoutForm(form);
+
+    const validationErrors = validateCheckoutForm(form, { isInStore });
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       const firstErrorKey = Object.keys(validationErrors)[0];
       document.getElementsByName(firstErrorKey)[0]?.focus();
       return;
+    }
+
+    if (!isInStore && useDifferentBilling) {
+      const bErrors = validateBillingData(billingForm);
+      if (Object.keys(bErrors).length > 0) {
+        setBillingErrors(bErrors);
+        document.getElementById('billing-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
     }
 
     if (paymentMethod === 'cod' && !selectedStoreId) {
@@ -108,22 +176,46 @@ export default function CheckoutPage() {
     setSubmitError('');
 
     try {
+      // Build billing object
+      const billingFirstName = (!isInStore && useDifferentBilling) ? billingForm.firstName : form.firstName;
+      const billingLastName  = (!isInStore && useDifferentBilling) ? billingForm.lastName  : form.lastName;
+      const billingAddress1  = isInStore ? '' : (useDifferentBilling ? billingForm.address1  : form.address1);
+      const billingAddress2  = isInStore ? '' : (useDifferentBilling ? billingForm.address2  : form.address2);
+      const billingCity      = isInStore ? '' : (useDifferentBilling ? billingForm.city      : form.city);
+      const billingProvince  = isInStore ? '' : (useDifferentBilling ? billingForm.province  : form.province);
+      const billingPostcode  = isInStore ? '' : (useDifferentBilling ? billingForm.postcode  : form.postcode);
+
+      const billing = {
+        first_name: billingFirstName,
+        last_name:  billingLastName,
+        email:      form.email,
+        phone:      form.phone,
+        address_1:  billingAddress1,
+        address_2:  billingAddress2,
+        city:       billingCity,
+        state:      billingProvince,
+        postcode:   billingPostcode,
+        country:    'ZA',
+      };
+
+      // Build shipping object (only when delivery + using different billing)
+      const shipping = (!isInStore && useDifferentBilling) ? {
+        first_name: form.firstName,
+        last_name:  form.lastName,
+        address_1:  form.address1,
+        address_2:  form.address2,
+        city:       form.city,
+        state:      form.province,
+        postcode:   form.postcode,
+        country:    'ZA',
+      } : undefined;
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          billing: {
-            first_name: form.firstName,
-            last_name: form.lastName,
-            email: form.email,
-            phone: form.phone,
-            address_1: form.address1,
-            address_2: form.address2,
-            city: form.city,
-            state: form.province,
-            postcode: form.postcode,
-            country: 'ZA',
-          },
+          billing,
+          ...(shipping ? { shipping } : {}),
           payment_method: paymentMethod,
           customer_note: form.orderNotes,
           ...(paymentMethod === 'cod' && selectedStoreId ? { store_id: selectedStoreId } : {}),
@@ -138,6 +230,23 @@ export default function CheckoutPage() {
       }
 
       if (data.redirect) {
+        // Fire-and-forget profile save
+        if (isLoggedIn && saveToProfile && !isInStore) {
+          fetch('/api/account/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              first_name: form.firstName,
+              last_name:  form.lastName,
+              phone:      form.phone,
+              address1:   form.address1,
+              address2:   form.address2,
+              city:       form.city,
+              province:   form.province,
+              postcode:   form.postcode,
+            }),
+          }).catch(() => {});
+        }
         window.location.href = data.redirect;
       }
     } catch {
@@ -167,6 +276,11 @@ export default function CheckoutPage() {
       errors[field] ? 'border-red-400 bg-red-50' : 'border-neutral-200'
     }`;
 
+  const billingInputClass = (field: keyof BillingErrors) =>
+    `w-full px-4 py-3 border rounded-xl text-sm text-[#184363] placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#009eb9]/30 focus:border-[#009eb9] transition-colors ${
+      billingErrors[field] ? 'border-red-400 bg-red-50' : 'border-neutral-200'
+    }`;
+
   const submitLabel = paymentMethod === 'payfast' ? 'Pay with PayFast' : 'Place Order';
 
   return (
@@ -187,9 +301,9 @@ export default function CheckoutPage() {
             {/* ── LEFT: form fields ───────────────────────────── */}
             <div className="lg:col-span-7 space-y-6">
 
-              {/* Delivery details */}
+              {/* Card 1 — Contact Details */}
               <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
-                <h2 className="text-lg font-black! text-[#184363] mb-5">Delivery Details</h2>
+                <h2 className="text-lg font-black! text-[#184363] mb-5">Contact Details</h2>
 
                 <div className="space-y-4">
                   {/* Name row */}
@@ -226,8 +340,13 @@ export default function CheckoutPage() {
                     <input
                       type="email" name="email" value={form.email}
                       onChange={handleChange} autoComplete="email"
-                      className={inputClass('email')} placeholder="sipho@example.com"
+                      readOnly={isLoggedIn}
+                      className={`${inputClass('email')} ${isLoggedIn ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : ''}`}
+                      placeholder="sipho@example.com"
                     />
+                    {isLoggedIn && (
+                      <p className="text-[10px] text-neutral-400 mt-1">(cannot be changed here)</p>
+                    )}
                     <FieldError msg={errors.email} />
                   </div>
 
@@ -243,86 +362,256 @@ export default function CheckoutPage() {
                     />
                     <FieldError msg={errors.phone} />
                   </div>
-
-                  {/* Address 1 */}
-                  <div>
-                    <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
-                      Address <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="text" name="address1" value={form.address1}
-                      onChange={handleChange} autoComplete="address-line1"
-                      className={inputClass('address1')} placeholder="12 Main Road"
-                    />
-                    <FieldError msg={errors.address1} />
-                  </div>
-
-                  {/* Address 2 */}
-                  <div>
-                    <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
-                      Apartment, suite, unit <span className="text-neutral-400 font-normal!">(optional)</span>
-                    </label>
-                    <input
-                      type="text" name="address2" value={form.address2}
-                      onChange={handleChange} autoComplete="address-line2"
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-sm text-[#184363] placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#009eb9]/30 focus:border-[#009eb9] transition-colors"
-                      placeholder="Flat 2B"
-                    />
-                  </div>
-
-                  {/* City + Province */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
-                        City <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text" name="city" value={form.city}
-                        onChange={handleChange} autoComplete="address-level2"
-                        className={inputClass('city')} placeholder="Durban"
-                      />
-                      <FieldError msg={errors.city} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
-                        Province <span className="text-red-400">*</span>
-                      </label>
-                      <select
-                        name="province" value={form.province}
-                        onChange={handleChange} autoComplete="address-level1"
-                        className={inputClass('province')}
-                      >
-                        <option value="">Select province</option>
-                        {SA_PROVINCES.map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                      <FieldError msg={errors.province} />
-                    </div>
-                  </div>
-
-                  {/* Postal code + Country */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
-                        Postal code <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text" name="postcode" value={form.postcode}
-                        onChange={handleChange} autoComplete="postal-code"
-                        className={inputClass('postcode')} placeholder="4001"
-                      />
-                      <FieldError msg={errors.postcode} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold! text-neutral-600 mb-1.5">Country</label>
-                      <div className="w-full px-4 py-3 border border-neutral-100 rounded-xl text-sm text-neutral-500 bg-neutral-50">
-                        South Africa
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
+
+              {/* Card 2 — Delivery Address (hidden for in-store) */}
+              {!isInStore && (
+                <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
+                  <h2 className="text-lg font-black! text-[#184363] mb-5">Delivery Address</h2>
+
+                  {/* Saved address banner */}
+                  {isLoggedIn && hasProfileAddress && !editingAddress ? (
+                    <div className="bg-[#e8f5f7] border border-[#009eb9]/30 rounded-xl p-4 mb-4">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-[#009eb9] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-[#184363] mb-0.5">Using your saved delivery address</p>
+                          <p className="text-xs text-neutral-600">
+                            {[form.address1, form.city, form.province, form.postcode].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingAddress(true)}
+                        className="text-xs text-[#009eb9] font-bold hover:underline mt-2 block"
+                      >
+                        Use a different address
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Address 1 */}
+                      <div>
+                        <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                          Address <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text" name="address1" value={form.address1}
+                          onChange={handleChange} autoComplete="address-line1"
+                          className={inputClass('address1')} placeholder="12 Main Road"
+                        />
+                        <FieldError msg={errors.address1} />
+                      </div>
+
+                      {/* Address 2 */}
+                      <div>
+                        <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                          Apartment, suite, unit <span className="text-neutral-400 font-normal!">(optional)</span>
+                        </label>
+                        <input
+                          type="text" name="address2" value={form.address2}
+                          onChange={handleChange} autoComplete="address-line2"
+                          className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-sm text-[#184363] placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#009eb9]/30 focus:border-[#009eb9] transition-colors"
+                          placeholder="Flat 2B"
+                        />
+                      </div>
+
+                      {/* City + Province */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                            City <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text" name="city" value={form.city}
+                            onChange={handleChange} autoComplete="address-level2"
+                            className={inputClass('city')} placeholder="Durban"
+                          />
+                          <FieldError msg={errors.city} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                            Province <span className="text-red-400">*</span>
+                          </label>
+                          <select
+                            name="province" value={form.province}
+                            onChange={handleChange} autoComplete="address-level1"
+                            className={inputClass('province')}
+                          >
+                            <option value="">Select province</option>
+                            {SA_PROVINCES.map(p => (
+                              <option key={p} value={p}>{p}</option>
+                            ))}
+                          </select>
+                          <FieldError msg={errors.province} />
+                        </div>
+                      </div>
+
+                      {/* Postal code + Country */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                            Postal code <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text" name="postcode" value={form.postcode}
+                            onChange={handleChange} autoComplete="postal-code"
+                            className={inputClass('postcode')} placeholder="4001"
+                          />
+                          <FieldError msg={errors.postcode} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold! text-neutral-600 mb-1.5">Country</label>
+                          <div className="w-full px-4 py-3 border border-neutral-100 rounded-xl text-sm text-neutral-500 bg-neutral-50">
+                            South Africa
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Save to profile checkbox */}
+                      {isLoggedIn && (
+                        <label className="flex items-center gap-2.5 cursor-pointer mt-1">
+                          <input
+                            type="checkbox"
+                            checked={saveToProfile}
+                            onChange={e => setSaveToProfile(e.target.checked)}
+                            className="w-4 h-4 rounded accent-[#009eb9]"
+                          />
+                          <span className="text-xs text-neutral-600 font-medium">Save delivery address to my profile</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Different billing address toggle */}
+                  <div className="border-t border-neutral-100 mt-5 pt-5">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useDifferentBilling}
+                        onChange={e => setUseDifferentBilling(e.target.checked)}
+                        className="w-4 h-4 rounded accent-[#009eb9]"
+                      />
+                      <span className="text-xs text-neutral-600 font-medium">Use a different billing address</span>
+                    </label>
+
+                    {useDifferentBilling && (
+                      <div id="billing-section" className="mt-4 space-y-4">
+                        <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Billing Address</p>
+
+                        {/* Billing name row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                              First name <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              type="text" name="firstName" value={billingForm.firstName}
+                              onChange={handleBillingChange} autoComplete="billing given-name"
+                              className={billingInputClass('firstName')} placeholder="Sipho"
+                            />
+                            <FieldError msg={billingErrors.firstName} />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                              Last name <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              type="text" name="lastName" value={billingForm.lastName}
+                              onChange={handleBillingChange} autoComplete="billing family-name"
+                              className={billingInputClass('lastName')} placeholder="Dlamini"
+                            />
+                            <FieldError msg={billingErrors.lastName} />
+                          </div>
+                        </div>
+
+                        {/* Billing Address 1 */}
+                        <div>
+                          <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                            Address <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text" name="address1" value={billingForm.address1}
+                            onChange={handleBillingChange} autoComplete="billing address-line1"
+                            className={billingInputClass('address1')} placeholder="12 Main Road"
+                          />
+                          <FieldError msg={billingErrors.address1} />
+                        </div>
+
+                        {/* Billing Address 2 */}
+                        <div>
+                          <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                            Apartment, suite, unit <span className="text-neutral-400 font-normal!">(optional)</span>
+                          </label>
+                          <input
+                            type="text" name="address2" value={billingForm.address2}
+                            onChange={handleBillingChange} autoComplete="billing address-line2"
+                            className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-sm text-[#184363] placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#009eb9]/30 focus:border-[#009eb9] transition-colors"
+                            placeholder="Flat 2B"
+                          />
+                        </div>
+
+                        {/* Billing City + Province */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                              City <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              type="text" name="city" value={billingForm.city}
+                              onChange={handleBillingChange} autoComplete="billing address-level2"
+                              className={billingInputClass('city')} placeholder="Durban"
+                            />
+                            <FieldError msg={billingErrors.city} />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                              Province <span className="text-red-400">*</span>
+                            </label>
+                            <select
+                              name="province" value={billingForm.province}
+                              onChange={handleBillingChange} autoComplete="billing address-level1"
+                              className={billingInputClass('province')}
+                            >
+                              <option value="">Select province</option>
+                              {SA_PROVINCES.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                            <FieldError msg={billingErrors.province} />
+                          </div>
+                        </div>
+
+                        {/* Billing Postcode + Country */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold! text-neutral-600 mb-1.5">
+                              Postal code <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              type="text" name="postcode" value={billingForm.postcode}
+                              onChange={handleBillingChange} autoComplete="billing postal-code"
+                              className={billingInputClass('postcode')} placeholder="4001"
+                            />
+                            <FieldError msg={billingErrors.postcode} />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold! text-neutral-600 mb-1.5">Country</label>
+                            <div className="w-full px-4 py-3 border border-neutral-100 rounded-xl text-sm text-neutral-500 bg-neutral-50">
+                              South Africa
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Order notes */}
               <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">

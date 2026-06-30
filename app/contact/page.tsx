@@ -5,11 +5,29 @@ import { useState } from 'react';
 export default function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [ticketNumber, setTicketNumber] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Wire to backend / email service
-    setSubmitted(true);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, category: form.subject }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Something went wrong');
+      setTicketNumber(data.ticket_number);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -111,7 +129,13 @@ export default function ContactPage() {
                       </svg>
                     </div>
                     <h3 className="text-2xl font-bold! text-[#184363] mb-2">Message Sent</h3>
-                    <p className="text-neutral-600">Thank you for reaching out. We&apos;ll get back to you within 1–2 business days.</p>
+                    <p className="text-neutral-600 mb-3">Thank you for reaching out. We&apos;ll get back to you within 1–2 business days.</p>
+                    {ticketNumber && (
+                      <p className="text-sm text-neutral-500">
+                        Your ticket reference is{' '}
+                        <span className="font-bold text-[#009eb9]">{ticketNumber}</span>
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -184,11 +208,15 @@ export default function ContactPage() {
                         />
                       </div>
 
+                      {error && (
+                        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</p>
+                      )}
                       <button
                         type="submit"
-                        className="w-full sm:w-auto px-8 py-3 bg-[#184363] text-white font-bold! rounded-xl hover:bg-[#009eb9] transition-colors shadow-lg"
+                        disabled={loading}
+                        className="w-full sm:w-auto px-8 py-3 bg-[#184363] text-white font-bold! rounded-xl hover:bg-[#009eb9] transition-colors shadow-lg disabled:opacity-60"
                       >
-                        Send Message
+                        {loading ? 'Sending…' : 'Send Message'}
                       </button>
                     </form>
                   </>

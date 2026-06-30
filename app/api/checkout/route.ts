@@ -73,16 +73,28 @@ const PAYMENT_TITLES: Record<string, string> = {
   cod:     'In-store collection',
 };
 
+interface WCAddress {
+  first_name: string;
+  last_name:  string;
+  address_1:  string;
+  address_2:  string;
+  city:       string;
+  state:      string;
+  postcode:   string;
+  country:    string;
+}
+
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   const cartToken = cookieStore.get('wc_cart_token')?.value;
 
-  const { billing, payment_method, customer_note, store_id } = await request.json() as {
+  const { billing, shipping, payment_method, customer_note, store_id } = await request.json() as {
     billing: {
       first_name: string; last_name: string; email: string; phone: string;
       address_1: string; address_2: string; city: string; state: string;
       postcode: string; country: string;
     };
+    shipping?: WCAddress;
     payment_method: string;
     customer_note:  string;
     store_id?:      string;
@@ -96,6 +108,18 @@ export async function POST(request: Request) {
     );
   }
 
+  // Use provided shipping if given, otherwise mirror billing
+  const shippingAddress: WCAddress = shipping ?? {
+    first_name: billing.first_name,
+    last_name:  billing.last_name,
+    address_1:  billing.address_1,
+    address_2:  billing.address_2,
+    city:       billing.city,
+    state:      billing.state,
+    postcode:   billing.postcode,
+    country:    billing.country,
+  };
+
   const orderRes = await fetch(`${REST}/orders`, {
     method: 'POST',
     headers: {
@@ -108,16 +132,7 @@ export async function POST(request: Request) {
       set_paid: false,
       status:   payment_method === 'bacs' ? 'on-hold' : payment_method === 'cod' ? 'processing' : 'pending',
       billing,
-      shipping: {
-        first_name: billing.first_name,
-        last_name:  billing.last_name,
-        address_1:  billing.address_1,
-        address_2:  billing.address_2,
-        city:       billing.city,
-        state:      billing.state,
-        postcode:   billing.postcode,
-        country:    billing.country,
-      },
+      shipping: shippingAddress,
       line_items:   cartData.cart.items.map((item) => ({
         product_id: item.id,
         quantity:   item.quantity,

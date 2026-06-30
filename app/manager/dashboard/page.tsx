@@ -1,61 +1,37 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
-import StoreManagerDashboard from './StoreManagerDashboard';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import FranchiseAdminDashboard from './FranchiseAdminDashboard';
+import StoreManagerDashboard from './StoreManagerDashboard';
 
-export default function ManagerDashboardPage() {
-  const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+export default async function ManagerDashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    async function checkRole() {
-      const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/manager/login');
 
-      if (!user) {
-        router.replace('/manager/login');
-        return;
-      }
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
-      const { data: manager } = await supabase
-        .from('managers')
-        .select('role')
-        .eq('auth_user_id', user.id)
-        .eq('is_active', true)
-        .single();
+  const { data: manager } = await admin
+    .from('managers')
+    .select('id, name, email, role, assigned_pharmacy_id, pharmacy:pharmacies(id, name, city)')
+    .eq('auth_user_id', user.id)
+    .eq('is_active', true)
+    .single();
 
-      if (!manager) {
-        router.replace('/manager/login');
-        return;
-      }
+  if (!manager) redirect('/manager/login');
 
-      setRole(manager.role);
-      setLoading(false);
-    }
+  const pharmacy = Array.isArray(manager.pharmacy)
+    ? manager.pharmacy[0] ?? null
+    : manager.pharmacy ?? null;
 
-    checkRole();
-  }, []);
+  const managerData = { ...manager, pharmacy };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009eb9] mx-auto mb-4"></div>
-          <p className="text-neutral-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  if (manager.role === 'franchise_admin') return <FranchiseAdminDashboard initialManager={managerData} />;
+  if (manager.role === 'store_manager') return <StoreManagerDashboard initialManager={managerData} />;
 
-  // Route to appropriate dashboard based on role
-  if (role === 'franchise_admin') {
-    return <FranchiseAdminDashboard />;
-  } else if (role === 'store_manager') {
-    return <StoreManagerDashboard />;
-  }
-
-  return null;
+  redirect('/manager/login');
 }

@@ -4,40 +4,58 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+const FALLBACK_SLIDES = [
+  {
+    image: '/images/school-kids.jpg',
+    title: 'Back to School Deals',
+    description: 'Quality medications and healthcare products delivered to your door',
+    ctaText: 'Shop Now',
+    ctaLink: '/shop',
+  },
+  {
+    image: '/images/wellness.jpg',
+    title: 'Wellness Screening',
+    description: 'Your wellness, our priority. Book your screening today and live your best life.',
+    ctaText: 'Book Here',
+    ctaLink: '/promotions',
+  },
+  {
+    image: '/images/heart-health.jpg',
+    title: 'Cardiac Health Screening',
+    description: 'Designed to detect risk factors for heart disease and stroke early. Take charge of your heart health today.',
+    ctaText: 'Book Here',
+    ctaLink: '/promotions',
+  },
+  {
+    image: '/images/hero-main-care.jpg',
+    title: 'Expert Care, Always',
+    description: 'Professional healthcare services and advice when you need it',
+    ctaText: 'Learn More',
+    ctaLink: '/health-care-services',
+  },
+];
+
 export default function HeroSection() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [mainSlides, setMainSlides] = useState(FALLBACK_SLIDES);
 
-  const mainSlides = [
-    {
-      image: '/images/school-kids.jpg',
-      title: 'Back to School Deals',
-      description: 'Quality medications and healthcare products delivered to your door',
-      ctaText: 'Shop Now',
-      ctaLink: '/shop'
-    },
-    {
-      image: '/images/wellness.jpg',
-      title: 'Wellness Screening',
-      description: 'Your wellness, our priority. Book your screening today and live your best life.',
-      ctaText: 'Book Here',
-      ctaLink: '/promotions'
-    },
-    {
-      image: '/images/heart-health.jpg',
-      title: 'Cardiac Health Screening',
-      description: 'designed to detect risk factors for heart disease and stroke early. Take charge of your heart health today.',
-      ctaText: 'Book Here',
-      ctaLink: '/promotions'
-    },
-    {
-      image: '/images/hero-main-care.jpg',
-      title: 'Expert Care, Always',
-      description: 'Professional healthcare services and advice when you need it',
-      ctaText: 'Learn More',
-      ctaLink: '/health-care-services'
-    }
-  ];
+  useEffect(() => {
+    fetch('/api/banners')
+      .then(r => r.json())
+      .then((data: { image_url: string; title: string; description: string; cta_text: string; cta_link: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setMainSlides(data.map(b => ({
+            image: b.image_url,
+            title: b.title,
+            description: b.description,
+            ctaText: b.cta_text,
+            ctaLink: b.cta_link,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const smallCards = [
     {
