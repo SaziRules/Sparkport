@@ -11,13 +11,57 @@ interface ShopMegaMenuProps {
 
 type Category = { name: string; slug: string; count: number; image: string | null }
 
-const GRADIENTS = [
-  'from-[#184363] to-[#009eb9]',
-  'from-teal-600 to-cyan-400',
-  'from-violet-600 to-purple-400',
-  'from-rose-500 to-pink-400',
-  'from-orange-500 to-amber-400',
-  'from-emerald-600 to-teal-400',
+const CATEGORY_IMAGE_BY_SLUG: Record<string, string> = {
+  'baby-toddler': '/images/categories/baby.jpeg',
+  'baby-and-toddler': '/images/categories/baby.jpeg',
+  'baby-food': '/images/categories/baby-food.jpeg',
+  'brain-boost': '/images/categories/brain-boost.jpg',
+  'brain-boosters': '/images/categories/brain-boosters.jpg',
+  'cold-flu': '/images/categories/cold.jpeg',
+  'cold-and-flu': '/images/categories/cold.jpeg',
+  devices: '/images/categories/devices.jpg',
+  diapers: '/images/categories/diapers.jpg',
+  haircare: '/images/categories/haircare.jpg',
+  'health-personal-care': '/images/categories/personal-care.jpg',
+  'medical-devices': '/images/categories/devices.jpg',
+  'medicines-treatments': '/images/categories/pain.jpg',
+  'pain-relief': '/images/categories/pain.jpg',
+  'personal-care': '/images/categories/personal-care.jpg',
+  'skincare-beauty': '/images/categories/skincare.jpeg',
+  'sports-nutrition': '/images/categories/weight.jpg',
+  'surgical-tools': '/images/categories/surgical-tools.webp',
+  'traditional-healing': '/images/categories/traditional-healing.avif',
+  'vitamins-and-supplements': '/images/categories/vitamins.jpeg',
+  'vitamins-supplements': '/images/categories/vitamins.jpeg',
+  vitamins: '/images/categories/vitamins.jpeg',
+  weight: '/images/categories/weight.jpg',
+  'weight-management': '/images/categories/weight.jpg',
+  'women-health': '/images/categories/women-health.jpg',
+};
+
+const CATEGORY_IMAGE_RULES = [
+  { keyword: 'baby', image: '/images/categories/baby.jpeg' },
+  { keyword: 'brain', image: '/images/categories/brain-boost.jpg' },
+  { keyword: 'cold', image: '/images/categories/cold.jpeg' },
+  { keyword: 'diaper', image: '/images/categories/diapers.jpg' },
+  { keyword: 'hair', image: '/images/categories/haircare.jpg' },
+  { keyword: 'device', image: '/images/categories/devices.jpg' },
+  { keyword: 'personal', image: '/images/categories/personal-care.jpg' },
+  { keyword: 'skin', image: '/images/categories/skincare.jpeg' },
+  { keyword: 'surgical', image: '/images/categories/surgical-tools.webp' },
+  { keyword: 'traditional', image: '/images/categories/traditional-healing.avif' },
+  { keyword: 'vitamin', image: '/images/categories/vitamins.jpeg' },
+  { keyword: 'weight', image: '/images/categories/weight.jpg' },
+  { keyword: 'women', image: '/images/categories/women-health.jpg' },
+];
+
+const FALLBACK_CATEGORY_IMAGES = [
+  '/images/categories/vitamins.jpeg',
+  '/images/categories/baby.jpeg',
+  '/images/categories/personal-care.jpg',
+  '/images/categories/skincare.jpeg',
+  '/images/categories/cold.jpeg',
+  '/images/categories/weight.jpg',
 ];
 
 const NAME_MAP: Record<string, string> = {
@@ -40,6 +84,15 @@ function shortName(name: string, slug: string): string {
     if (idx > 3) return name.slice(0, idx);
   }
   return name.slice(0, 18) + '…';
+}
+
+function categoryImage(category: Category, index: number): string {
+  const slug = category.slug.toLowerCase();
+  const normalized = `${category.slug} ${category.name}`.toLowerCase();
+  const localImage = CATEGORY_IMAGE_BY_SLUG[slug] ??
+    CATEGORY_IMAGE_RULES.find(rule => normalized.includes(rule.keyword))?.image;
+
+  return localImage ?? FALLBACK_CATEGORY_IMAGES[index % FALLBACK_CATEGORY_IMAGES.length];
 }
 
 const FEATURED_COUNT = 6;
@@ -105,16 +158,12 @@ export default function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
                         onClick={onClose}
                         className="group relative h-28 rounded-xl overflow-hidden bg-neutral-100"
                       >
-                        {cat.image ? (
-                          <Image
-                            src={cat.image}
-                            alt={cat.name}
-                            fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className={`absolute inset-0 bg-gradient-to-br ${GRADIENTS[idx % GRADIENTS.length]}`} />
-                        )}
+                        <Image
+                          src={categoryImage(cat, idx)}
+                          alt={cat.name}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
                         <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/10 to-transparent" />
                         {/* Bottom accent bar */}
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#009eb9] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
