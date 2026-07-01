@@ -38,23 +38,25 @@ const FALLBACK_SLIDES = [
 export default function HeroSection() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [mainSlides, setMainSlides] = useState(FALLBACK_SLIDES);
+  const [mainSlides, setMainSlides] = useState<typeof FALLBACK_SLIDES>([]);
 
   useEffect(() => {
     fetch('/api/banners')
       .then(r => r.json())
       .then((data: { image_url: string; title: string; description: string; cta_text: string; cta_link: string }[]) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setMainSlides(data.map(b => ({
-            image: b.image_url,
-            title: b.title,
-            description: b.description,
-            ctaText: b.cta_text,
-            ctaLink: b.cta_link,
-          })));
-        }
+        setMainSlides(
+          Array.isArray(data) && data.length > 0
+            ? data.map(b => ({
+                image: b.image_url,
+                title: b.title,
+                description: b.description,
+                ctaText: b.cta_text,
+                ctaLink: b.cta_link,
+              }))
+            : FALLBACK_SLIDES
+        );
       })
-      .catch(() => {});
+      .catch(() => setMainSlides(FALLBACK_SLIDES));
   }, []);
 
   const smallCards = [
@@ -101,8 +103,8 @@ export default function HeroSection() {
           
           {/* Main Hero Card - Left */}
           <div className="col-span-12 lg:col-span-7">
-            <div 
-              className="relative h-96 lg:h-125 rounded-2xl overflow-hidden hover:shadow-lg transition-all"
+            <div
+              className="relative h-96 lg:h-125 rounded-2xl overflow-hidden hover:shadow-lg transition-all bg-gradient-to-br from-[#184363] to-[#009eb9]"
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >

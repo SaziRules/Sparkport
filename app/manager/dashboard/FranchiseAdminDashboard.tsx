@@ -11,9 +11,9 @@ import OrdersSection from './sections/OrdersSection'
 import StoresSection from './sections/StoresSection'
 import EnquiriesSection from './sections/EnquiriesSection'
 import SubscribersSection from './sections/SubscribersSection'
-import BannersSection from './sections/BannersSection'
+import PromotionsSection from './sections/PromotionsSection'
 
-type Section = 'dashboard' | 'prescriptions' | 'orders' | 'stores' | 'banners' | 'subscriptions' | 'enquiries' | 'rewards'
+type Section = 'dashboard' | 'prescriptions' | 'orders' | 'stores' | 'promotions' | 'subscriptions' | 'enquiries' | 'rewards'
 
 function ComingSoon({ title, description }: { title: string; description: string }) {
   return (
@@ -214,8 +214,8 @@ export default function FranchiseAdminDashboard({ initialManager }: { initialMan
             />
           )}
 
-          {activeSection === 'banners' && (
-            <BannersSection />
+          {activeSection === 'promotions' && (
+            <PromotionsSection />
           )}
 
           {activeSection === 'subscriptions' && (

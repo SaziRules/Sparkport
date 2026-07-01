@@ -20,6 +20,7 @@ export default function SparkportMobileHeader() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { count: cartCount, openDrawer } = useCart();
   const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
+  const [isHealthExpanded, setIsHealthExpanded] = useState(false);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -112,18 +113,14 @@ export default function SparkportMobileHeader() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const categories = [
-    'Vitamins & Supplements',
-    'Personal Care',
-    'Baby & Toddlers',
-    'Women\'s Health',
-    'Cold & Flu',
-    'Pain Relief',
-    'Oral Care',
-    'Hair & Beauty',
-    'First Aid',
-    'Digestive Health',
-  ];
+  const [categories, setCategories] = useState<{ name: string; slug: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(r => r.json())
+      .then((data: { name: string; slug: string }[]) => setCategories(data.slice(0, 12)))
+      .catch(() => {});
+  }, []);
 
   return (
     <>
@@ -403,16 +400,22 @@ export default function SparkportMobileHeader() {
                 {/* Categories Dropdown */}
                 {isCategoryExpanded && (
                   <div className="mt-2 ml-4 pl-4 border-l-2 border-[#009eb9] space-y-1 animate-[fadeIn_0.3s_ease-out]">
-                    {categories.map((category) => (
-                      <Link
-                        key={category}
-                        href={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="block py-2.5 px-4 text-sm text-neutral-700 hover:text-[#009eb9] hover:bg-neutral-50 rounded-lg transition-all"
-                      >
-                        {category}
-                      </Link>
-                    ))}
+                    {categories.length === 0 ? (
+                      Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-8 rounded-lg bg-neutral-100 animate-pulse mx-4 my-1" />
+                      ))
+                    ) : (
+                      categories.map((cat) => (
+                        <Link
+                          key={cat.slug}
+                          href={`/shop?category=${cat.slug}`}
+                          onClick={() => setIsMenuOpen(false)}
+                          className="block py-2.5 px-4 text-sm text-neutral-700 hover:text-[#009eb9] hover:bg-neutral-50 rounded-lg transition-all"
+                        >
+                          {cat.name}
+                        </Link>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
@@ -420,8 +423,6 @@ export default function SparkportMobileHeader() {
               {/* Other Menu Items */}
               {[
                 { href: '/get-rewarded', label: 'Get Rewarded', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                { href: '/health-care-services', label: 'Health Care Services', icon: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' },
-                { href: '/health-insurance', label: 'Health Insurance', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
                 { href: '/blog', label: 'Health Blog', icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
                 { href: '/store-locator', label: 'Store Locator', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z' },
               ].map((item) => (
@@ -439,6 +440,54 @@ export default function SparkportMobileHeader() {
                   <span className="font-semibold! text-[#184363]">{item.label}</span>
                 </Link>
               ))}
+
+              {/* Healthcare expandable */}
+              <div>
+                <button
+                  onClick={() => setIsHealthExpanded(!isHealthExpanded)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-neutral-50 rounded-xl transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-[#184363]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </div>
+                    <span className="font-semibold! text-[#184363]">Healthcare</span>
+                  </div>
+                  <svg
+                    className={`w-5 h-5 text-neutral-400 transition-transform ${isHealthExpanded ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isHealthExpanded && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-[#009eb9] space-y-1 animate-[fadeIn_0.2s_ease-out]">
+                    <Link
+                      href="/health-care-services"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center gap-3 py-2.5 px-4 text-sm text-neutral-700 hover:text-[#009eb9] hover:bg-neutral-50 rounded-lg transition-all"
+                    >
+                      <svg className="w-4 h-4 shrink-0 text-[#009eb9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Health Care Services
+                    </Link>
+                    <Link
+                      href="/health-insurance"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center gap-3 py-2.5 px-4 text-sm text-neutral-700 hover:text-[#009eb9] hover:bg-neutral-50 rounded-lg transition-all"
+                    >
+                      <svg className="w-4 h-4 shrink-0 text-[#009eb9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Health Insurance
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Bottom Actions */}

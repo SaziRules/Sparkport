@@ -10,8 +10,9 @@ import OverviewSection from './sections/OverviewSection'
 import OrdersSection from './sections/OrdersSection'
 import EnquiriesSection from './sections/EnquiriesSection'
 import SubscribersSection from './sections/SubscribersSection'
+import PromotionsSection from './sections/PromotionsSection'
 
-type Section = 'dashboard' | 'prescriptions' | 'orders' | 'subscriptions' | 'enquiries' | 'rewards'
+type Section = 'dashboard' | 'prescriptions' | 'orders' | 'promotions' | 'subscriptions' | 'enquiries' | 'rewards'
 
 function ComingSoon({ title, description }: { title: string; description: string }) {
   return (
@@ -187,6 +188,10 @@ export default function StoreManagerDashboard({ initialManager }: { initialManag
               analytics={analytics}
               analyticsLoading={analyticsLoading}
             />
+          )}
+
+          {activeSection === 'promotions' && (
+            <PromotionsSection />
           )}
 
           {activeSection === 'subscriptions' && (

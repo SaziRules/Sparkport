@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
 
       // Wikipedia (payment icons in footer)
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
+
+      // Supabase Storage — promotion images, uploads
+      { protocol: 'https', hostname: '*.supabase.co' },
     ],
   },
 };

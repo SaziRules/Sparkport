@@ -20,8 +20,10 @@ interface SessionUser {
 export default function SparkportHeader() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isShopMenuOpen, setIsShopMenuOpen] = useState(false);
+  const [isHealthMenuOpen, setIsHealthMenuOpen] = useState(false);
   const { count: cartCount, openDrawer } = useCart();
   const shopCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const healthCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCountRef = useRef(cartCount);
   const [badgeAnim, setBadgeAnim] = useState<'bounce' | 'pop' | null>(null);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
@@ -128,6 +130,14 @@ export default function SparkportHeader() {
 
   const handleShopLeave = () => {
     shopCloseTimer.current = setTimeout(() => setIsShopMenuOpen(false), 80);
+  };
+
+  const handleHealthEnter = () => {
+    if (healthCloseTimer.current) clearTimeout(healthCloseTimer.current);
+    setIsHealthMenuOpen(true);
+  };
+  const handleHealthLeave = () => {
+    healthCloseTimer.current = setTimeout(() => setIsHealthMenuOpen(false), 80);
   };
 
   return (
@@ -253,10 +263,56 @@ export default function SparkportHeader() {
                 Promotions
               </Link>
               <div className="flex items-center gap-8 ml-8">
+                <Link
+                  href="/get-rewarded"
+                  className="relative text-white text-sm font-medium transition-colors hover:text-[#009eb9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#009eb9] after:transition-all after:duration-300 hover:after:w-full"
+                >
+                  Get Rewarded
+                </Link>
+
+                {/* Healthcare dropdown */}
+                <div
+                  className="relative h-14 flex items-center"
+                  onMouseEnter={handleHealthEnter}
+                  onMouseLeave={handleHealthLeave}
+                >
+                  <button className="flex items-center gap-1 text-white text-sm font-medium transition-colors hover:text-[#009eb9]">
+                    Healthcare
+                    <svg
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${isHealthMenuOpen ? 'rotate-180' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isHealthMenuOpen && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-0 w-52 bg-white rounded-xl shadow-xl border border-neutral-100 py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <Link
+                        href="/health-care-services"
+                        onClick={() => setIsHealthMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-3 text-sm text-neutral-700 hover:bg-[#009eb9]/8 hover:text-[#009eb9] transition-colors"
+                      >
+                        <svg className="w-4 h-4 shrink-0 text-[#009eb9]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        Health Care Services
+                      </Link>
+                      <Link
+                        href="/health-insurance"
+                        onClick={() => setIsHealthMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-3 text-sm text-neutral-700 hover:bg-[#009eb9]/8 hover:text-[#009eb9] transition-colors"
+                      >
+                        <svg className="w-4 h-4 shrink-0 text-[#009eb9]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Health Insurance
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
                 {[
-                  { href: '/get-rewarded', label: 'Get Rewarded' },
-                  { href: '/health-care-services', label: 'Health Care Services' },
-                  { href: '/health-insurance', label: 'Health Insurance' },
                   { href: '/events', label: 'Events' },
                   { href: '/blog', label: 'Blog' },
                   { href: '/store-locator', label: 'Store Locator' },

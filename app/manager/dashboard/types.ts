@@ -57,15 +57,19 @@ export type EnquiryReply = {
   created_at: string
 }
 
-export type Banner = {
+export type Promotion = {
   id: string
   image_url: string
   title: string
   description: string
   cta_text: string
   cta_link: string
+  category: string
   sort_order: number
   is_active: boolean
+  impressions: number
+  clicks: number
+  published_at: string | null
   created_at: string
   updated_at: string
 }

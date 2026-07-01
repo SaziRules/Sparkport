@@ -295,7 +295,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {displayed.map((product, index) => (
                     <div
-                      key={product.id}
+                      key={product.id ?? index}
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative"
                     >
                       {/* Energy badges — priority: Out of Stock > Hot Deal > Low Stock */}
@@ -396,9 +396,9 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
               {/* List */}
               {viewMode === 'list' && displayed.length > 0 && (
                 <div className="space-y-4">
-                  {displayed.map((product) => (
+                  {displayed.map((product, index) => (
                     <div
-                      key={product.id}
+                      key={product.id ?? index}
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-lg transition-all group"
                     >
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 relative">
