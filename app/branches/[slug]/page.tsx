@@ -5,7 +5,7 @@ import { STORES, getStoreBySlug } from '@/lib/stores';
 import OpenIndicator from './OpenIndicator';
 
 interface Props {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateStaticParams() {
@@ -13,7 +13,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const store = getStoreBySlug(params.slug);
+  const { slug } = await params;
+  const store = getStoreBySlug(slug);
   if (!store) return {};
   return {
     title: `${store.name} | Sparkport Pharmacy ${store.area}`,
@@ -34,8 +35,9 @@ function parseHourRows(hours: string): { label: string; time: string }[] {
   });
 }
 
-export default function BranchPage({ params }: Props) {
-  const store = getStoreBySlug(params.slug);
+export default async function BranchPage({ params }: Props) {
+  const { slug } = await params;
+  const store = getStoreBySlug(slug);
   if (!store) notFound();
 
   const { lat, lng } = store.coordinates;
