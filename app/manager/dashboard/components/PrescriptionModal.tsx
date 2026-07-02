@@ -15,7 +15,7 @@ type Props = {
   pharmacies: Pharmacy[]
   role: 'franchise_admin' | 'store_manager'
   onClose: () => void
-  onStatusUpdate: (id: string, status: string) => Promise<void>
+  onStatusUpdate: (id: string, status: string, note?: string) => Promise<void>
   onReassign?: (id: string, pharmacyId: string) => Promise<void>
 }
 
@@ -34,11 +34,15 @@ export default function PrescriptionModal({ prescription, pharmacies, role, onCl
   const [imageLoading, setImageLoading] = useState(true)
   const [statusLoading, setStatusLoading] = useState(false)
   const [reassignLoading, setReassignLoading] = useState(false)
+  const [log, setLog] = useState<{ id: string; status: string; actor_name: string | null; actor_role: string; note: string | null; created_at: string }[]>([])
+  const [logLoading, setLogLoading] = useState(true)
+  const [statusNote, setStatusNote] = useState('')
 
   const pharmacyName = pharmacies.find(p => p.id === prescription.preferred_pharmacy_id)?.name ?? '—'
 
   useEffect(() => {
     setImageLoading(true)
+    setLogLoading(true)
     fetch(`/api/manager/prescriptions/${prescription.id}`)
       .then(r => r.json())
       .then(({ imageUrl, deliveryAddress: addr }) => {
@@ -47,11 +51,24 @@ export default function PrescriptionModal({ prescription, pharmacies, role, onCl
       })
       .catch(console.error)
       .finally(() => setImageLoading(false))
+    fetch(`/api/manager/prescriptions/${prescription.id}/log`)
+      .then(r => r.json())
+      .then(data => Array.isArray(data) ? setLog(data) : setLog([]))
+      .catch(() => setLog([]))
+      .finally(() => setLogLoading(false))
   }, [prescription.id])
 
   const handleStatusUpdate = async (status: string) => {
     setStatusLoading(true)
-    try { await onStatusUpdate(prescription.id, status) } finally { setStatusLoading(false) }
+    try {
+      await onStatusUpdate(prescription.id, status, statusNote.trim() || undefined)
+      setStatusNote('')
+      const res = await fetch(`/api/manager/prescriptions/${prescription.id}/log`)
+      const data = await res.json()
+      if (Array.isArray(data)) setLog(data)
+    } finally {
+      setStatusLoading(false)
+    }
   }
 
   const handleReassign = async (pharmacyId: string) => {
@@ -145,6 +162,13 @@ export default function PrescriptionModal({ prescription, pharmacies, role, onCl
                 </button>
               ))}
             </div>
+            <textarea
+              value={statusNote}
+              onChange={e => setStatusNote(e.target.value)}
+              placeholder="Optional note for this status change…"
+              rows={2}
+              className="mt-3 w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009eb9] resize-none text-neutral-700 placeholder:text-neutral-400"
+            />
           </div>
 
           {/* Reassign (franchise admin only) */}
@@ -169,6 +193,37 @@ export default function PrescriptionModal({ prescription, pharmacies, role, onCl
               </div>
             </div>
           )}
+
+          <div className="mt-4">
+            <p className="text-sm font-bold text-[#184363] mb-3">Prescription Journey</p>
+            {logLoading ? (
+              <div className="space-y-2">
+                {[1, 2].map(i => <div key={i} className="h-12 bg-neutral-100 rounded-xl animate-pulse" />)}
+              </div>
+            ) : log.length === 0 ? (
+              <p className="text-xs text-neutral-400 text-center py-4">No status changes recorded yet.</p>
+            ) : (
+              <div className="relative">
+                <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-neutral-200" />
+                <div className="space-y-3">
+                  {log.map((entry, i) => (
+                    <div key={entry.id} className="relative flex gap-4 pl-10">
+                      <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 border-white shadow-sm mt-1 shrink-0 ${i === log.length - 1 ? 'bg-[#009eb9]' : 'bg-neutral-300'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-[#184363] capitalize">{entry.status.replace(/_/g, ' ')}</span>
+                          <span className="text-[10px] text-neutral-400">by {entry.actor_role?.replace(/_/g, ' ') ?? 'pharmacist'}</span>
+                          {entry.actor_name && <span className="text-[10px] text-neutral-400">({entry.actor_name})</span>}
+                        </div>
+                        {entry.note && <p className="text-xs text-neutral-500 mt-0.5 italic">{entry.note}</p>}
+                        <p className="text-[10px] text-neutral-400 mt-0.5">{new Date(entry.created_at).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

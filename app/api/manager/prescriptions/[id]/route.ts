@@ -22,7 +22,7 @@ async function verifyManager() {
 
   const { data } = await admin()
     .from('managers')
-    .select('role')
+    .select('role, name')
     .eq('auth_user_id', user.id)
     .eq('is_active', true)
     .single()
@@ -78,8 +78,6 @@ export async function GET(
   return NextResponse.json({ imageUrl, deliveryAddress })
 }
 
-// PATCH /api/manager/prescriptions/[id]
-// Body: { status } or { preferred_pharmacy_id }
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -89,17 +87,28 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
+  const db = admin()
 
   const updates: Record<string, string> = { updated_at: new Date().toISOString() }
   if (body.status) updates.status = body.status
   if (body.preferred_pharmacy_id) updates.preferred_pharmacy_id = body.preferred_pharmacy_id
 
-  const { error } = await admin()
+  const { error } = await db
     .from('prescriptions')
     .update(updates)
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (body.status) {
+    await db.from('prescription_status_log').insert({
+      prescription_id: id,
+      status: body.status,
+      actor_name: (manager as { role: string; name: string }).name ?? null,
+      actor_role: (manager as { role: string; name: string }).role,
+      note: body.note ? String(body.note).trim() : null,
+    })
+  }
 
   return NextResponse.json({ ok: true })
 }

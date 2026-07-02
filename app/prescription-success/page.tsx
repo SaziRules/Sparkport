@@ -67,6 +67,14 @@ function SuccessContent() {
             </p>
           </div>
 
+          {/* Legal disclaimer */}
+          <div className="max-w-3xl mx-auto mb-8 bg-neutral-100 border border-neutral-200 rounded-xl px-5 py-4 text-center">
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              By submitting this prescription you confirm it is valid, authentic, and was prescribed by a registered South African medical practitioner for your personal use.
+              Submission of fraudulent or forged prescriptions is a criminal offence under the Medicines and Related Substances Act 101 of 1965.
+            </p>
+          </div>
+
           {/* Main Grid Layout - Two Columns on Desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 mb-8">
 

@@ -75,11 +75,11 @@ export default function FranchiseAdminDashboard({ initialManager }: { initialMan
     await loadData()
   }
 
-  const handleStatusUpdate = async (id: string, status: string) => {
+  const handleStatusUpdate = async (id: string, status: string, note?: string) => {
     await fetch(`/api/manager/prescriptions/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...(note ? { note } : {}) }),
     })
     await loadData()
     setShowModal(false)

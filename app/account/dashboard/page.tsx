@@ -71,6 +71,14 @@ type Order = {
   items: { id: number; name: string; quantity: number }[];
 };
 
+type JourneyEntry = {
+  id: string;
+  status: string;
+  actor: string;
+  note: string | null;
+  created_at: string;
+};
+
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS: Record<string, { label: string; badge: string; dot: string; step: number; hint: string }> = {
@@ -358,6 +366,8 @@ export default function DashboardPage() {
   const [postcode, setPostcode] = useState('');
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [journeyLog, setJourneyLog] = useState<JourneyEntry[]>([]);
+  const [journeyLoading, setJourneyLoading] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -427,6 +437,20 @@ export default function DashboardPage() {
       setLoadingImages(false);
     });
   }, [selected]);
+
+  useEffect(() => {
+    if (!selected) { setJourneyLog([]); return; }
+    setJourneyLoading(true);
+    fetch(`/api/account/prescriptions/${selected.id}/log`)
+      .then(r => r.json())
+      .then(data => Array.isArray(data) ? setJourneyLog(data) : setJourneyLog([]))
+      .catch(() => setJourneyLog([]))
+      .finally(() => setJourneyLoading(false));
+  }, [selected]);
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   const openModal = (rx: Prescription) => { setSelected(rx); setActiveModal('prescription'); };
   const closeModal = () => { setActiveModal(null); setSelected(null); setImageUrls({}); };
@@ -862,6 +886,54 @@ export default function DashboardPage() {
                   ))}
                 </DetailSection>
               )}
+
+              {/* Prescription Journey */}
+              <DetailSection title="Prescription Journey" icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}>
+                {journeyLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map(i => <div key={i} className="h-10 bg-neutral-100 rounded-lg animate-pulse" />)}
+                  </div>
+                ) : journeyLog.length === 0 ? (
+                  <p className="text-xs text-neutral-400 text-center py-3">Your prescription journey will appear here as it progresses.</p>
+                ) : (
+                  <div className="relative">
+                    <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-neutral-200" />
+                    <div className="space-y-3">
+                      {journeyLog.map((entry, i) => (
+                        <div key={entry.id} className="relative flex gap-3 pl-8">
+                          <div className={`absolute left-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm mt-0.5 shrink-0 ${i === journeyLog.length - 1 ? 'bg-[#009eb9]' : 'bg-neutral-300'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-[#184363]">{entry.status}</span>
+                              <span className="text-[10px] text-neutral-400">by {entry.actor}</span>
+                            </div>
+                            {entry.note && <p className="text-xs text-neutral-500 mt-0.5 italic">{entry.note}</p>}
+                            <p className="text-[10px] text-neutral-400 mt-0.5">{new Date(entry.created_at).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={handlePrint}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#184363] border border-neutral-200 rounded-lg hover:border-[#009eb9] hover:text-[#009eb9] transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        Print
+                      </button>
+                      {typeof navigator !== 'undefined' && 'share' in navigator && (
+                        <button
+                          onClick={() => navigator.share({ title: `Prescription ${selected?.prescription_number}`, text: journeyLog.map(e => `${e.status} — ${new Date(e.created_at).toLocaleString('en-ZA')}`).join('\n') })}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#184363] border border-neutral-200 rounded-lg hover:border-[#009eb9] hover:text-[#009eb9] transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                          Share
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </DetailSection>
 
               {/* Actions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

@@ -1,0 +1,6 @@
+1. Prescriiption Roadmap:
+   I met with the client yesterday and feedback was that the prescription feature must record each step of the journet on a roadmap with a timestamp to account for all actions taken up to a final state which would be collected or delivered, depending on the method the user chose when filling the script. The process button is to be repurposed to access this roadmap, which should be clear, downloadable, sharable and printable.
+2. Regulated Medication Provision (S5, S6)
+   The client also noted that provision must be made for heavily regulated medications, there must be a note clarifying this in the script filling part (user-facing). There must also be a link to a page that details the rules and regulations of this, if you are familiar with these, research and implement and protect our platform from all future legal charges.
+3. Terms & Conditions
+   The terms and conditions is to be reviewed to adres the above, and other terms and conditions as per South African standards and context, links must be made to the regulatory bodies websites and available public resources, you may do research on this from competitors like clicks, dischem, and other prominent pharmacies operating in the same market as sparkport.

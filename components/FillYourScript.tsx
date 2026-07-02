@@ -554,6 +554,32 @@ export default function FillYourScript() {
           {/* Step 2: Prescription Upload + Doctor Info */}
           {currentStep === 2 && (
             <div className="space-y-5">
+              {/* S5/S6 regulated medicine notice */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex gap-3">
+                  <svg className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                  <div className="text-sm text-amber-900">
+                    <p className="font-bold mb-1">Important: Scheduled Medicines (S5 &amp; S6)</p>
+                    <p className="leading-relaxed mb-2">
+                      If your prescription includes scheduled substances — such as certain painkillers, sleeping tablets, or controlled medicines — please note:
+                    </p>
+                    <ul className="space-y-1 mb-2 ml-1">
+                      <li className="flex gap-2"><span className="font-bold shrink-0">·</span><span>An <strong>original, valid prescription</strong> is required — no copies, faxes, or photographs accepted.</span></li>
+                      <li className="flex gap-2"><span className="font-bold shrink-0">·</span><span><strong>S6 medications cannot be repeated</strong> — the original is retained by the pharmacist after dispensing.</span></li>
+                      <li className="flex gap-2"><span className="font-bold shrink-0">·</span><span>Our pharmacist may contact you to verify your prescription before dispensing.</span></li>
+                    </ul>
+                    <a href="/regulated-medication" className="inline-flex items-center gap-1 text-amber-700 font-semibold hover:text-amber-900 underline underline-offset-2 text-xs">
+                      Learn more about scheduled medicines
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
               <div className="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-[#009eb9] transition-colors">
                 <svg className="w-12 h-12 mx-auto text-neutral-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -654,6 +680,9 @@ export default function FillYourScript() {
                     placeholder="e.g., 5"
                   />
                   <p className="text-xs text-neutral-500! mt-1">How many repeats are left on this prescription?</p>
+                  <p className="text-xs text-amber-700 mt-1.5 font-medium">
+                    Note: S5 medications are limited to a maximum of 5 repeats within 6 months under South African law. S6 medications may not be repeated.
+                  </p>
                 </div>
               )}
             </div>

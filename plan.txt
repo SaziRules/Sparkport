@@ -1,8 +1,6 @@
-SPARKPORT — A
-CTION PLAN
+SPARKPORT — ACTION PLAN
 ===================================
-Last updated: 29 June 2026
-Session resumed from: prescription dashboard world-class UX complete
+Last updated: 02 July 2026
 ===================================
 
 
@@ -10,194 +8,341 @@ Session resumed from: prescription dashboard world-class UX complete
 WHAT'S DONE (don't revisit)
 ================================================================
 ✅ Auth (login, signup, Google, Facebook, forgot password)
-✅ Header auth state (KlaasHeader + SparkportMobileHeader)
+✅ Header auth state (KlaasHeader + SparkportMobileHeader with mega menu images)
 ✅ Login flash bug fixed (createBrowserClient, middleware cookies)
 ✅ Prescription submit (server action, service role bypasses RLS)
 ✅ Prescription image upload (server action)
 ✅ /fill-script — session detection, step skip for logged-in users
 ✅ /prescription-success — auth-aware CTA (logged-in vs anonymous)
 ✅ /account/dashboard — world-class UX, status timeline, image viewer,
-     status filter tabs, rich cards, signed image URLs, copy Rx number
+     status filter tabs, rich cards, signed image URLs, copy Rx number,
+     profile save, recent orders strip
 ✅ getUserPrescriptions — claims anonymous prescriptions on load
 ✅ Manager login + dashboard (FranchiseAdmin + StoreManager)
-✅ Migrations 001–012 written (011 + 012 still need to be run in Supabase)
+✅ Migrations 001–015 written (015_promotions.sql is the one to apply;
+     015_hero_banners.sql must NOT be run — superseded)
+✅ Profile save (PATCH /api/account/profile)
+✅ Dashboard recent orders (3 cards, fetches /api/account/orders)
+✅ WC sync: lib/supabase/wc-sync.ts, /api/webhooks/woocommerce,
+     scripts/wc-backfill.ts
+✅ Manager analytics: lib/supabase/analytics.ts, /api/manager/analytics
+✅ Manager dashboard sections: Overview, Prescriptions, Orders (analytics),
+     Stores, Promotions (full CRUD + image upload + live preview + LinkPicker),
+     Subscriptions, Enquiries
+✅ HeroSection — live banners from `promotions` table via /api/banners
+     with static fallback slides
+✅ CategoryMegaMenu + ShopMegaMenu with images
+✅ Product pages — real WC data, reviews, ratings, SKU, social share
+✅ Search — live dropdown in desktop + mobile header, URL-driven shop filter
+✅ CartDrawer — optimistic UI, toast, coupon, WC session via cookie
+✅ Checkout + PayFast integration
+✅ /shop/promotions — on-sale products from WC
 
 
 ================================================================
-TASK 1 — Profile Save (30 min)
+KEY FACTS (always check before editing these areas)
 ================================================================
-The profile modal in /account/dashboard renders inputs but Save does nothing.
-
-CREATE: app/api/account/profile/route.ts
-  PATCH handler:
-    1. createServerClient from @supabase/ssr, get user (401 if none)
-    2. Parse body: { first_name, last_name, phone }
-    3. UPDATE profiles SET first_name, last_name, phone, updated_at = NOW()
-       WHERE id = user.id
-    4. Return { first_name, last_name, phone }
-
-MODIFY: app/account/dashboard/page.tsx  (profile modal section)
-  - Add state: firstName, lastName, phone initialised from profile
-  - Add state: isSaving, saveMsg
-  - Wire Save button to PATCH /api/account/profile
-  - On success: update profile state so sidebar name refreshes, show "Saved!"
-  - On error: show "Failed — please try again"
-  - Auto-clear saveMsg after 3 s
+- `promotions` table = the hero slider. /api/banners reads from it.
+  015_promotions.sql is the migration. 015_hero_banners.sql is OBSOLETE.
+- `BannersSection.tsx` in manager/dashboard/sections is DEAD CODE —
+  it points to the old `hero_banners` table and is not wired into any
+  dashboard. Do not confuse it with PromotionsSection (the live one).
+- WC API prices are in minor units (cents) — divide by 100 for display.
+- `wc_cart_token` HttpOnly cookie for WC session; nonceRef in CartContext.
+- Brand: #009eb9 teal, #184363 dark blue.
+- Supabase service role key must be in .env.local for analytics/sync to work.
 
 
 ================================================================
-TASK 2 — Dashboard "Coming Soon" → Real Data (45 min)
+PENDING MIGRATIONS (run in Supabase SQL editor in order)
 ================================================================
-Replace the opacity-60 "Coming Soon" block with two real sections.
+These may or may not have been applied — run only if the table/column
+doesn't already exist (Supabase will error on duplicate, which is fine):
 
-2a. Recent Orders strip (last 3)
-  - On mount, fetch GET /api/account/orders (already built, returns WC orders)
-  - Show 3 cards: order number, status badge, date, total
-  - "View all orders →" link to /account/orders
-  - Empty state: "No orders yet — visit the shop"
-
-2b. Remove Wishlist placeholder entirely (not built, not needed yet)
-
-File: app/account/dashboard/page.tsx
-
-
-================================================================
-TASK 3 — Signup Bonus Points (20 min)
-================================================================
-CHECK first: app/account/page.tsx — does the sign-up handler currently
-award 50 pts? If not, add it.
-
-After successful signup (Supabase user created + profile inserted):
-  await supabase.from('rewards_transactions').insert({
-    user_id: newUser.id,
-    points: 50,
-    type: 'signup',
-    description: 'Welcome bonus',
-    reference: null,
-  })
-  await supabase.from('rewards').insert({
-    user_id: newUser.id,
-    points: 50,
-    tier: 'bronze',
-  })
-
-Import calculateTier from lib/rewards.ts (already exists).
+  011_drop_security_definer_functions.sql  ← fixes manager RLS recursion
+  012_prescription_images_insert_policy.sql ← INSERT policies belt-and-suspenders
+  013_fix_managers_rls.sql                 ← manager RLS fix
+  013_profiles_add_address.sql             ← adds address columns to profiles
+  014_enquiries_subscribers.sql            ← enquiries + subscribers tables
+  015_promotions.sql                       ← hero_slider promotions table + seed data
+  (DO NOT run 015_hero_banners.sql — it is obsolete)
 
 
 ================================================================
-TASK 4 — WooCommerce → Supabase Sync (2–3 hrs)
+TASK 1 — Remove dead BannersSection (15 min)
 ================================================================
-Foundation for manager analytics. Do in order.
+`BannersSection.tsx` is dead code — it manages a `hero_banners` table
+that was superseded by the `promotions` table and PromotionsSection.
+It is NOT wired into FranchiseAdminDashboard or StoreManagerDashboard.
 
-4a. lib/supabase/wc-sync.ts
-  Uses adminClient (service role).
+DELETE: app/manager/dashboard/sections/BannersSection.tsx
+DELETE: app/api/manager/banners/route.ts
+DELETE: app/api/manager/banners/[id]/route.ts
 
-  upsertOrder(wcOrder):
-    - Upsert wc_orders (onConflict: 'id')
-    - Delete wc_order_items for this order_id, re-insert all line_items
-    - If customer_id > 0: upsertCustomer from order billing data
+Verify nothing imports BannersSection after deletion (grep to confirm).
 
-  upsertCustomer(wcCustomer):
-    - Upsert wc_customers (onConflict: 'wc_id')
 
-  awardOrderPoints(order):
-    - Look up Supabase user by email (adminClient.auth.admin.listUsers())
-    - If no user: skip (guest order)
-    - Check no existing rewards_transaction for reference = order.id.toString()
-    - Points = Math.floor(parseFloat(order.total))
-    - Insert rewards_transaction (type: 'order_completed')
-    - Upsert rewards (increment points, recalculate tier)
+================================================================
+TASK 2 — Signup Bonus Points (20 min)
+================================================================
+Check app/account/page.tsx — the signup handler has NO rewards_transactions
+insert. Add it after successful Supabase user creation:
 
-4b. app/api/webhooks/woocommerce/route.ts
-  POST handler:
-    - Read raw body as text
-    - HMAC-SHA256 validate against WC_WEBHOOK_SECRET (401 if mismatch)
-    - Get topic from X-WC-Webhook-Topic header
-    - Route: order.created / order.updated → upsertOrder → awardOrderPoints if completed
-    - Route: customer.created / customer.updated → upsertCustomer
-    - Always return 200 immediately
+In the signUp server action (app/auth/actions.ts or wherever it lives):
+  After user created + profile inserted, insert:
+    supabase.from('rewards_transactions').insert({
+      user_id: newUser.id,
+      points: 50,
+      type: 'signup',
+      description: 'Welcome bonus',
+      reference: null,
+    })
+    supabase.from('rewards').insert({
+      user_id: newUser.id,
+      points: 50,
+      tier: 'bronze',
+    })
 
-  Add to .env.local: WC_WEBHOOK_SECRET=<random 32+ char string>
+Use calculateTier from lib/rewards.ts if it exists; otherwise hardcode 'bronze'
+for 50 pts (first tier). Don't block signup on failure — fire and forget.
 
-4c. scripts/wc-backfill.ts
-  - Paginate GET /wc/v3/orders?per_page=100&page=N until empty
-  - Paginate GET /wc/v3/customers?per_page=100&page=N until empty
-  - Call upsertOrder / upsertCustomer for each
-  - After: for each completed order missing a rewards_transaction, call awardOrderPoints
-  - Log progress per page
-  Run: npx ts-node scripts/wc-backfill.ts
 
-4d. WC Admin webhook setup (manual — do after 4b is deployed)
-  WC Admin → Settings → Advanced → Webhooks → Add:
+================================================================
+TASK 3 — Dynamic Mid-Page Promotional Banners (1 hr)
+================================================================
+`PromotionalBanners.tsx` on the home page is still fully hardcoded with
+static Unsplash + sparkport.co.za images. Manager promotions (competitions,
+articles, announcements, seasonal) from the `promotions` table are NOT
+surfaced anywhere on the customer site.
+
+Plan:
+3a. Add a public GET /api/promotions endpoint:
+  - Reads from `promotions` table
+  - Filter: is_active = true AND category != null (exclude hero slides if needed,
+    or query by specific categories — discuss with user)
+  - Returns: id, image_url, title, description, cta_text, cta_link, category
+  - Uses service role (no auth required, it's public content)
+  - On click, POST /api/banners/track with { id, type: 'click' }
+
+3b. Rewrite PromotionalBanners.tsx as a client component:
+  - On mount: fetch /api/promotions
+  - If no promotions returned: render nothing (or keep 1 hardcoded fallback)
+  - Layout: large card + 2-column grid (same visual structure as today)
+  - First item fills the large hero slot; items 2–3 fill the two side cards
+  - Empty-guard: if < 2 items, render full-width for each
+
+NOTE: Decide with user whether to separate hero slider items from mid-page
+promotions by category (e.g. category = 'promotion'/'competition'/'article'
+for mid-page; hero slider uses all active items). Currently they share one table.
+
+
+================================================================
+TASK 4 — Manager Rewards Section (2–3 hrs)
+================================================================
+Currently "Coming Soon" in the dashboard. Replace with real data.
+
+4a. Add public-facing rewards data to /api/account/rewards (or extend dashboard):
+  - GET: user's points balance, tier, transaction history (last 20)
+  - Need rewards + rewards_transactions tables to be seeded (see migrations)
+
+4b. Manager RewardsSection component:
+  - KPI cards: total active members, total points issued, avg points/member
+  - Top earners table: user email, tier, points balance
+  - Recent transactions table: user, action type, points, date
+  - Filter by tier (bronze/silver/gold/platinum)
+  - Data from: /api/manager/rewards (new endpoint, reads rewards + rewards_transactions)
+
+4c. Wire into FranchiseAdminDashboard (remove ComingSoon, add RewardsSection)
+  - StoreManager sees same view (read-only, they don't award points manually)
+
+
+================================================================
+TASK 5 — WC Webhook + Backfill (manual steps)
+================================================================
+5a. WC Admin webhook setup (manual):
+  WC Admin → Settings → Advanced → Webhooks → Add 4 webhooks:
     Order created   → https://[domain]/api/webhooks/woocommerce
     Order updated   → same
     Customer created → same
     Customer updated → same
-  Secret: same value as WC_WEBHOOK_SECRET
+  Secret: value of WC_WEBHOOK_SECRET in .env.local
   API version: WP REST API Integration v3
   Click Test on each, verify 200.
 
-
-================================================================
-TASK 5 — Manager Dashboard: WC Analytics (2–3 hrs)
-================================================================
-Depends on Task 4 (mirror tables must have data).
-
-5a. lib/supabase/analytics.ts  (all use adminClient)
-  getRevenueKPIs()         → today / this_week / this_month / last_month / growth_%
-  getRevenueByDay(days)    → [{date, revenue}] — last N days, status=completed
-  getOrdersByStatus()      → [{status, count, total}]
-  getTopProducts(limit)    → [{product_name, qty, revenue}]
-  getCustomerGrowth(months)→ [{month, new_customers}]
-  getPrescriptionMetrics() → [{status, count}]
-  getRecentOrders(limit)   → last N wc_orders rows
-
-5b. app/api/manager/analytics/route.ts
-  GET:
-    1. Supabase server client, verify session (401)
-    2. Check managers table for auth_user_id = user.id (403 if not found)
-    3. Promise.all all analytics functions
-    4. Return combined object
-
-5c. FranchiseAdminDashboard.tsx — add "Commerce Analytics" section
-  useEffect → fetch /api/manager/analytics → setAnalytics
-  Skeleton loaders while loading.
-
-  Layout:
-    KPI row: Today's Revenue | This Month | MoM Growth % | Total Orders
-    Revenue chart (last 30 days): simple bar chart with SVG or recharts
-    Orders by status: horizontal bar or badge grid
-    Top 10 Products: table (product name | qty | revenue)
-    Customer Growth: bar per month (last 6)
-    Prescription Pipeline: keep existing
-
-5d. StoreManagerDashboard.tsx — same analytics section
-  Add note: "Sales figures represent all Sparkport branches."
-  Their prescription view already filters by pharmacy — keep that.
+5b. Run backfill:
+  npx ts-node scripts/wc-backfill.ts
+  (Run AFTER webhooks confirmed working so historical data syncs once)
 
 
 ================================================================
-EXECUTION ORDER TOMORROW
+TASK 6 — /account/orders page (30 min)
 ================================================================
-1. Task 1  — Profile save (quick, self-contained)
-2. Task 2  — Dashboard real orders (quick, uses existing API)
-3. Task 3  — Signup bonus (quick, check if already done first)
-4. Task 4  — WC sync (do 4a → 4b → 4c in order, 4d after deploy)
-5. Task 5  — Manager analytics (after Task 4 has data)
+Verify app/account/orders is fully functional:
+  - Fetches from /api/account/orders (WC proxy)
+  - Shows all WC orders with status badge, date, total, items
+  - Handles loading, error, empty states
+  - "View order" links to /account/orders/[id] if detail page exists,
+    or links to WC order directly (acceptable fallback)
+
+If the page shell exists but is incomplete, finish it now.
 
 
 ================================================================
-PENDING MIGRATIONS TO RUN IN SUPABASE SQL EDITOR
+TASK 7 — Prescription Journey Roadmap (3–4 hrs)
 ================================================================
-011_drop_security_definer_functions.sql  ← fixes manager RLS recursion
-012_prescription_images_insert_policy.sql ← belt-and-suspenders INSERT policies
+Client feedback: every status change must be recorded with a timestamp
+and actor (pharmacist name/role), forming a downloadable, printable,
+shareable audit trail. The current "Process" button is repurposed to
+open this roadmap.
 
-Run both before starting tomorrow's session.
+7a. Migration — prescription_status_log table:
+  CREATE TABLE prescription_status_log (
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+    status          TEXT NOT NULL,
+    actor_name      TEXT,          -- pharmacist/manager name
+    actor_role      TEXT,          -- 'franchise_admin' | 'store_manager' | 'system'
+    note            TEXT,          -- optional note added at transition
+    created_at      TIMESTAMPTZ DEFAULT now()
+  );
+  RLS: managers can INSERT; owner user + managers can SELECT.
+
+7b. Log every status change in /api/manager/prescriptions/[id]:
+  On every PATCH that changes `status`, INSERT a row into
+  prescription_status_log with the new status, actor name (from managers
+  table), actor role, and timestamp.
+
+7c. Customer dashboard — "View Journey" button:
+  - Replace (or rename) the existing "Process" button with "View Journey"
+  - Opens a modal or bottom sheet showing the full status log timeline
+  - Each entry: status label, timestamp (formatted), actor role (not name —
+    patient should see "Pharmacist" not the staff member's name)
+  - Terminal state (completed/rejected/cancelled): highlighted at the top
+  - Download as PDF: use window.print() with a print-only stylesheet
+    (simplest, no external library needed)
+  - Share: Web Share API (navigator.share) with fallback copy-link button
+  - Print: window.print() button
+
+7d. Manager dashboard — show log in PrescriptionModal:
+  - Fetch logs for the open prescription alongside the prescription data
+  - Show compact timeline at the bottom of the modal (internal view —
+    shows actor name + role + note)
+  - Add optional "Note" field to status update form so pharmacists can
+    annotate each transition
+
+7e. API:
+  GET /api/manager/prescriptions/[id]/log — returns status log for managers
+  GET /api/account/prescriptions/[id]/log — returns log for the patient
+    (actor_name omitted, shows actor_role as friendly label)
 
 
 ================================================================
-ENV VARS NEEDED
+TASK 8 — Regulated Medication Notice (S5/S6) (2 hrs)
 ================================================================
-WC_WEBHOOK_SECRET   — generate random 32+ char string, add to .env.local
-                       and set same value in WC webhook config
-SUPABASE_SERVICE_ROLE_KEY — confirm already in .env.local (needed for sync)
+South African law (Medicines and Related Substances Act 101 of 1965,
+amended by Act 72 of 2008) classifies medicines into schedules:
+  S5 — habit-forming substances (e.g. codeine >10mg, tramadol, diazepam)
+       Require valid original prescription; repeats allowed (max 5 in 6 months)
+  S6 — potentially dangerous substances (e.g. morphine, oxycodone, ketamine)
+       Require original prescription; NO repeats allowed; pharmacist must
+       retain the prescription after dispensing
+  S7/S8 — not sold in community pharmacies
+
+Regulated by SAHPRA (sahpra.org.za) and PCSA (pcsapharmacy.co.za).
+
+8a. Warning block on /fill-script:
+  Add a collapsible info notice above (or within) the prescription upload step:
+  "Important: Scheduled Medicines (S5/S6)
+   If your prescription includes scheduled substances (e.g. certain painkillers,
+   sleeping tablets, or controlled medicines), please note:
+   • An original, valid prescription is required — no copies or faxes accepted.
+   • S6 medications cannot be repeated — the original is retained by the pharmacist.
+   • Our pharmacist may contact you to verify your prescription before dispensing.
+   Learn more → /regulated-medication"
+  Style: amber/warning tone. Not alarming — informational.
+
+8b. Create /regulated-medication page:
+  Full explainer page covering:
+  - What are scheduled medicines (S0–S6 overview, focus on S5/S6)
+  - What patients need to bring / submit
+  - S5 repeat rules (max 5 repeats, 6-month window)
+  - S6 rules (no repeats, original retained)
+  - What Sparkport does to comply (pharmacist verification step)
+  - SAHPRA link, PCSA link, DoH medicines act link
+  - Contact CTA: "Not sure if your medication is scheduled? Contact us →"
+  Style: clean, informational, trustworthy. Not legal-heavy prose — scannable.
+
+8c. Add disclaimer to prescription confirmation/success page:
+  "By submitting this prescription you confirm it is valid, authentic, and
+   prescribed by a registered South African medical practitioner. Submission
+   of fraudulent prescriptions is a criminal offence under the Medicines Act."
+
+8d. is_chronic flag on /fill-script:
+  If user selects "chronic" (repeat), add a note:
+  "Chronic repeat prescriptions for S5 substances are limited to 5 repeats
+   within 6 months as per South African law."
+
+
+================================================================
+TASK 9 — Terms & Conditions Rewrite (2–3 hrs)
+================================================================
+Research competitors (Clicks, Dischem, Medirite) and align to SA standards:
+POPIA, Consumer Protection Act (CPA), Medicines Act, PCSA regulations.
+
+Sections to cover:
+  1. Acceptance of Terms
+  2. About Sparkport (registered pharmacy details, PCSA registration number)
+  3. Prescription Policy
+     - Valid prescriptions only; fraud = criminal offence
+     - S5/S6 handling (link to /regulated-medication)
+     - Right to refuse dispensing
+  4. Online Ordering & Payment
+     - PayFast payment terms
+     - Order confirmation vs. acceptance distinction
+     - Pricing errors clause
+  5. Delivery & Collection
+     - Delivery timeframes (best-effort, not guaranteed)
+     - Cold-chain notice for temperature-sensitive meds
+     - Risk of loss passes on delivery
+  6. Returns & Refunds (CPA-compliant)
+     - Medicines cannot be returned once dispensed (health & safety)
+     - Non-medicine products: 7-day return window (CPA s56)
+     - Defective goods process
+  7. Privacy & Data (POPIA)
+     - What data is collected and why
+     - Health data as special personal information (s26 POPIA)
+     - Third-party sharing (WooCommerce, Supabase, PayFast)
+     - Right to access/delete data → contact details
+  8. Rewards Programme
+     - Points not redeemable for cash
+     - Sparkport reserves right to adjust/terminate
+  9. Intellectual Property
+  10. Limitation of Liability
+  11. Governing Law (Republic of South Africa, Western Cape courts)
+  12. Contact & Complaints (include PCSA complaints link)
+
+Regulatory links to include:
+  - SAHPRA: https://www.sahpra.org.za
+  - PCSA: https://www.pcsapharmacy.co.za
+  - POPIA InfoRegulator: https://inforegulator.org.za
+  - Consumer Protection Act: (link to gov.za gazette)
+
+Implementation:
+  - Update app/terms-conditions/page.tsx (already exists)
+  - Use clean section headings, last-updated date, version number
+  - Link from footer, /fill-script, checkout, and /regulated-medication
+
+
+================================================================
+EXECUTION ORDER
+================================================================
+1. Pending migrations (manual, Supabase SQL editor)
+2. Task 1  — Delete dead BannersSection (fast, no risk)
+3. Task 2  — Signup bonus (quick check + fix)
+4. Task 5  — WC webhook + backfill (manual steps, do while building Task 3)
+5. Task 3  — Dynamic promotional banners (main feature work)
+6. Task 6  — Verify /account/orders
+7. Task 8  — Regulated medication notice (high legal value, relatively fast)
+8. Task 9  — T&C rewrite (research-heavy, do after Task 8)
+9. Task 7  — Prescription journey roadmap (largest build, do with full focus)
+10. Task 4  — Manager Rewards section (last, needs data from backfill to test)
