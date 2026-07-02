@@ -12,9 +12,9 @@ All policy pages (`/terms-conditions`, `/privacy-policy`, `/shipping-policy`, `/
 ### Solution: Full-bleed gradient hero (Option A)
 
 **`MainWrapper` change:**  
-Add policy routes to the `isFullWidth` condition so they receive `max-w-full px-0`:
+Add policy and branch routes to the `isFullWidth` condition so they receive `max-w-full px-0`:
 ```
-/terms-conditions, /privacy-policy, /shipping-policy, /regulated-medication
+/terms-conditions, /privacy-policy, /shipping-policy, /regulated-medication, /branches
 ```
 
 **Hero component per page:**  
@@ -103,15 +103,15 @@ export async function generateMetadata({ params }) {
 
 ### Page layout
 
-**Desktop (lg+):** Two-column `h-screen` fixed layout:
-- Left: `w-1/2` — independently scrollable (`overflow-y-auto`), full viewport height
-- Right: `w-1/2 fixed right-0 top-0 h-screen` — map fills entire right half, sits behind header z-index
+**Desktop (lg+):** `flex flex-row` container — two columns side by side:
+- Left: `w-1/2` — normal block flow, scrolls with the page
+- Right: `w-1/2 sticky top-0 h-screen` — map panel sticks to viewport while the left content scrolls past it; naturally exits sticky when the footer comes into view
 
-**Mobile:** Stacked. Content first, then map at `h-[60vh]`.
+Footer renders normally in the document flow below the flex row — no overlay conflict.
 
-The right-side map is a fixed-position panel that starts from the top of the viewport (behind the header on scroll). The left panel has enough `pt` to clear the header on initial load.
+**Mobile:** Stacked. Content first, then map at `h-[60vh]`. No sticky behaviour.
 
-**Header/footer visibility:** Standard — header and footer render normally. The fixed right panel sits at `z-0` behind the header (`z-40`+). Footer appears after the scrollable left content ends.
+**Header/footer visibility:** Standard — header and footer render as normal. The sticky right panel is at `z-0`; the header sits above it at `z-40`+.
 
 ### Left panel sections (top to bottom)
 
