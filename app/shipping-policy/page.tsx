@@ -7,14 +7,15 @@ export const metadata: Metadata = {
 
 export default function ShippingPolicyPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <div className="bg-white min-h-screen">
 
-      {/* Header */}
-      <div className="bg-[#184363] text-white py-16 px-6">
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-[#184363] via-[#1a5a8a] to-[#009eb9] py-16 lg:py-20 px-6">
         <div className="max-w-4xl mx-auto">
-          <p className="text-[#009eb9] text-xs font-semibold uppercase tracking-widest mb-3">Legal</p>
-          <h1 className="text-4xl lg:text-5xl font-extrabold! mb-4">Shipping &amp; Delivery Policy</h1>
-          <p className="text-white/70 text-sm">Last updated: 28 June 2026</p>
+          <p className="text-white/60 text-xs uppercase tracking-widest mb-3">Home / Shipping Policy</p>
+          <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-3">Shipping &amp; Delivery Policy</h1>
+          <p className="text-white/70">Delivery timeframes, collection options, and courier information</p>
+          <p className="text-white/50 text-sm mt-3">Last updated: 28 June 2026</p>
         </div>
       </div>
 
@@ -245,6 +246,6 @@ export default function ShippingPolicyPage() {
         </div>
       </div>
 
-    </main>
+    </div>
   );
 }

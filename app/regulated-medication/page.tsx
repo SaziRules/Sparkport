@@ -118,16 +118,15 @@ function highlightClass(highlight: string | null): string {
 export default function RegulatedMedicationPage() {
   return (
     <div className="bg-white min-h-screen">
-      <div className="bg-[#184363] py-16 px-6">
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-[#184363] via-[#1a5a8a] to-[#009eb9] py-16 lg:py-20 px-6">
         <div className="max-w-4xl mx-auto">
-          <span className="inline-block text-[#009eb9] text-sm font-semibold uppercase tracking-widest mb-3">
-            Scheduled Medicines
-          </span>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
+          <p className="text-white/60 text-xs uppercase tracking-widest mb-3">Home / Regulated Medication</p>
+          <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-3">
             Understanding Regulated Medications
           </h1>
-          <p className="text-white/75 text-lg leading-relaxed max-w-2xl">
-            What you need to know about S5 and S6 controlled substances at Sparkport Pharmacy
+          <p className="text-white/70">
+            What you need to know about S5 and S6 controlled substances
           </p>
         </div>
       </div>

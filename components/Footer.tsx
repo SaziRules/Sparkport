@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { STORES } from '@/lib/stores';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
@@ -40,9 +41,9 @@ export default function Footer() {
       {/* Main Footer Content */}
       <div className="max-w-full mx-auto px-4 lg:px-6 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          
-          {/* Left Column - Newsletter */}
-          <div className="lg:col-span-4">
+
+          {/* Newsletter — col-span-3 */}
+          <div className="lg:col-span-3">
             <Image
               src="https://sparkport.co.za/wp-content/uploads/SP-Logo-01.png"
               alt="Sparkport"
@@ -53,7 +54,7 @@ export default function Footer() {
             <p className="text-neutral-300! mb-6">
               Stay tuned for latest updates and new features
             </p>
-            
+
             {subscribed ? (
               <div className="mb-4 flex items-center gap-2 text-sm text-emerald-400 font-medium">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,74 +98,68 @@ export default function Footer() {
                 className="w-4 h-4 mt-0.5 rounded border-neutral-500 bg-transparent"
               />
               <span className="text-sm text-neutral-400">
-                I accept terms and conditions & privacy policy
+                I accept terms and conditions &amp; privacy policy
               </span>
             </label>
           </div>
 
-          {/* Middle Columns - Links */}
-          <div className="lg:col-span-5 grid grid-cols-2 gap-8">
-            
-            {/* Information */}
-            <div>
-              <h3 className="text-white font-semibold mb-4">Information</h3>
-              <ul className="space-y-2.5">
-                <li>
-                  <Link href="/health-care-services" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Health Care Services
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/shipping-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Shipping policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/store-locator" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Store Locator
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms-conditions" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Terms & Conditions
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Account details */}
-            <div>
-              <h3 className="text-white font-semibold mb-4">Account details</h3>
-              <ul className="space-y-2.5">
-                <li>
-                  <Link href="/account/orders" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Orders
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms-conditions#returns" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Returns
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/auth/forgot-password" className="text-neutral-300 hover:text-white transition-colors text-sm">
-                    Lost password
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
+          {/* Information — col-span-2 */}
+          <div className="lg:col-span-2">
+            <h3 className="text-white font-semibold mb-4">Information</h3>
+            <ul className="space-y-2.5">
+              <li>
+                <Link href="/health-care-services" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Health Care Services
+                </Link>
+              </li>
+              <li>
+                <Link href="/shipping-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Shipping Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy-policy" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/store-locator" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Store Locator
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-conditions" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Terms &amp; Conditions
+                </Link>
+              </li>
+            </ul>
           </div>
 
-          {/* Right Column - Contact */}
-          <div className="lg:col-span-3">
+          {/* Account — col-span-2 */}
+          <div className="lg:col-span-2">
+            <h3 className="text-white font-semibold mb-4">Account details</h3>
+            <ul className="space-y-2.5">
+              <li>
+                <Link href="/account/orders" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Orders
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-conditions#returns" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Returns
+                </Link>
+              </li>
+              <li>
+                <Link href="/auth/forgot-password" className="text-neutral-300 hover:text-white transition-colors text-sm">
+                  Lost password
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Contact — col-span-2 */}
+          <div className="lg:col-span-2">
             <h3 className="text-white font-semibold mb-4">About / Contacts</h3>
-            
             <div className="space-y-3 mb-6">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-white shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +170,6 @@ export default function Footer() {
                   382 Randles Rd, Overport, Durban, 4091.
                 </p>
               </div>
-
               <div className="flex items-center gap-3">
                 <svg className="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -185,8 +179,6 @@ export default function Footer() {
                 </a>
               </div>
             </div>
-
-            {/* Social Icons */}
             <div className="flex items-center gap-3">
               <a
                 href="https://facebook.com/sparkport"
@@ -213,6 +205,23 @@ export default function Footer() {
             </div>
           </div>
 
+          {/* Our Branches — col-span-3 */}
+          <div className="lg:col-span-3">
+            <h3 className="text-white font-semibold mb-4">Our Branches</h3>
+            <ul className="space-y-2.5">
+              {STORES.map((store) => (
+                <li key={store.slug}>
+                  <Link
+                    href={`/branches/${store.slug}`}
+                    className="text-neutral-300 hover:text-white transition-colors text-sm"
+                  >
+                    {store.name.replace('Sparkport ', '')}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
         </div>
       </div>
 
@@ -229,7 +238,7 @@ export default function Footer() {
               <Image src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" width={48} height={24} className="h-6 w-auto" />
               <Image src="https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" alt="Mastercard" width={48} height={24} className="h-6 w-auto" />
               <div className="px-2 py-1 bg-white text-black text-xs font-semibold">
-                PAYGATE
+                PayFast
               </div>
             </div>
 
