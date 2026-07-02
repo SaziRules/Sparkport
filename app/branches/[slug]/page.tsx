@@ -56,7 +56,7 @@ export default async function BranchPage({ params }: Props) {
         <div className="w-full lg:w-1/2">
 
           {/* Branch hero strip */}
-          <div className="relative px-6 py-10 overflow-hidden">
+          <div className="relative px-8 lg:px-12 py-10 overflow-hidden">
             <Image
               src="/images/branch-hero.jpg"
               alt=""
@@ -83,7 +83,7 @@ export default async function BranchPage({ params }: Props) {
             </div>
           </div>
 
-          <div className="px-6 py-8 space-y-8">
+          <div className="px-8 lg:px-12 py-8 space-y-8">
 
             {/* Hours */}
             <section>
