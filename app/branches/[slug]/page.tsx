@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { STORES, getStoreBySlug } from '@/lib/stores';
 import OpenIndicator from './OpenIndicator';
@@ -55,21 +56,31 @@ export default async function BranchPage({ params }: Props) {
         <div className="w-full lg:w-1/2">
 
           {/* Branch hero strip */}
-          <div className="bg-[#184363] px-6 py-10">
-            <Link
-              href="/store-locator"
-              className="inline-flex items-center gap-1.5 text-white/60 hover:text-white text-sm mb-6 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              All Branches
-            </Link>
-            <h1 className="text-3xl font-extrabold text-white mb-1">{store.name}</h1>
-            <p className="text-white/70 text-sm mb-3">{store.address}</p>
-            <span className="inline-block bg-[#009eb9] text-white text-xs font-semibold px-3 py-1 rounded-full">
-              {store.area}
-            </span>
+          <div className="relative px-6 py-10 overflow-hidden">
+            <Image
+              src="/images/branch-hero.jpg"
+              alt=""
+              fill
+              className="object-cover object-center"
+              priority
+            />
+            <div className="absolute inset-0 bg-[#184363]/80" />
+            <div className="relative z-10">
+              <Link
+                href="/store-locator"
+                className="inline-flex items-center gap-1.5 text-white/60 hover:text-white text-sm mb-6 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                All Branches
+              </Link>
+              <h1 className="text-3xl font-extrabold text-white mb-1">{store.name}</h1>
+              <p className="text-white/70 text-sm mb-3">{store.address}</p>
+              <span className="inline-block bg-[#009eb9] text-white text-xs font-semibold px-3 py-1 rounded-full">
+                {store.area}
+              </span>
+            </div>
           </div>
 
           <div className="px-6 py-8 space-y-8">
