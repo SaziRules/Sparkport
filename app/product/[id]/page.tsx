@@ -1,15 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductById, getProductCategories, getProducts, getAllProductIds } from '@/lib/wordpress';
+import { getProductById, getProductCategories, getProducts } from '@/lib/wordpress';
 import { getProductReviews } from '@/lib/wordpress/products';
 import ProductDetailPage from '@/components/ProductDetailPage';
 
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  const ids = await getAllProductIds();
-  return ids.map((id) => ({ id: String(id) }));
-}
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ id: string }> | { id: string };

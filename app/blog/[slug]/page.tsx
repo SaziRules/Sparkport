@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import ArticleContent from '@/components/ArticleContent';
-import { getPostBySlug, getAllPostSlugs } from '@/lib/wordpress';
+import { getPostBySlug, getAllPostSlugs, getPosts, getOnSaleProducts } from '@/lib/wordpress';
 
 export async function generateStaticParams() {
   const slugs = await getAllPostSlugs();
@@ -27,9 +27,15 @@ export async function generateMetadata(
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  const [post, allPosts, saleProducts] = await Promise.all([
+    getPostBySlug(slug),
+    getPosts({ per_page: 6 }),
+    getOnSaleProducts(4),
+  ]);
 
   if (!post) notFound();
 
-  return <ArticleContent post={post} />;
+  const relatedPosts = allPosts.filter(p => p.slug !== slug).slice(0, 3);
+
+  return <ArticleContent post={post} relatedPosts={relatedPosts} saleProducts={saleProducts} />;
 }

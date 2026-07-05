@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { Promotion } from '../types'
 import LinkPicker from '../components/LinkPicker'
+import HeroTilesPanel from '../components/HeroTilesPanel'
+import ImageBannerPanel from '../components/ImageBannerPanel'
+import PromotionalBannersPanel from '../components/PromotionalBannersPanel'
 
 const CATEGORIES = [
   { label: 'Promotion', value: 'promotion' },
@@ -114,6 +117,8 @@ export default function PromotionsSection() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const displayUrl = previewUrl || form.image_url
 
@@ -222,13 +227,11 @@ export default function PromotionsSection() {
     if (res.ok) setPromotions(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !x.is_active } : x))
   }
 
-  const move = async (id: string, dir: 'up' | 'down') => {
-    const idx = promotions.findIndex(p => p.id === id)
-    if (dir === 'up' && idx === 0) return
-    if (dir === 'down' && idx === promotions.length - 1) return
-    const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+  const reorder = async (from: number, to: number) => {
+    if (from === to) return
     const updated = [...promotions]
-    ;[updated[idx], updated[swapIdx]] = [updated[swapIdx], updated[idx]]
+    const [moved] = updated.splice(from, 1)
+    updated.splice(to, 0, moved)
     const reordered = updated.map((p, i) => ({ ...p, sort_order: i }))
     setPromotions(reordered)
     await Promise.all(
@@ -240,6 +243,29 @@ export default function PromotionsSection() {
         })
       )
     )
+  }
+
+  const handleDragStart = (e: React.DragEvent, idx: number) => {
+    setDragIndex(idx)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverIndex !== idx) setDragOverIndex(idx)
+  }
+
+  const handleDrop = (e: React.DragEvent, idx: number) => {
+    e.preventDefault()
+    if (dragIndex !== null) reorder(dragIndex, idx)
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
   const deletePromotion = async (id: string) => {
@@ -302,11 +328,35 @@ export default function PromotionsSection() {
             promotions.map((promo, idx) => (
               <div
                 key={promo.id}
-                className={`bg-white rounded-2xl shadow-[0_1px_4px_rgba(24,67,99,0.06),0_6px_20px_rgba(24,67,99,0.04)] overflow-hidden transition-all ${
-                  editingId === promo.id ? 'ring-2 ring-[#009eb9]' : ''
+                draggable
+                onDragStart={e => handleDragStart(e, idx)}
+                onDragOver={e => handleDragOver(e, idx)}
+                onDrop={e => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                className={`bg-white rounded-2xl shadow-[0_1px_4px_rgba(24,67,99,0.06),0_6px_20px_rgba(24,67,99,0.04)] overflow-hidden transition-all select-none ${
+                  dragIndex === idx ? 'opacity-40 shadow-xl scale-[0.99]' : ''
+                } ${
+                  dragOverIndex === idx && dragIndex !== idx ? 'ring-2 ring-[#009eb9] ring-offset-1' : ''
+                } ${
+                  editingId === promo.id && dragIndex === null ? 'ring-2 ring-[#009eb9]' : ''
                 }`}
               >
-                <div className="flex items-center gap-4 p-4">
+                <div className="flex items-center gap-3 p-4">
+                  {/* Drag handle */}
+                  <div
+                    className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-400 shrink-0 px-0.5"
+                    title="Drag to reorder"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <circle cx="9" cy="5" r="1.5" />
+                      <circle cx="15" cy="5" r="1.5" />
+                      <circle cx="9" cy="12" r="1.5" />
+                      <circle cx="15" cy="12" r="1.5" />
+                      <circle cx="9" cy="19" r="1.5" />
+                      <circle cx="15" cy="19" r="1.5" />
+                    </svg>
+                  </div>
+
                   {/* Thumbnail */}
                   <div className="w-36 h-24 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
                     <Image
@@ -353,28 +403,8 @@ export default function PromotionsSection() {
                   {/* Actions */}
                   <div className="flex flex-col items-center gap-1 shrink-0">
                     <button
-                      onClick={() => move(promo.id, 'up')}
-                      disabled={idx === 0}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-300 hover:text-[#184363] hover:bg-slate-100 transition-colors disabled:opacity-20"
-                      title="Move up"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => move(promo.id, 'down')}
-                      disabled={idx === promotions.length - 1}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-300 hover:text-[#184363] hover:bg-slate-100 transition-colors disabled:opacity-20"
-                      title="Move down"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </button>
-                    <button
                       onClick={() => toggleActive(promo)}
-                      className={`w-8 h-4 rounded-full transition-colors relative mt-1 ${promo.is_active ? 'bg-[#009eb9]' : 'bg-slate-200'}`}
+                      className={`w-8 h-4 rounded-full transition-colors relative ${promo.is_active ? 'bg-[#009eb9]' : 'bg-slate-200'}`}
                       title={promo.is_active ? 'Hide slide' : 'Show slide'}
                     >
                       <span className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${promo.is_active ? 'translate-x-4' : ''}`} />
@@ -552,6 +582,34 @@ export default function PromotionsSection() {
           </div>
         )}
       </div>
+
+      {/* ── Side Tiles ── */}
+      <div className="pt-4 border-t border-neutral-100">
+        <div className="mb-4">
+          <h2 className="text-lg font-extrabold text-[#184363]">Side Tiles</h2>
+          <p className="text-neutral-500 text-sm mt-0.5">The two cards displayed beside the hero slider on the home page</p>
+        </div>
+        <HeroTilesPanel />
+      </div>
+
+      {/* ── Promotional Banner ── */}
+      <div className="pt-4 border-t border-neutral-100">
+        <div className="mb-4">
+          <h2 className="text-lg font-extrabold text-[#184363]">Promotional Banner</h2>
+          <p className="text-neutral-500 text-sm mt-0.5">Full-width banner displayed below the featured products on the home page</p>
+        </div>
+        <ImageBannerPanel />
+      </div>
+
+      {/* ── Promotional Banners Section ── */}
+      <div className="pt-4 border-t border-neutral-100">
+        <div className="mb-4">
+          <h2 className="text-lg font-extrabold text-[#184363]">Promotional Banners</h2>
+          <p className="text-neutral-500 text-sm mt-0.5">The three banners displayed in the mid-page promotions section</p>
+        </div>
+        <PromotionalBannersPanel />
+      </div>
+
     </div>
   )
 }

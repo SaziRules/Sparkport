@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Prescription, Pharmacy } from '../types'
-import { getAgeInfo, getStatusColor, STATUS_TRANSITIONS } from '../utils'
+import { getAgeInfo, getStatusColor } from '../utils'
 
 const PAGE_SIZE = 20
 type ViewMode = 'table' | 'card' | 'list'
@@ -11,17 +11,16 @@ type Props = {
   prescriptions: Prescription[]
   pharmacies: Pharmacy[]
   role: 'franchise_admin' | 'store_manager'
-  onQuickAction: (id: string, status: string) => Promise<void>
+  onProcessClick: (prescription: Prescription) => void
   onRowClick: (prescription: Prescription) => void
 }
 
-export default function PrescriptionTable({ prescriptions, pharmacies, role, onQuickAction, onRowClick }: Props) {
+export default function PrescriptionTable({ prescriptions, pharmacies, role, onProcessClick, onRowClick }: Props) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterStore, setFilterStore] = useState('all')
   const [dateRange, setDateRange] = useState<'today' | '7d' | '30d' | 'all'>('all')
   const [page, setPage] = useState(1)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
 
   const pharmacyMap = useMemo(() => {
@@ -58,10 +57,9 @@ export default function PrescriptionTable({ prescriptions, pharmacies, role, onQ
 
   const reset = () => setPage(1)
 
-  const handleQuickAction = async (e: React.MouseEvent, id: string, next: string) => {
+  const handleProcessClick = (e: React.MouseEvent, prescription: Prescription) => {
     e.stopPropagation()
-    setActionLoading(id)
-    try { await onQuickAction(id, next) } finally { setActionLoading(null) }
+    onProcessClick(prescription)
   }
 
   const ViewToggle = () => (
@@ -171,7 +169,6 @@ export default function PrescriptionTable({ prescriptions, pharmacies, role, onQ
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {paginated.map(p => {
                 const age = getAgeInfo(p.updated_at)
-                const transition = STATUS_TRANSITIONS[p.status]
                 return (
                   <div
                     key={p.id}
@@ -206,17 +203,12 @@ export default function PrescriptionTable({ prescriptions, pharmacies, role, onQ
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${age.colorClass}`}>
                         {age.label}
                       </span>
-                      {transition ? (
-                        <button
-                          onClick={e => handleQuickAction(e, p.id, transition.next)}
-                          disabled={actionLoading === p.id}
-                          className="px-2.5 py-1 bg-[#009eb9] text-white text-[10px] font-bold rounded-lg hover:bg-[#184363] transition-colors disabled:opacity-50"
-                        >
-                          {actionLoading === p.id ? '…' : transition.label}
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-neutral-300">—</span>
-                      )}
+                      <button
+                        onClick={e => handleProcessClick(e, p)}
+                        className="px-2.5 py-1 bg-[#009eb9] text-white text-[10px] font-bold rounded-lg hover:bg-[#184363] transition-colors"
+                      >
+                        Track
+                      </button>
                     </div>
                   </div>
                 )
@@ -229,7 +221,6 @@ export default function PrescriptionTable({ prescriptions, pharmacies, role, onQ
             <div className="bg-white rounded-xl border border-neutral-200 divide-y divide-neutral-100">
               {paginated.map(p => {
                 const age = getAgeInfo(p.updated_at)
-                const transition = STATUS_TRANSITIONS[p.status]
                 return (
                   <div
                     key={p.id}
@@ -252,17 +243,12 @@ export default function PrescriptionTable({ prescriptions, pharmacies, role, onQ
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${age.colorClass}`}>
                       {age.label}
                     </span>
-                    {transition ? (
-                      <button
-                        onClick={e => handleQuickAction(e, p.id, transition.next)}
-                        disabled={actionLoading === p.id}
-                        className="px-3 py-1.5 bg-[#009eb9] text-white text-xs font-bold rounded-lg hover:bg-[#184363] transition-colors disabled:opacity-50 shrink-0"
-                      >
-                        {actionLoading === p.id ? '…' : transition.label}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-neutral-300 shrink-0 w-14 text-center">—</span>
-                    )}
+                    <button
+                      onClick={e => handleProcessClick(e, p)}
+                      className="px-3 py-1.5 bg-[#009eb9] text-white text-xs font-bold rounded-lg hover:bg-[#184363] transition-colors shrink-0"
+                    >
+                      Track
+                    </button>
                   </div>
                 )
               })}
@@ -284,13 +270,12 @@ export default function PrescriptionTable({ prescriptions, pharmacies, role, onQ
                       <th className="px-4 py-3 text-left text-xs font-bold text-neutral-500 uppercase tracking-wide">Delivery</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-neutral-500 uppercase tracking-wide">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-neutral-500 uppercase tracking-wide">Age in Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-neutral-500 uppercase tracking-wide">Quick Action</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-neutral-500 uppercase tracking-wide">Track</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
                     {paginated.map(p => {
                       const age = getAgeInfo(p.updated_at)
-                      const transition = STATUS_TRANSITIONS[p.status]
                       return (
                         <tr
                           key={p.id}
@@ -319,17 +304,12 @@ export default function PrescriptionTable({ prescriptions, pharmacies, role, onQ
                             </span>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {transition ? (
-                              <button
-                                onClick={e => handleQuickAction(e, p.id, transition.next)}
-                                disabled={actionLoading === p.id}
-                                className="px-3 py-1 bg-[#009eb9] text-white text-xs font-bold rounded-lg hover:bg-[#184363] transition-colors disabled:opacity-50 whitespace-nowrap"
-                              >
-                                {actionLoading === p.id ? '…' : transition.label}
-                              </button>
-                            ) : (
-                              <span className="text-xs text-neutral-300">—</span>
-                            )}
+                            <button
+                              onClick={e => handleProcessClick(e, p)}
+                              className="px-3 py-1 bg-[#009eb9] text-white text-xs font-bold rounded-lg hover:bg-[#184363] transition-colors whitespace-nowrap"
+                            >
+                              Track
+                            </button>
                           </td>
                         </tr>
                       )

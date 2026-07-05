@@ -35,10 +35,26 @@ const FALLBACK_SLIDES = [
   },
 ];
 
+const FALLBACK_TILES = [
+  {
+    image: '/images/card-pills.jpg',
+    title: 'Vitamins & Supplements',
+    subtitle: 'Boost your wellness',
+    link: '/categories/vitamins',
+  },
+  {
+    image: '/images/card-baby.png',
+    title: 'Baby Care',
+    subtitle: 'Everything for baby',
+    link: '/categories/baby',
+  },
+];
+
 export default function HeroSection() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [mainSlides, setMainSlides] = useState<typeof FALLBACK_SLIDES>([]);
+  const [smallCards, setSmallCards] = useState<typeof FALLBACK_TILES>(FALLBACK_TILES);
 
   useEffect(() => {
     fetch('/api/banners')
@@ -57,22 +73,21 @@ export default function HeroSection() {
         );
       })
       .catch(() => setMainSlides(FALLBACK_SLIDES));
-  }, []);
 
-  const smallCards = [
-    {
-      image: '/images/card-pills.jpg',
-      title: 'Vitamins & Supplements',
-      subtitle: 'Boost your wellness',
-      link: '/categories/vitamins'
-    },
-    {
-      image: '/images/card-baby.png',
-      title: 'Baby Care',
-      subtitle: 'Everything for baby',
-      link: '/categories/baby'
-    }
-  ];
+    fetch('/api/tiles')
+      .then(r => r.json())
+      .then((data: { image_url: string; title: string; subtitle: string; link: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSmallCards(data.map(t => ({
+            image: t.image_url,
+            title: t.title,
+            subtitle: t.subtitle,
+            link: t.link,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const tallCard = {
     image: '/images/card-pills.jpg',
@@ -98,7 +113,7 @@ export default function HeroSection() {
 
   return (
     <section className="w-full bg-neutral-50 py-8 mt-10">
-      <div className="mx-auto max-w-385 px-6">
+      <div className="mx-auto max-w-385 px-4 lg:px-6">
         <div className="grid grid-cols-12 gap-6">
           
           {/* Main Hero Card - Left */}
@@ -108,17 +123,20 @@ export default function HeroSection() {
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
-              {/* Slides with push-left animation */}
+              {/* Image layer — cinematic push with Ken Burns on active frame */}
               {mainSlides.map((slide, index) => (
                 <div
                   key={index}
-                  className={`absolute inset-0 transition-transform duration-700 ease-in-out ${
-                    index === activeSlide
-                      ? 'translate-x-0'
-                      : index < activeSlide
-                      ? '-translate-x-full'
-                      : 'translate-x-full'
-                  }`}
+                  className="absolute inset-0 transition-[transform] duration-[800ms]"
+                  style={{
+                    transitionTimingFunction: 'cubic-bezier(0.76, 0, 0.24, 1)',
+                    transform:
+                      index === activeSlide
+                        ? 'translateX(0)'
+                        : index < activeSlide
+                        ? 'translateX(-100%)'
+                        : 'translateX(100%)',
+                  }}
                 >
                   <Image
                     src={slide.image}
@@ -126,62 +144,74 @@ export default function HeroSection() {
                     fill
                     className="object-cover"
                     priority={index === 0}
+                    style={
+                      index === activeSlide
+                        ? { animation: 'heroKenBurns 6s ease-out forwards' }
+                        : { animation: 'none', transform: 'scale(1)' }
+                    }
                   />
                 </div>
               ))}
 
-              {/* Bottom gradient overlay for text legibility */}
-              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent"></div>
-              
-              {/* Content Overlay with push-left animation */}
-              {mainSlides.map((slide, index) => (
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-linear-to-t from-black/72 via-black/18 to-transparent" />
+
+              {/* Content — decoupled from image push; key remounts to retrigger stagger */}
+              {mainSlides.length > 0 && (
                 <div
-                  key={`content-${index}`}
-                  className={`absolute inset-0 z-10 h-full flex flex-col justify-end p-6 lg:p-10 transition-transform duration-700 ease-in-out ${
-                    index === activeSlide
-                      ? 'translate-x-0'
-                      : index < activeSlide
-                      ? '-translate-x-full'
-                      : 'translate-x-full'
-                  }`}
+                  key={activeSlide}
+                  className="absolute inset-0 z-10 flex flex-col justify-end px-6 pt-6 pb-16 lg:px-10 lg:pt-10 lg:pb-14"
                 >
-                  <h2 className="text-3xl lg:text-5xl font-extrabold! text-white mb-3 leading-tight drop-shadow-lg">
-                    {slide.title}
+                  <h2
+                    className="text-3xl lg:text-5xl font-extrabold! text-white mb-3 leading-tight drop-shadow-lg"
+                    style={{ animation: 'heroReveal 0.7s cubic-bezier(0.16,1,0.3,1) 0.22s both' }}
+                  >
+                    {mainSlides[activeSlide].title}
                   </h2>
-                  <p className="text-sm lg:text-base text-white/85 mb-6 max-w-sm leading-relaxed">
-                    {slide.description}
+                  <p
+                    className="text-sm lg:text-base text-white/85 mb-6 max-w-sm leading-relaxed"
+                    style={{ animation: 'heroReveal 0.7s cubic-bezier(0.16,1,0.3,1) 0.38s both' }}
+                  >
+                    {mainSlides[activeSlide].description}
                   </p>
-                  <div>
+                  <div style={{ animation: 'heroReveal 0.7s cubic-bezier(0.16,1,0.3,1) 0.54s both' }}>
                     <Link
-                      href={slide.ctaLink}
+                      href={mainSlides[activeSlide].ctaLink}
                       className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-[#184363] font-bold rounded-full shadow-lg hover:bg-[#009eb9] hover:text-white hover:shadow-xl transition-all duration-200 group"
                     >
-                      {slide.ctaText}
+                      {mainSlides[activeSlide].ctaText}
                       <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                       </svg>
                     </Link>
                   </div>
                 </div>
-              ))}
+              )}
 
-              {/* Slide Controls */}
-              <div className="absolute bottom-5 left-6 z-20 flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
+              {/* Controls — dots act as live progress bar, counter anchors right */}
+              <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-between px-6 lg:px-10 py-4">
+                <div className="flex items-center gap-2">
                   {mainSlides.map((_, index) => (
                     <button
+                      type="button"
                       key={index}
                       onClick={() => handleSlideChange(index)}
-                      className={`h-1 rounded-full transition-all duration-300 ${
-                        activeSlide === index
-                          ? 'w-8 bg-white'
-                          : 'w-3 bg-white/40 hover:bg-white/65'
+                      className={`h-1.5 rounded-full ${
+                        activeSlide === index ? 'bg-white' : 'bg-white/35 hover:bg-white/60'
                       }`}
+                      style={
+                        index === activeSlide
+                          ? {
+                              animation: 'heroDotProgress 5s linear forwards',
+                              animationPlayState: isHovered ? 'paused' : 'running',
+                            }
+                          : { width: '8px', animation: 'none' }
+                      }
                       aria-label={`Go to slide ${index + 1}`}
                     />
                   ))}
                 </div>
-                <span className="text-white/55 text-xs font-medium tabular-nums tracking-wider">
+                <span className="text-white/55 text-xs font-medium tabular-nums tracking-widest">
                   {String(activeSlide + 1).padStart(2, '0')} / {String(mainSlides.length).padStart(2, '0')}
                 </span>
               </div>
@@ -194,7 +224,7 @@ export default function HeroSection() {
               <Link
                 key={index}
                 href={card.link}
-                className="group relative h-60.5 rounded-2xl overflow-hidden bg-neutral-900 hover:shadow-xl transition-all duration-300"
+                className="group relative h-60.5 lg:h-auto lg:flex-1 rounded-2xl overflow-hidden bg-neutral-900 hover:shadow-xl transition-all duration-300"
               >
                 <Image
                   src={card.image}
@@ -219,10 +249,10 @@ export default function HeroSection() {
           </div>
 
           {/* Tall Card - Right */}
-          <div className="col-span-12 md:col-span-6 lg:col-span-2">
+          <div className="col-span-12 md:col-span-6 lg:col-span-2 lg:flex lg:flex-col">
             <Link
               href={tallCard.link}
-              className="group relative block h-96 lg:h-125 rounded-2xl overflow-hidden bg-[#184363] hover:shadow-xl transition-all duration-300"
+              className="group relative block h-96 md:h-full rounded-2xl overflow-hidden bg-[#184363] hover:shadow-xl transition-all duration-300"
             >
               <Image
                 src={tallCard.image}

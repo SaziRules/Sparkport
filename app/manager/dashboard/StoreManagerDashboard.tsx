@@ -6,6 +6,7 @@ import { getGreeting, formatDate } from './utils'
 import ManagerSidebar from './components/ManagerSidebar'
 import PrescriptionTable from './components/PrescriptionTable'
 import PrescriptionModal from './components/PrescriptionModal'
+import PrescriptionRoadmapModal from './components/PrescriptionRoadmapModal'
 import OverviewSection from './sections/OverviewSection'
 import OrdersSection from './sections/OrdersSection'
 import EnquiriesSection from './sections/EnquiriesSection'
@@ -39,6 +40,8 @@ export default function StoreManagerDashboard({ initialManager }: { initialManag
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [selectedRoadmapPrescription, setSelectedRoadmapPrescription] = useState<Prescription | null>(null)
+  const [showRoadmap, setShowRoadmap] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -60,13 +63,24 @@ export default function StoreManagerDashboard({ initialManager }: { initialManag
     }
   }
 
-  const handleQuickAction = async (id: string, status: string) => {
+  const openRoadmap = (prescription: Prescription) => {
+    setSelectedRoadmapPrescription(prescription)
+    setShowRoadmap(true)
+  }
+
+  const handleRoadmapStatusUpdate = async (id: string, status: string, note?: string) => {
     await fetch(`/api/manager/prescriptions/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...(note ? { note } : {}) }),
     })
-    await loadData()
+    const res = await fetch('/api/manager/prescriptions')
+    if (res.ok) {
+      const updated: Prescription[] = await res.json()
+      setPrescriptions(updated)
+      const fresh = updated.find(p => p.id === id)
+      if (fresh) setSelectedRoadmapPrescription(fresh)
+    }
   }
 
   const handleStatusUpdate = async (id: string, status: string, note?: string) => {
@@ -177,7 +191,7 @@ export default function StoreManagerDashboard({ initialManager }: { initialManag
                 prescriptions={prescriptions}
                 pharmacies={[]}
                 role="store_manager"
-                onQuickAction={handleQuickAction}
+                onProcessClick={openRoadmap}
                 onRowClick={openModal}
               />
             </div>
@@ -218,6 +232,14 @@ export default function StoreManagerDashboard({ initialManager }: { initialManag
           role="store_manager"
           onClose={() => setShowModal(false)}
           onStatusUpdate={handleStatusUpdate}
+        />
+      )}
+
+      {showRoadmap && selectedRoadmapPrescription && (
+        <PrescriptionRoadmapModal
+          prescription={selectedRoadmapPrescription}
+          onClose={() => setShowRoadmap(false)}
+          onStatusUpdate={handleRoadmapStatusUpdate}
         />
       )}
     </div>

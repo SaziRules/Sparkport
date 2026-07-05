@@ -109,6 +109,7 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
         <div className="inline-flex bg-white rounded-xl shadow-md border border-neutral-200 p-1">
           {tabs.map((tab) => (
             <button
+              type="button"
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`px-6 py-3 rounded-xl font-semibold! text-sm transition-all flex items-center gap-2 ${
@@ -138,8 +139,13 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
               {active.badge}
             </div>
 
-            {/* Right-side Low Stock badge */}
-            {product.inStock && product.id % 5 === 0 && (
+            {/* Right-side stock badge */}
+            {!product.inStock && (
+              <div className="absolute top-3 right-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
+                Out of Stock
+              </div>
+            )}
+            {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
               <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
                 Low Stock
               </div>
@@ -152,7 +158,7 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
                   alt={product.imageAlt}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                  className="object-contain p-6 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
+                  className={`object-contain p-6 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale opacity-60' : ''}`}
                 />
               )}
             </div>
@@ -183,6 +189,7 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 bg-neutral-50 rounded-xl px-2 py-2">
                   <button
+                    type="button"
                     onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }}
                     className="text-neutral-600 hover:text-[#184363] font-bold! text-lg w-6 h-6 flex items-center justify-center"
                   >
@@ -190,6 +197,7 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
                   </button>
                   <span className="font-semibold! text-[#184363] w-6 text-center text-sm">{getQty(product.id)}</span>
                   <button
+                    type="button"
                     onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }}
                     className="text-neutral-600 hover:text-[#184363] font-bold! text-lg w-6 h-6 flex items-center justify-center"
                   >
@@ -197,8 +205,9 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
                   </button>
                 </div>
                 <button
+                  type="button"
                   onClick={(e) => handleAdd(e, product)}
-                  disabled={addingIds.has(product.id) || addedIds.has(product.id)}
+                  disabled={!product.inStock || addingIds.has(product.id) || addedIds.has(product.id)}
                   className={`flex-1 px-3 py-2 font-semibold! text-sm rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-1 ${
                     addedIds.has(product.id)
                       ? 'bg-green-600 text-white'

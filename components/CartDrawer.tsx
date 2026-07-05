@@ -174,6 +174,7 @@ export default function CartDrawer() {
             )}
           </div>
           <button
+            type="button"
             onClick={closeDrawer}
             className="w-9 h-9 flex items-center justify-center rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
             aria-label="Close basket"
@@ -196,6 +197,7 @@ export default function CartDrawer() {
               <p className="font-bold! text-[#184363] mb-1">Your basket is empty</p>
               <p className="text-sm text-neutral-500 mb-6">Trusted by thousands of South Africans since 1983.</p>
               <button
+                type="button"
                 onClick={closeDrawer}
                 className="px-6 py-2.5 bg-[#009eb9] text-white font-semibold! text-sm rounded-xl hover:bg-[#007a8f] transition-colors"
               >
@@ -219,6 +221,7 @@ export default function CartDrawer() {
                           <p className="text-xs text-[#009eb9] font-bold!">R{s.salePrice.toFixed(2)}</p>
                         </div>
                         <button
+                          type="button"
                           onClick={() => {
                             addToCart(s.id, 1, {
                               name: s.name,
@@ -282,6 +285,7 @@ export default function CartDrawer() {
                         {/* Qty stepper */}
                         <div className="flex items-center gap-1.5 bg-white border border-neutral-200 rounded-lg px-2 py-1.5">
                           <button
+                            type="button"
                             onClick={() => updateQuantity(item.key, item.quantity - 1)}
                             disabled={isLoading || item.quantity <= 1}
                             className="w-5 h-5 flex items-center justify-center text-neutral-500 hover:text-[#184363] font-bold! text-base disabled:opacity-40 disabled:cursor-not-allowed"
@@ -293,6 +297,7 @@ export default function CartDrawer() {
                             {item.quantity}
                           </span>
                           <button
+                            type="button"
                             onClick={() => updateQuantity(item.key, item.quantity + 1)}
                             disabled={isLoading}
                             className="w-5 h-5 flex items-center justify-center text-neutral-500 hover:text-[#184363] font-bold! text-base disabled:opacity-40 disabled:cursor-not-allowed"
@@ -305,6 +310,7 @@ export default function CartDrawer() {
                         <div className="flex items-center gap-3">
                           <span className="text-base font-extrabold! text-[#009eb9]">{symbol}{lineTotal}</span>
                           <button
+                            type="button"
                             onClick={() => handleRemove(item)}
                             disabled={isLoading}
                             className="w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
@@ -338,6 +344,7 @@ export default function CartDrawer() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-neutral-500">Item removed</span>
                       <button
+                        type="button"
                         onClick={handleUndo}
                         className="text-xs font-semibold! text-[#009eb9] hover:underline"
                       >

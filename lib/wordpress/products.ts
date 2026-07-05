@@ -14,6 +14,7 @@ function mapProduct(p: WCProduct): Product {
     image: p.images[0]?.src ?? '',
     imageAlt: decodeHtml(p.images[0]?.alt ?? p.name),
     inStock: p.stock_status === 'instock',
+    stockQuantity: p.stock_quantity ?? null,
     onSale: p.on_sale,
     featured: p.featured,
     shortDescription: p.short_description,

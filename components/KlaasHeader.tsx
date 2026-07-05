@@ -276,7 +276,7 @@ export default function SparkportHeader() {
                   onMouseEnter={handleHealthEnter}
                   onMouseLeave={handleHealthLeave}
                 >
-                  <button className="flex items-center gap-1 text-white text-sm font-medium transition-colors hover:text-[#009eb9]">
+                  <button type="button" className="flex items-center gap-1 text-white text-sm font-medium transition-colors hover:text-[#009eb9]">
                     Healthcare
                     <svg
                       className={`w-3.5 h-3.5 transition-transform duration-200 ${isHealthMenuOpen ? 'rotate-180' : ''}`}
@@ -333,6 +333,7 @@ export default function SparkportHeader() {
               {sessionUser ? (
                 <div ref={userMenuRef} className="relative flex items-center border-r border-white/20">
                   <button
+                    type="button"
                     onClick={() => setIsUserMenuOpen(v => !v)}
                     className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors"
                   >
@@ -367,6 +368,7 @@ export default function SparkportHeader() {
                       ))}
                       <div className="border-t border-neutral-100 mt-1">
                         <button
+                          type="button"
                           onClick={async () => {
                             setIsUserMenuOpen(false);
                             await supabase.auth.signOut();
@@ -388,21 +390,21 @@ export default function SparkportHeader() {
                 </Link>
               )}
               
-              <button className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
+              <button type="button" className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
                 <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16.758 8.729">
                   <path d="M16.537 6.252 14.26 8.51a.719.719 0 0 1-.51.219.689.689 0 0 1-.51-.219l-2.313-2.258a.72.72 0 0 1-.018-1.02.683.683 0 0 1 1 0l1 1.038V1.462H6.538a.729.729 0 1 1 0-1.457h7.194a.656.656 0 0 1 .656.71v5.537l1.093-1.038a.788.788 0 0 1 1.075 0 .742.742 0 0 1-.019 1.038Zm-6.32 1.038H3.825V2.463l1 1.038a.679.679 0 0 0 .492.219.729.729 0 0 0 .51-1.238L3.533.205a.76.76 0 0 0-1.038 0L.219 2.463a.7.7 0 0 0 0 1.02.77.77 0 0 0 1.075 0l1.092-1.038v5.537a.677.677 0 0 0 .656.747h7.194a.72.72 0 1 0-.018-1.439Z"/>
                 </svg>
                 <span className="text-xs font-medium">Compare</span>
               </button>
               
-              <button className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
+              <button type="button" className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
                 <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14.747 13.358">
                   <path d="M14.352 2.572A4.189 4.189 0 0 0 10.596 0a3.954 3.954 0 0 0-3.224 1.458A3.954 3.954 0 0 0 4.149 0 4.189 4.189 0 0 0 .396 2.572a4.362 4.362 0 0 0 .84 4.835 74.128 74.128 0 0 0 5.693 5.779.711.711 0 0 0 .926 0c.034-.017 2.675-2.418 5.693-5.779a4.413 4.413 0 0 0 .804-4.835ZM12.496 6.5a90.1 90.1 0 0 1-5.127 5.264A86.88 86.88 0 0 1 2.246 6.5a3.085 3.085 0 0 1-.617-3.378 2.894 2.894 0 0 1 2.52-1.75 2.447 2.447 0 0 1 2.555 1.715.661.661 0 0 0 .652.514.715.715 0 0 0 .669-.514 2.465 2.465 0 0 1 2.555-1.715 2.882 2.882 0 0 1 2.516 1.766 3.026 3.026 0 0 1-.6 3.362Zm-.171-1.989a.6.6 0 0 1-.566.634h-.034a.6.6 0 0 1-.6-.566c-.069-.977-.7-1.132-.823-1.149a.609.609 0 0 1-.514-.669.626.626 0 0 1 .686-.514 2.3 2.3 0 0 1 1.854 2.263Zm-.823.995a.757.757 0 0 1 .206.48.623.623 0 0 1-.206.48.663.663 0 0 1-.96 0 .721.721 0 0 1-.206-.48.649.649 0 0 1 .206-.48.721.721 0 0 1 .48-.206.862.862 0 0 1 .483.2Z"/>
                 </svg>
                 <span className="text-xs font-medium">Wishlist</span>
               </button>
               
-              <button onClick={openDrawer} className="relative flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors">
+              <button type="button" onClick={openDrawer} className="relative flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors">
                 <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17.426 13.695">
                   <path d="M17.388 3.087 15.361 9.47a1.074 1.074 0 0 1-1.023.758H6.516a1.117 1.117 0 0 1-1.042-.7L2.481 1.515H.758A.758.758 0 0 1 .758 0h2.254a.776.776 0 0 1 .72.511l3.087 8.2h7.2l1.61-5.114H6.705a.758.758 0 1 1 0-1.515h9.963a.753.753 0 0 1 .606.322.735.735 0 0 1 .114.683ZM6.895 11.232a1.229 1.229 0 1 0 .871.36 1.249 1.249 0 0 0-.871-.36Zm6.8 0a1.229 1.229 0 1 0 .871.36 1.249 1.249 0 0 0-.871-.36Z"/>
                 </svg>

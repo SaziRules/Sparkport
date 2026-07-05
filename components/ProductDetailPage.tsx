@@ -340,6 +340,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                 </div>
                 <div className="h-4 w-px bg-neutral-300"></div>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('reviews')}
                   className="text-sm text-neutral-600 hover:text-[#009eb9] transition-colors duration-200 font-medium!"
                 >
@@ -390,7 +391,45 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
 
             {/* Stock Status */}
             <div className="relative overflow-hidden rounded-2xl">
-              {product.inStock ? (
+              {!product.inStock ? (
+                <>
+                  <div className="absolute inset-0 bg-linear-to-r from-red-500/10 to-rose-500/10"></div>
+                  <div className="relative p-5 border border-red-200/50">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-10 h-10 bg-linear-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-bold! text-red-900">Out of Stock</p>
+                        <p className="text-sm text-red-700">Contact us to enquire</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : product.stockQuantity !== null && product.stockQuantity <= 5 ? (
+                <>
+                  <div className="absolute inset-0 bg-linear-to-r from-amber-500/10 to-orange-500/10"></div>
+                  <div className="relative p-5 border border-amber-200/50">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-10 h-10 bg-linear-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-bold! text-amber-900">Low Stock</p>
+                        <p className="text-sm text-amber-700">
+                          {product.stockQuantity === 1
+                            ? 'Only 1 left — order soon'
+                            : `Only ${product.stockQuantity} left — order soon`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
                 <>
                   <div className="absolute inset-0 bg-linear-to-r from-green-500/10 to-emerald-500/10"></div>
                   <div className="relative p-5 border border-green-200/50">
@@ -410,23 +449,6 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                     </div>
                   </div>
                 </>
-              ) : (
-                <>
-                  <div className="absolute inset-0 bg-linear-to-r from-red-500/10 to-rose-500/10"></div>
-                  <div className="relative p-5 border border-red-200/50">
-                    <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 bg-linear-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-bold! text-red-900">Out of Stock</p>
-                        <p className="text-sm text-red-700">Contact us to enquire</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
               )}
             </div>
 
@@ -437,6 +459,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                   <label className="text-sm font-bold! text-[#184363]">Quantity:</label>
                   <div className="flex items-center bg-white rounded-xl border-2 border-neutral-200 hover:border-[#009eb9] transition-all duration-200 shadow-sm">
                     <button
+                      type="button"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       className="w-12 h-12 flex items-center justify-center text-neutral-600 hover:text-[#009eb9] hover:bg-neutral-50 rounded-l-xl transition-all duration-200 font-bold! text-xl"
                     >
@@ -446,6 +469,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                       <span className="font-black! text-[#184363] text-lg">{quantity}</span>
                     </div>
                     <button
+                      type="button"
                       onClick={() => setQuantity(Math.min(99, quantity + 1))}
                       className="w-12 h-12 flex items-center justify-center text-neutral-600 hover:text-[#009eb9] hover:bg-neutral-50 rounded-r-xl transition-all duration-200 font-bold! text-xl"
                     >
@@ -455,6 +479,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                 </div>
 
                 <button
+                  type="button"
                   ref={mainButtonRef}
                   onClick={handleAdd}
                   disabled={!product.inStock || isAdding || isAdded}
@@ -635,6 +660,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                 { key: 'reviews', label: `Reviews (${product.ratingCount})`, icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
               ].map((tab) => (
                 <button
+                  type="button"
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key as typeof activeTab)}
                   className={`flex-1 px-6 py-4 rounded-2xl font-bold! text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
@@ -789,6 +815,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
               {relatedProducts.map((related) => (
                 <a key={related.id} href={`/product/${related.id}`} className="group relative">
                   <div className="bg-white rounded-3xl shadow-lg shadow-neutral-200/50 overflow-hidden border border-neutral-100 transition-all duration-500 hover:shadow-2xl hover:shadow-neutral-300/50 hover:-translate-y-2">
+                    {/* Left badge: Sale */}
                     {related.onSale && (
                       <div className="absolute top-4 left-4 z-10">
                         <div className="relative">
@@ -799,6 +826,17 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                         </div>
                       </div>
                     )}
+                    {/* Right badge: Out of Stock or Low Stock */}
+                    {!related.inStock && (
+                      <div className="absolute top-4 right-4 z-10 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full">
+                        Out of Stock
+                      </div>
+                    )}
+                    {related.inStock && related.stockQuantity !== null && related.stockQuantity <= 5 && (
+                      <div className="absolute top-4 right-4 z-10 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full">
+                        Low Stock
+                      </div>
+                    )}
                     <div className="relative bg-linear-to-br from-neutral-50 to-white aspect-square overflow-hidden">
                       {related.image && (
                         <Image
@@ -806,7 +844,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                           alt={related.imageAlt}
                           fill
                           sizes="(max-width: 768px) 50vw, 25vw"
-                          className="object-contain p-8 transform transition-transform duration-700 group-hover:scale-110 mix-blend-multiply"
+                          className={`object-contain p-8 transform transition-transform duration-700 group-hover:scale-110 mix-blend-multiply${!related.inStock ? ' grayscale opacity-60' : ''}`}
                         />
                       )}
                     </div>
@@ -846,6 +884,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
               <p className="text-base font-black! text-[#009eb9]">R{product.salePrice.toFixed(2)}</p>
             </div>
             <button
+              type="button"
               onClick={handleAdd}
               disabled={isAdding || isAdded}
               className={`px-5 py-3 rounded-xl font-bold! text-white text-sm flex items-center gap-2 transition-all ${

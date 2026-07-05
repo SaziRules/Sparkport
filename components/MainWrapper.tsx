@@ -18,7 +18,7 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
     pathname?.startsWith('/health-insurance');
 
   return (
-    <main className={isFullWidth ? 'mx-auto max-w-full px-0' : 'mx-auto max-w-385 px-6'}>
+    <main className={isFullWidth ? 'mx-auto max-w-full' : 'mx-auto max-w-385'}>
       {children}
     </main>
   );

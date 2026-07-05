@@ -76,7 +76,7 @@ function SuccessInner() {
   const symbol = order?.currency_symbol ?? 'R';
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-12 px-4">
+    <div className="min-h-screen py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
 
         {/* Confirmation header */}
@@ -237,7 +237,7 @@ function SuccessInner() {
 
 export default function CheckoutSuccessPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-neutral-50" />}>
+    <Suspense fallback={<div className="min-h-screen" />}>
       <SuccessInner />
     </Suspense>
   );

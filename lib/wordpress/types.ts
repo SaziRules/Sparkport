@@ -57,6 +57,7 @@ export interface WCProduct {
   on_sale: boolean;
   featured: boolean;
   stock_status: 'instock' | 'outofstock' | 'onbackorder';
+  stock_quantity: number | null;
   images: { id: number; src: string; alt: string }[];
   categories: { id: number; name: string; slug: string }[];
   tags: { id: number; name: string; slug: string }[];
@@ -88,6 +89,7 @@ export interface Product {
   image: string;
   imageAlt: string;
   inStock: boolean;
+  stockQuantity: number | null;
   onSale: boolean;
   featured: boolean;
   shortDescription: string;

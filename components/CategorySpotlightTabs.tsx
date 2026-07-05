@@ -100,6 +100,7 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
         <div className="mb-8 -mx-4 lg:-mx-6 relative group">
           {showLeftArrow && (
             <button
+              type="button"
               onClick={() => scroll('left')}
               className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white rounded-full shadow-lg border border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition-all ml-2 lg:opacity-0 lg:group-hover:opacity-100"
               aria-label="Scroll left"
@@ -111,6 +112,7 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
           )}
           {showRightArrow && (
             <button
+              type="button"
               onClick={() => scroll('right')}
               className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white rounded-full shadow-lg border border-neutral-200 flex items-center justify-center hover:bg-neutral-50 transition-all mr-2 lg:opacity-0 lg:group-hover:opacity-100"
               aria-label="Scroll right"
@@ -129,6 +131,7 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
             <div className="flex gap-3 pb-4 min-w-max">
               {spotlights.map(({ category }) => (
                 <button
+                  type="button"
                   key={category.id}
                   onClick={() => setActiveId(category.id)}
                   className={`flex items-center gap-2 px-5 py-3 rounded-full font-semibold! text-sm transition-all whitespace-nowrap ${
@@ -186,6 +189,16 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
                     Sale
                   </div>
                 )}
+                {!product.inStock && (
+                  <div className="absolute top-2 right-2 px-2 py-0.5 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
+                    Out of Stock
+                  </div>
+                )}
+                {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+                  <div className="absolute top-2 right-2 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
+                    Low Stock
+                  </div>
+                )}
                 <div className="relative bg-white p-4 h-40 overflow-hidden">
                   {product.image && (
                     <Image
@@ -193,7 +206,7 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
                       alt={product.imageAlt}
                       fill
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                      className="object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
+                      className={`object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale opacity-60' : ''}`}
                     />
                   )}
                 </div>
@@ -213,8 +226,9 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={(e) => handleAdd(e, product)}
-                    disabled={addingIds.has(product.id) || addedIds.has(product.id)}
+                    disabled={!product.inStock || addingIds.has(product.id) || addedIds.has(product.id)}
                     className={`w-full px-3 py-2 font-semibold! text-xs rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-1 ${
                       addedIds.has(product.id)
                         ? 'bg-green-600 text-white'

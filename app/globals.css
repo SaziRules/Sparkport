@@ -86,6 +86,28 @@ body {
    ANIMATIONS
 ========================= */
 
+/* Hero slider */
+@keyframes heroKenBurns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+
+@keyframes heroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroDotProgress {
+  from { width: 8px; }
+  to   { width: 32px; }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

@@ -16,12 +16,7 @@ export default async function Home() {
     <main>
       <HeroSection />
       <FeaturedProducts />
-      <ImageBanner
-        image="https://sparkport.co.za/wp-content/uploads/sparkport-web-banner.png"
-        link="/product-category/brain-boosters"
-        alt="Surgical Supplies Banner"
-        height="h-[300px] lg:h-[400px]"
-      />
+      <ImageBanner />
       <ValuePropositionStrip />
       <ServicesShowcase />
       <CategorySpotlight />

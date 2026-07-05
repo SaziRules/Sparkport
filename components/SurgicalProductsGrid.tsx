@@ -29,6 +29,7 @@ export default function SurgicalProductsGrid({ products }: { products: Product[]
     <div className="relative">
       {/* Prev */}
       <button
+        type="button"
         onClick={() => scroll('left')}
         className="absolute -left-4 lg:-left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white border border-neutral-200 rounded-full shadow-md flex items-center justify-center text-[#184363] hover:bg-[#009eb9] hover:text-white hover:border-[#009eb9] transition-all duration-200"
         aria-label="Scroll left"
@@ -53,6 +54,16 @@ export default function SurgicalProductsGrid({ products }: { products: Product[]
                 Sale
               </div>
             )}
+            {!product.inStock && (
+              <div className="absolute top-3 right-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
+                Out of Stock
+              </div>
+            )}
+            {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+              <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
+                Low Stock
+              </div>
+            )}
             <Link href={`/product/${product.id}`} className="block">
               <div className="relative bg-white h-56 overflow-hidden">
                 {product.image && (
@@ -61,7 +72,7 @@ export default function SurgicalProductsGrid({ products }: { products: Product[]
                     alt={product.imageAlt}
                     fill
                     sizes="288px"
-                    className="object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
+                    className={`object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale opacity-60' : ''}`}
                   />
                 )}
               </div>
@@ -80,8 +91,9 @@ export default function SurgicalProductsGrid({ products }: { products: Product[]
                 <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
               </div>
               <button
+                type="button"
                 onClick={(e) => handleAdd(e, product)}
-                disabled={addingIds.has(product.id)}
+                disabled={!product.inStock || addingIds.has(product.id)}
                 className="w-full px-4 py-2.5 bg-[#e8f5f7] text-[#184363] font-semibold! rounded-xl hover:bg-[#009eb9] hover:text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 text-sm"
               >
                 {addingIds.has(product.id) ? (
@@ -98,6 +110,7 @@ export default function SurgicalProductsGrid({ products }: { products: Product[]
 
       {/* Next */}
       <button
+        type="button"
         onClick={() => scroll('right')}
         className="absolute -right-4 lg:-right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white border border-neutral-200 rounded-full shadow-md flex items-center justify-center text-[#184363] hover:bg-[#009eb9] hover:text-white hover:border-[#009eb9] transition-all duration-200"
         aria-label="Scroll right"

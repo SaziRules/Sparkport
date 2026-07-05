@@ -169,6 +169,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                       const active = selectedCategory === category;
                       return (
                         <button
+                          type="button"
                           key={category}
                           onClick={() => setSelectedCategory(category)}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
@@ -210,6 +211,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
 
                 {/* Reset */}
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedCategory('All Products');
                     setPriceRange([0, 500]);
@@ -234,6 +236,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                     {' '}of <span className="font-bold! text-[#184363]">{sorted.length}</span> products
                   </p>
                   <button
+                    type="button"
                     onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                     className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 border border-[#009eb9] text-[#009eb9] text-sm font-semibold rounded-lg hover:bg-[#009eb9] hover:text-white transition-colors"
                   >
@@ -298,9 +301,9 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                       key={product.id ?? index}
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative"
                     >
-                      {/* Energy badges — priority: Out of Stock > Hot Deal > Low Stock */}
+                      {/* Left badge: Out of Stock > Hot Deal */}
                       {!product.inStock && (
-                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-400 text-white text-[10px] font-bold! rounded-full z-10">
+                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
                           Out of Stock
                         </div>
                       )}
@@ -309,8 +312,9 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                           Hot Deal
                         </div>
                       )}
-                      {product.inStock && !product.onSale && product.id % 5 === 0 && (
-                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
+                      {/* Right badge: Low Stock — independent, shows alongside sale badge */}
+                      {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+                        <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
                           Low Stock
                         </div>
                       )}
@@ -402,9 +406,9 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-lg transition-all group"
                     >
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 relative">
-                        {/* Energy badges — priority: Out of Stock > Hot Deal > Low Stock */}
+                        {/* Left badge: Out of Stock > Hot Deal */}
                         {!product.inStock && (
-                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-400 text-white text-[10px] font-bold! rounded-full z-10">
+                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
                             Out of Stock
                           </div>
                         )}
@@ -413,8 +417,9 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                             Hot Deal
                           </div>
                         )}
-                        {product.inStock && !product.onSale && product.id % 5 === 0 && (
-                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
+                        {/* Right badge: Low Stock — independent */}
+                        {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+                          <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
                             Low Stock
                           </div>
                         )}

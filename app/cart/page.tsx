@@ -79,7 +79,7 @@ export default function CartPage() {
 
   if (count === 0 && !isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-[#e8f5f7] flex items-center justify-center">
             <svg className="w-12 h-12 text-[#009eb9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +103,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 lg:px-6 py-10 lg:py-14">
 
         {/* Header */}
