@@ -79,7 +79,7 @@ export default function TermsConditionsPage() {
             </p>
             <p className="text-neutral-600! mb-4">
               You must notify us immediately at{' '}
-              <a href="mailto:info@sparkport.co.za" className="text-[#009eb9] hover:underline">info@sparkport.co.za</a>{' '}
+              <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a>{' '}
               if you become aware of any unauthorised use of your account. Sparkport Pharmacy is not liable for any loss or
               damage arising from your failure to safeguard your account credentials.
             </p>
@@ -102,11 +102,15 @@ export default function TermsConditionsPage() {
               cancel or refuse an order. Where an order has been accepted and payment taken in error, we will refund the
               full amount paid.
             </p>
-            <p className="text-neutral-600!">
+            <p className="text-neutral-600! mb-4">
               Certain products, including prescription medication, are regulated under the Medicines and Related Substances
               Act 101 of 1965 and may only be sold in accordance with applicable schedule controls. Advertised prices for
               prescription medication are indicative only and may vary based on the specific product dispensed, medical aid
               co-payments, or regulatory pricing controls.
+            </p>
+            <p className="text-neutral-600!">
+              Product images displayed on the Website are for illustrative purposes only. Actual product packaging may differ
+              from images shown, as manufacturers may update packaging without prior notice to us.
             </p>
           </section>
 
@@ -116,7 +120,7 @@ export default function TermsConditionsPage() {
             <p className="text-neutral-600! mb-4">
               The dispensing of prescription medication is governed by the Pharmacy Act 53 of 1974, the Medicines and
               Related Substances Act 101 of 1965, and all regulations promulgated thereunder. Sparkport Pharmacy operates
-              in full compliance with these laws and under the oversight of the Pharmacy Council of South Africa ("PCSA").
+              in full compliance with these laws and under the oversight of the South African Pharmacy Council ("SAPC").
             </p>
             <p className="text-neutral-600! mb-4">
               By submitting a prescription via our Website, you confirm that:
@@ -191,7 +195,7 @@ export default function TermsConditionsPage() {
               Sparkport Pharmacy takes all reasonable steps to maintain product integrity during delivery; however, we cannot
               guarantee cold-chain integrity for deliveries delayed due to circumstances beyond our control. If you receive
               a temperature-sensitive product that appears compromised, please contact us immediately at{' '}
-              <a href="mailto:info@sparkport.co.za" className="text-[#009eb9] hover:underline">info@sparkport.co.za</a>{' '}
+              <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a>{' '}
               and do not use the product.
             </p>
           </section>
@@ -236,9 +240,9 @@ export default function TermsConditionsPage() {
                 <h3 className="font-semibold text-[#184363] mb-2">How to Return</h3>
                 <p className="text-neutral-600!">
                   To initiate a return or refund, please contact us at{' '}
-                  <a href="mailto:info@sparkport.co.za" className="text-[#009eb9] hover:underline">info@sparkport.co.za</a>{' '}
+                  <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a>{' '}
                   within the applicable period, quoting your order number and reason for return. Approved refunds are
-                  processed to the original payment method within 5–10 business days.
+                  processed to the original payment method within 1–7 business days.
                 </p>
               </div>
             </div>
@@ -305,33 +309,9 @@ export default function TermsConditionsPage() {
             </p>
           </section>
 
-          {/* 13. Rewards Programme */}
+          {/* 13. Privacy */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">13. Rewards Programme</h2>
-            <p className="text-neutral-600! mb-4">
-              Sparkport Pharmacy operates a customer loyalty rewards programme ("Rewards Programme") that allows registered
-              customers to earn points on qualifying purchases and activities. Participation in the Rewards Programme is
-              subject to the following conditions:
-            </p>
-            <ul className="space-y-2 mb-4">
-              {[
-                'Points are awarded at our sole discretion and are not redeemable for cash or transferable to any other person.',
-                'Points have no monetary value and do not constitute property of the customer.',
-                'Sparkport Pharmacy reserves the right to adjust point values, redemption rates, programme terms, or to discontinue the Rewards Programme at any time, with or without notice.',
-                'Points earned through fraudulent activity, abuse of the programme, or in error may be revoked without notice.',
-                'We reserve the right to suspend or terminate a customer\'s participation in the Rewards Programme where we reasonably suspect a breach of these Terms.',
-              ].map((item, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#009eb9] text-white text-xs flex items-center justify-center mt-0.5 font-bold">{i + 1}</span>
-                  <p className="text-neutral-600!">{item}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* 14. Privacy */}
-          <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">14. Privacy and Data Protection</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">13. Privacy and Data Protection</h2>
             <p className="text-neutral-600!">
               Your use of the Website is also governed by our{' '}
               <a href="/privacy-policy" className="text-[#009eb9] hover:underline font-medium">Privacy Policy</a>, which is
@@ -341,9 +321,9 @@ export default function TermsConditionsPage() {
             </p>
           </section>
 
-          {/* 15. Third-Party Links */}
+          {/* 14. Third-Party Links */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">15. Third-Party Websites and Services</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">14. Third-Party Websites and Services</h2>
             <p className="text-neutral-600!">
               The Website may contain links to third-party websites or services, including medical aid portals, health
               information resources, and payment processors. These links are provided for your convenience only. Sparkport
@@ -352,9 +332,9 @@ export default function TermsConditionsPage() {
             </p>
           </section>
 
-          {/* 16. Changes */}
+          {/* 15. Changes */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">16. Changes to These Terms</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">15. Changes to These Terms</h2>
             <p className="text-neutral-600!">
               Sparkport Pharmacy reserves the right to amend these Terms at any time. Updated Terms will be published on this
               page with a revised "Last updated" date. Your continued use of the Website after any changes constitutes your
@@ -363,9 +343,9 @@ export default function TermsConditionsPage() {
             </p>
           </section>
 
-          {/* 17. Governing Law */}
+          {/* 16. Governing Law */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">17. Governing Law and Jurisdiction</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">16. Governing Law and Jurisdiction</h2>
             <p className="text-neutral-600! mb-4">
               These Terms are governed by and construed in accordance with the laws of the Republic of South Africa. You
               agree to submit to the exclusive jurisdiction of the courts of Durban, KwaZulu-Natal for any disputes arising
@@ -381,17 +361,17 @@ export default function TermsConditionsPage() {
             </p>
           </section>
 
-          {/* 18. Contact */}
+          {/* 17. Contact */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">18. Contact Us</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">17. Contact Us</h2>
             <p className="text-neutral-600! mb-6">
               If you have any questions, concerns, or complaints regarding these Terms or our Services, please contact us:
             </p>
             <div className="bg-[#009eb9]/8 border border-[#009eb9]/20 rounded-xl p-6 space-y-2">
               <p className="font-semibold text-[#184363]">Sparkport Pharmacy</p>
-              <p className="text-neutral-600!">Email: <a href="mailto:info@sparkport.co.za" className="text-[#009eb9] hover:underline">info@sparkport.co.za</a></p>
+              <p className="text-neutral-600!">Email: <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a></p>
               <p className="text-neutral-600!">Website: <span className="text-[#009eb9]">www.sparkport.co.za</span></p>
-              <p className="text-neutral-600!">Registered with the Pharmacy Council of South Africa (PCSA)</p>
+              <p className="text-neutral-600!">Registered with the South African Pharmacy Council (SAPC)</p>
               <p className="text-neutral-600!">Operating across KwaZulu-Natal, South Africa</p>
             </div>
             <div className="mt-6">
@@ -399,7 +379,7 @@ export default function TermsConditionsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { name: 'SAHPRA', full: 'SA Health Products Regulatory Authority', url: 'https://www.sahpra.org.za' },
-                  { name: 'PCSA', full: 'Pharmacy Council of South Africa', url: 'https://www.pcsapharmacy.co.za' },
+                  { name: 'SAPC', full: 'South African Pharmacy Council', url: 'https://www.pharmcouncil.co.za/' },
                   { name: 'POPIA InfoRegulator', full: 'Information Regulator (South Africa)', url: 'https://inforegulator.org.za' },
                   { name: 'Dept. of Health', full: 'National Department of Health', url: 'https://www.health.gov.za' },
                 ].map(({ name, full, url }) => (

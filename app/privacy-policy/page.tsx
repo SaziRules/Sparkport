@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
           {/* Intro */}
           <section>
             <p className="text-lg text-neutral-600! leading-relaxed">
-              Sparkport GOP (Pty) Ltd, trading as <strong>Sparkport Pharmacy</strong> (&ldquo;Sparkport&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; or &ldquo;our&rdquo;), is committed to protecting your privacy and handling your personal information responsibly. This Privacy Policy describes how we collect, use, store, share, and safeguard your personal information when you visit our website at <strong>sparkport.co.za</strong>, use our online prescription service, or interact with us in any other way.
+              <strong>Sparkport Pharmacy</strong> (&ldquo;Sparkport&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; or &ldquo;our&rdquo;) is committed to protecting your privacy and handling your personal information responsibly. This Privacy Policy describes how we collect, use, store, share, and safeguard your personal information when you visit our website at <strong>sparkport.co.za</strong>, use our online prescription service, or interact with us in any other way.
             </p>
             <p className="mt-4 text-neutral-600!">
               This Policy is governed by the <strong>Protection of Personal Information Act 4 of 2013 (POPIA)</strong> and the <strong>Electronic Communications and Transactions Act 25 of 2002 (ECT Act)</strong>. By accessing our website or providing us with your personal information, you acknowledge that you have read and understood this Policy.
@@ -40,13 +40,12 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-2xl font-bold! text-[#184363] mb-4">1. Who We Are</h2>
             <p className="text-neutral-600!">
-              Sparkport GOP (Pty) Ltd is the responsible party (as defined in POPIA) for personal information collected through this website and our services.
+              Sparkport Pharmacy is the responsible party (as defined in POPIA) for personal information collected through this website and our services.
             </p>
             <div className="mt-4 bg-neutral-50 rounded-xl p-6 border border-neutral-200 text-sm space-y-1.5">
               <p className="text-neutral-700!"><strong>Trading name:</strong> Sparkport Pharmacy</p>
               <p className="text-neutral-700!"><strong>Registered address:</strong> 382 Corner Moses Kotane &amp; Randles Road, Overport, Durban, 4091</p>
               <p className="text-neutral-700!"><strong>Email:</strong> <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a></p>
-              <p className="text-neutral-700!"><strong>Information Officer:</strong> Compliance Department, Sparkport GOP (Pty) Ltd</p>
             </div>
           </section>
 
@@ -144,7 +143,7 @@ export default function PrivacyPolicyPage() {
               <li>To protect your vital health interests or those of another person</li>
             </ul>
             <p className="mt-4 text-neutral-600!">
-              Prescription records are retained for a minimum of <strong>five (5) years</strong> from the date of dispensing as required by the South African Pharmacy Council. Controlled substance records are retained for <strong>seven (7) years</strong> in accordance with applicable regulations.
+              Prescription records are retained for a minimum of <strong>five (5) years</strong> from the date of dispensing as required by the South African Pharmacy Council. Controlled substance records are retained for <strong>five (5) years</strong> from date of dispensing.
             </p>
             <p className="mt-3 text-neutral-600!">
               All prescription files uploaded to our platform are transmitted using TLS encryption and stored in encrypted form. Access is strictly limited to licensed pharmacists and authorised personnel.
@@ -189,7 +188,7 @@ export default function PrivacyPolicyPage() {
                   {[
                     ['Account information', '5 years after account closure'],
                     ['Prescription records', '5 years from date of dispensing (SAPC requirement)'],
-                    ['Controlled substance records', '7 years from date of dispensing'],
+                    ['Controlled substance records', '5 years from date of dispensing'],
                     ['Transaction records', '5 years (SARS and financial reporting requirements)'],
                     ['Marketing preferences', 'Until you withdraw consent'],
                     ['Website usage data', '24 months'],
@@ -240,8 +239,8 @@ export default function PrivacyPolicyPage() {
             <div className="mt-6 bg-[#009eb9]/8 border border-[#009eb9]/20 rounded-xl p-5">
               <p className="font-semibold! text-[#184363] mb-2">Information Regulator Contact Details</p>
               <p className="text-sm text-neutral-600!">JD House, 27 Stiemens Street, Braamfontein, Johannesburg, 2001</p>
-              <p className="text-sm text-neutral-600!">Email: <a href="mailto:inforeg@justice.gov.za" className="text-[#009eb9] hover:underline">inforeg@justice.gov.za</a></p>
-              <p className="text-sm text-neutral-600!">Website: <a href="https://www.justice.gov.za/inforeg" target="_blank" rel="noopener noreferrer" className="text-[#009eb9] hover:underline">www.justice.gov.za/inforeg</a></p>
+              <p className="text-sm text-neutral-600!">Email: <a href="mailto:enquiries@inforegulator.org.za" className="text-[#009eb9] hover:underline">enquiries@inforegulator.org.za</a></p>
+              <p className="text-sm text-neutral-600!">Website: <a href="https://www.inforegulator.org.za" target="_blank" rel="noopener noreferrer" className="text-[#009eb9] hover:underline">www.inforegulator.org.za</a></p>
             </div>
             <p className="mt-4 text-neutral-600!">To exercise any of your rights, please contact our Information Officer at <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a>. We will respond within <strong>30 days</strong> of receiving your request.</p>
           </section>
@@ -278,7 +277,6 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-2xl font-bold! text-[#184363] mb-4">14. Contact Us</h2>
             <p className="text-neutral-600! mb-4">If you have any questions about this Privacy Policy or wish to exercise your rights, please contact our Information Officer:</p>
             <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200 text-sm space-y-2">
-              <p className="text-neutral-700!"><strong>Sparkport GOP (Pty) Ltd — Information Officer</strong></p>
               <p className="text-neutral-700!">382 Corner Moses Kotane &amp; Randles Road, Overport, Durban, 4091</p>
               <p className="text-neutral-700!">Email: <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a></p>
             </div>

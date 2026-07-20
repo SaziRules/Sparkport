@@ -16,24 +16,41 @@ export interface Store {
 
 export const STORES: Store[] = [
   {
-    id: '1',
-    name: 'Sparkport Quality Street',
-    address: '315 Quality Street, Jacobs, Durban, 4052',
-    phone: '(031) 461-3760',
-    email: 'scriptsqs@sparkport.co.za',
-    hours: 'Mon-Thu: 9AM-5:30PM • Fri: 9AM-5:30PM • Sat: 9AM-2PM • Sun: Closed',
-    coordinates: { lat: -29.8854, lng: 30.9838 },
-    slug: 'quality-street',
-    area: 'Jacobs, Durban',
+    id: '7',
+    name: 'Sparkport Overport',
+    address: 'Corner Moses Kotane & Randles Road, Durban, 4091',
+    phone: '(031) 207-1011',
+    email: 'dispensary@sparkport.co.za',
+    hours: 'Mon-Thu: 8AM-10PM • Fri: 8AM-10PM • Sat: 8AM-10PM • Sun: 9AM-10PM',
+    coordinates: { lat: -29.8765, lng: 31.0131 },
+    slug: 'overport',
+    area: 'Overport, Durban',
     content: {
       gettingHere:
-        'Located on Quality Street in Jacobs, directly accessible from the M4 South Coast Road. Street parking is available directly outside the pharmacy. The branch is well signposted and situated near several industrial and residential estates in the South Durban Basin.',
+        'The flagship branch is situated on the corner of Moses Kotane Avenue and Randles Road in Overport, easily accessible from the M13. On-street parking is available on both roads. The branch is served by multiple taxi routes and is within walking distance of the Overport City shopping centre.',
       seoWriteUp:
-        'Sparkport Quality Street is a full-service community pharmacy serving the industrial and residential areas of Jacobs, Bluff, Merebank, and Wentworth in the South Durban Basin. Our compact, professionally staffed dispensary is known for fast script turnaround and knowledgeable pharmacist consultations.\n\nWe dispense both acute and chronic prescriptions, stock a comprehensive range of over-the-counter medicines, vitamins, and health supplements, and offer in-store pharmacist advice. Our team is experienced in handling Schedule 5 and Schedule 6 medications in full compliance with SAHPRA regulations and the Medicines Act.\n\nOnline prescription submissions are supported — simply upload your script via our website and select Quality Street as your preferred collection branch. We will contact you when your medication is ready for collection.\n\nWhether you live in Jacobs, work in the nearby industrial corridor, or are passing through the South Durban Basin, Sparkport Quality Street offers the professional pharmacy service you can rely on. We are committed to accessible, high-quality pharmaceutical care for every member of our community.',
+        'Sparkport Overport is our flagship location — the corner of Moses Kotane Avenue and Randles Road in Overport, Durban. We trade seven days a week until 10PM, making us one of the longest-trading pharmacies in KwaZulu-Natal and the go-to option when you need medication late in the evening.\n\nOur full-service dispensary handles everything from everyday acute prescriptions and chronic medication management to Schedule 5 and Schedule 6 controlled substances, all dispensed in strict compliance with SAHPRA and PCSA regulations. We stock an extensive range of OTC medicines, health supplements, skincare, and baby products.\n\nOnline prescription submission is available — upload your script via the Sparkport website, select Overport as your collection branch, and our pharmacist team will process and notify you when it is ready. Given our extended hours, evening collection after a busy day is always possible.\n\nSparkport Overport has been serving the communities of Overport, Sydenham, Essenwood, and surrounding Durban North inner-city suburbs for decades. We are proud of our role as a health anchor in a dynamic, multicultural neighbourhood.',
     },
   },
   {
-    id: '2',
+    id: '8',
+    name: 'Sparkport City Centre',
+    address: 'Corner Yusuf Dadoo & Anton Lembede St, Durban, 4001',
+    phone: '(031) 304-9767',
+    email: 'wholesale@sparkport.co.za',
+    hours: 'Mon-Thu: 7:30AM-7:30PM • Fri: 7:30AM-7:30PM • Sat: 7:30AM-7PM • Sun: 9AM-4PM',
+    coordinates: { lat: -29.8587, lng: 31.0295 },
+    slug: 'city-centre',
+    area: 'Durban CBD',
+    content: {
+      gettingHere:
+        'Located on the corner of Yusuf Dadoo Street (Grey Street) and Anton Lembede Street in the heart of the Durban CBD. Accessible via the city\'s major arterial routes and within walking distance of the Durban Station taxi rank and bus terminal. Paid parking is available in several nearby facilities.',
+      seoWriteUp:
+        'Sparkport City Centre is located at the heart of the Durban CBD, on the corner of Yusuf Dadoo Street (Grey Street) and Anton Lembede Street. We open at 7:30AM Monday to Saturday — earlier than most city pharmacies — to serve commuters, business district workers, and early-morning patients before their day begins.\n\nOur full-service dispensary handles acute and chronic prescriptions, with particular experience in serving the diverse and high-volume patient base of the Durban CBD. We stock a comprehensive range of OTC medicines, health products, vitamins, and wholesale enquiries are welcome.\n\nOnline prescription submission is supported — upload your script via the Sparkport website and select City Centre as your preferred collection branch. Given our early opening hours and central location, pre-work collection is a convenient option for many of our patients.\n\nSparkport City Centre has served the commercial heart of Durban for many years. Our central location makes us accessible to residents, workers, and visitors across the city, and our experienced team is equipped to handle high volumes without compromising on the quality of care or counsel provided to each patient.',
+    },
+  },
+  {
+    id: '3',
     name: 'Sparkport Musgrave',
     address: '77 Musgrave Rd, Musgrave, Berea, 4001',
     phone: '(031) 201-8121',
@@ -50,7 +67,24 @@ export const STORES: Store[] = [
     },
   },
   {
-    id: '3',
+    id: '4',
+    name: 'Sparkport Quality Street',
+    address: '315 Quality Street, Jacobs, Durban, 4052',
+    phone: '(031) 461-3760',
+    email: 'scriptsqs@sparkport.co.za',
+    hours: 'Mon-Thu: 9AM-5:30PM • Fri: 9AM-5:30PM • Sat: 9AM-2PM • Sun: Closed',
+    coordinates: { lat: -29.8854, lng: 30.9838 },
+    slug: 'quality-street',
+    area: 'Jacobs, Durban',
+    content: {
+      gettingHere:
+        'Located on Quality Street in Jacobs, directly accessible from the M4 South Coast Road. Street parking is available directly outside the pharmacy. The branch is well signposted and situated near several industrial and residential estates in the South Durban Basin.',
+      seoWriteUp:
+        'Sparkport Quality Street is a full-service community pharmacy serving the industrial and residential areas of Jacobs, Bluff, Merebank, and Wentworth in the South Durban Basin. Our compact, professionally staffed dispensary is known for fast script turnaround and knowledgeable pharmacist consultations.\n\nWe dispense both acute and chronic prescriptions, stock a comprehensive range of over-the-counter medicines, vitamins, and health supplements, and offer in-store pharmacist advice. Our team is experienced in handling Schedule 5 and Schedule 6 medications in full compliance with SAHPRA regulations and the Medicines Act.\n\nOnline prescription submissions are supported — simply upload your script via our website and select Quality Street as your preferred collection branch. We will contact you when your medication is ready for collection.\n\nWhether you live in Jacobs, work in the nearby industrial corridor, or are passing through the South Durban Basin, Sparkport Quality Street offers the professional pharmacy service you can rely on. We are committed to accessible, high-quality pharmaceutical care for every member of our community.',
+    },
+  },
+  {
+    id: '5',
     name: 'Sparkport Warner Beach',
     address: '125 Kingsway St, Warner Beach, Kingsburgh, 4126',
     phone: '(031) 916-6550',
@@ -115,40 +149,6 @@ export const STORES: Store[] = [
         'Located on Dr Chota Motala Road in Raisethorpe, Pietermaritzburg. Street and off-road parking is available in the vicinity. The branch is centrally accessible within the PMB metro, close to major arterial routes serving Raisethorpe and the broader city.',
       seoWriteUp:
         'Sparkport Pietermaritzburg is our inland anchor branch, serving Raisethorpe and the broader Pietermaritzburg metro with extended trading hours seven days a week. As the Msunduzi municipality\'s dedicated Sparkport branch, we provide comprehensive pharmaceutical services to the communities of Raisethorpe, Northdale, and the wider PMB area.\n\nOur experienced team dispenses both acute and chronic prescriptions, manages long-term chronic conditions including diabetes, hypertension, and respiratory disease, and stocks a wide range of OTC medicines, vitamins, and wellness products. Extended Saturday trading until 8PM and Sunday hours until 6PM make us one of the most accessible pharmacies in the city.\n\nScript submissions via the Sparkport website are fully supported. Upload your prescription, select Pietermaritzburg as your preferred collection branch, and our team will notify you when it is ready.\n\nSparkport Pietermaritzburg is committed to raising the standard of pharmaceutical care in the inland KZN region. Our team combines professional expertise with genuine community care to ensure every patient receives the attention and guidance they deserve.',
-    },
-  },
-  {
-    id: '7',
-    name: 'Sparkport Overport',
-    address: 'Corner Moses Kotane & Randles Road, Durban, 4091',
-    phone: '(031) 207-1011',
-    email: 'dispensary@sparkport.co.za',
-    hours: 'Mon-Thu: 8AM-10PM • Fri: 8AM-10PM • Sat: 8AM-10PM • Sun: 9AM-10PM',
-    coordinates: { lat: -29.8765, lng: 31.0131 },
-    slug: 'overport',
-    area: 'Overport, Durban',
-    content: {
-      gettingHere:
-        'The flagship branch is situated on the corner of Moses Kotane Avenue and Randles Road in Overport, easily accessible from the M13. On-street parking is available on both roads. The branch is served by multiple taxi routes and is within walking distance of the Overport City shopping centre.',
-      seoWriteUp:
-        'Sparkport Overport is our flagship location — the corner of Moses Kotane Avenue and Randles Road in Overport, Durban. We trade seven days a week until 10PM, making us one of the longest-trading pharmacies in KwaZulu-Natal and the go-to option when you need medication late in the evening.\n\nOur full-service dispensary handles everything from everyday acute prescriptions and chronic medication management to Schedule 5 and Schedule 6 controlled substances, all dispensed in strict compliance with SAHPRA and PCSA regulations. We stock an extensive range of OTC medicines, health supplements, skincare, and baby products.\n\nOnline prescription submission is available — upload your script via the Sparkport website, select Overport as your collection branch, and our pharmacist team will process and notify you when it is ready. Given our extended hours, evening collection after a busy day is always possible.\n\nSparkport Overport has been serving the communities of Overport, Sydenham, Essenwood, and surrounding Durban North inner-city suburbs for decades. We are proud of our role as a health anchor in a dynamic, multicultural neighbourhood.',
-    },
-  },
-  {
-    id: '8',
-    name: 'Sparkport City Centre',
-    address: 'Corner Yusuf Dadoo & Anton Lembede St, Durban, 4001',
-    phone: '(031) 304-9767',
-    email: 'wholesale@sparkport.co.za',
-    hours: 'Mon-Thu: 7:30AM-7:30PM • Fri: 7:30AM-7:30PM • Sat: 7:30AM-7PM • Sun: 9AM-4PM',
-    coordinates: { lat: -29.8587, lng: 31.0295 },
-    slug: 'city-centre',
-    area: 'Durban CBD',
-    content: {
-      gettingHere:
-        'Located on the corner of Yusuf Dadoo Street (Grey Street) and Anton Lembede Street in the heart of the Durban CBD. Accessible via the city\'s major arterial routes and within walking distance of the Durban Station taxi rank and bus terminal. Paid parking is available in several nearby facilities.',
-      seoWriteUp:
-        'Sparkport City Centre is located at the heart of the Durban CBD, on the corner of Yusuf Dadoo Street (Grey Street) and Anton Lembede Street. We open at 7:30AM Monday to Saturday — earlier than most city pharmacies — to serve commuters, business district workers, and early-morning patients before their day begins.\n\nOur full-service dispensary handles acute and chronic prescriptions, with particular experience in serving the diverse and high-volume patient base of the Durban CBD. We stock a comprehensive range of OTC medicines, health products, vitamins, and wholesale enquiries are welcome.\n\nOnline prescription submission is supported — upload your script via the Sparkport website and select City Centre as your preferred collection branch. Given our early opening hours and central location, pre-work collection is a convenient option for many of our patients.\n\nSparkport City Centre has served the commercial heart of Durban for many years. Our central location makes us accessible to residents, workers, and visitors across the city, and our experienced team is equipped to handle high volumes without compromising on the quality of care or counsel provided to each patient.',
     },
   },
 ];

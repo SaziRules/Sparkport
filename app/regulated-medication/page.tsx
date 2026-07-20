@@ -17,7 +17,7 @@ const schedules = [
   {
     label: 'S3',
     title: 'Pharmacist-only medicines',
-    description: 'No prescription required but pharmacist supervision needed.',
+    description: 'Requires a script by a registered practitioner.',
     highlight: null,
   },
   {
@@ -87,10 +87,10 @@ const regulatoryBodies = [
     description: 'Regulates medicines, medical devices, and related matters in South Africa.',
   },
   {
-    name: 'PCSA',
-    fullName: 'Pharmacy Council of South Africa',
-    url: 'https://www.pcsapharmacy.co.za',
-    displayUrl: 'pcsapharmacy.co.za',
+    name: 'SAPC',
+    fullName: 'South African Pharmacy Council',
+    url: 'https://www.pharmcouncil.co.za/',
+    displayUrl: 'pharmcouncil.co.za',
     description: 'Governs the practice of pharmacy and protects public health through professional standards.',
   },
   {

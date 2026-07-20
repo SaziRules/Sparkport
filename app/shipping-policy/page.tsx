@@ -14,7 +14,7 @@ export default function ShippingPolicyPage() {
         <div className="max-w-4xl mx-auto">
           <p className="text-white/60 text-xs uppercase tracking-widest mb-3">Home / Shipping Policy</p>
           <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-3">Shipping &amp; Delivery Policy</h1>
-          <p className="text-white/70">Delivery timeframes, collection options, and courier information</p>
+          <p className="text-white/70">Delivery time frames, collection options, and courier information</p>
           <p className="text-white/50 text-sm mt-3">Last updated: 28 June 2026</p>
         </div>
       </div>
@@ -43,14 +43,14 @@ export default function ShippingPolicyPage() {
             <p className="text-neutral-600! mb-4 font-semibold">Our branches:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               {[
-                { name: 'City Centre', area: 'Durban CBD' },
-                { name: 'Chatsworth', area: 'Chatsworth Centre' },
-                { name: 'Musgrave', area: 'Musgrave Centre' },
                 { name: 'Overport', area: 'Overport City' },
-                { name: 'Pietermaritzburg', area: 'PMB City Centre' },
+                { name: 'City Centre', area: 'Durban CBD' },
+                { name: 'Musgrave', area: 'Musgrave Centre' },
                 { name: 'Quality Street', area: 'Quality Street Mall' },
-                { name: 'Umlazi', area: 'Umlazi Mega City' },
                 { name: 'Warner Beach', area: 'Warner Beach Mall' },
+                { name: 'Chatsworth', area: 'Chatsworth Centre' },
+                { name: 'Umlazi', area: 'Umlazi Mega City' },
+                { name: 'Pietermaritzburg', area: 'PMB City Centre' },
               ].map((b) => (
                 <div key={b.name} className="flex items-start gap-3 bg-neutral-50 rounded-lg px-4 py-3 border border-neutral-100">
                   <span className="mt-0.5 flex-shrink-0 w-2 h-2 rounded-full bg-[#009eb9] mt-1.5" />
@@ -61,6 +61,10 @@ export default function ShippingPolicyPage() {
                 </div>
               ))}
             </div>
+            <p className="text-neutral-600! mb-4">
+              Please note: in-store collection is available for <span className="font-semibold text-[#184363]">prescription orders only</span>.
+              All frontshop items purchased on the website are dispatched from Sparkport Overport and can also be collected there.
+            </p>
             <p className="text-neutral-600!">
               Branch trading hours vary. Please contact your preferred branch or visit our website for up-to-date hours before
               attending to collect your order.
@@ -100,9 +104,9 @@ export default function ShippingPolicyPage() {
                 </p>
               </div>
               <div>
-                <h3 className="font-semibold text-[#184363] mb-1">Delivery Timeframes</h3>
+                <h3 className="font-semibold text-[#184363] mb-1">Delivery Time Frames</h3>
                 <p className="text-neutral-600!">
-                  Standard delivery is typically completed within <span className="font-semibold">2–5 business days</span>{' '}
+                  Standard delivery is typically completed within <span className="font-semibold">2–7 business days</span>{' '}
                   from the date your order is confirmed and payment is verified. Same-day or next-day delivery may be available
                   in select areas and is subject to order placement before 12:00 (noon) on a business day. We do not process
                   or dispatch orders on Sundays or public holidays.
@@ -130,7 +134,7 @@ export default function ShippingPolicyPage() {
             <ul className="list-none space-y-3 mb-4">
               {[
                 'A clear, legible photograph or digital copy of your original prescription must be submitted via our Fill Your Script form before your order is prepared.',
-                'The original prescription must be surrendered to our pharmacy before or upon delivery of schedule 5 or 6 substances, as required by law.',
+                '…',
                 'Delivery of schedule 5 or 6 substances requires the signature of a person 18 years of age or older at the delivery address.',
                 'We are unable to leave prescription medication unattended at a delivery address. If no authorised person is present, a re-delivery will be arranged.',
                 'Repeat prescriptions will only be dispensed for the number of repeats authorised by the prescribing practitioner.',
@@ -237,7 +241,7 @@ export default function ShippingPolicyPage() {
             </p>
             <div className="bg-[#009eb9]/8 border border-[#009eb9]/20 rounded-xl p-6 space-y-2">
               <p className="font-semibold text-[#184363]">Sparkport Pharmacy</p>
-              <p className="text-neutral-600!">Email: <a href="mailto:info@sparkport.co.za" className="text-[#009eb9] hover:underline">info@sparkport.co.za</a></p>
+              <p className="text-neutral-600!">Email: <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a></p>
               <p className="text-neutral-600!">Website: <span className="text-[#009eb9]">www.sparkport.co.za</span></p>
               <p className="text-neutral-600!">Operating across 8 branches in KwaZulu-Natal, South Africa</p>
             </div>

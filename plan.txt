@@ -197,6 +197,7 @@ open this roadmap.
 
 7a. Migration — prescription_status_log table:
   CREATE TABLE prescription_status_log (
+ 
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
     status          TEXT NOT NULL,
