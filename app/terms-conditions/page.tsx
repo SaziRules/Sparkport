@@ -213,18 +213,7 @@ export default function TermsConditionsPage() {
                 <p className="text-neutral-600!">
                   In accordance with Section 44 of the ECT Act, you have the right to cancel an online order within{' '}
                   <span className="font-semibold">7 days</span> of receiving goods, without reason, provided the goods are
-                  returned in their original, unopened, and undamaged condition. This right does not apply to prescription
-                  medication that has been dispensed, opened, or whose packaging has been broken, as such goods cannot
-                  be resold for safety and regulatory reasons.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-[#184363] mb-2">Implied Warranty (Section 56 CPA)</h3>
-                <p className="text-neutral-600!">
-                  All products sold by Sparkport Pharmacy are covered by a 6-month implied warranty of quality under
-                  Section 56 of the CPA. If a product is found to be defective, unsafe, or not of good quality within
-                  6 months of purchase, you are entitled to return the product for a repair, replacement, or refund at
-                  your election.
+                  returned in their original, unopened, and undamaged condition. This right does not apply to prescription medication.
                 </p>
               </div>
               <div>
@@ -232,8 +221,7 @@ export default function TermsConditionsPage() {
                 <p className="text-neutral-600!">
                   We are unable to accept returns of: dispensed prescription medication; opened or used health and hygiene
                   products; products that have been tampered with; or products returned beyond the applicable return period.
-                  Refunds will not be issued for prescription medication that has been lawfully dispensed where the return is
-                  not due to a defect or our error.
+                  Refunds will not be issued for prescription medication.
                 </p>
               </div>
               <div>

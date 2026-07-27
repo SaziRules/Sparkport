@@ -255,7 +255,7 @@ export default function HealthCareServicesPage() {
             A tamper-evident pop-out system that greatly improves medication compliance. Once the blister seal is broken it cannot be refilled, and the foil ensures the correct storage temperature is maintained throughout.
           </p>
           <p className="text-neutral-600 leading-relaxed mb-8">
-            Dosage instructions and special precautions are printed on each blister, removing the need for a separate dosage guide. Schedule 5 items are highlighted in red for quick identification.
+            Dosage instructions and special precautions are printed on each blister, removing the need for a separate dosage guide. Schedule 5 and 6 items are colour-coded for quick identification.
           </p>
           <div className="flex gap-8">
             {['Right Pills', 'Right Dose', 'Right Time'].map((item) => (

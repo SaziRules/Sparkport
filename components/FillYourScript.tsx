@@ -563,7 +563,7 @@ export default function FillYourScript() {
                   <div className="text-sm text-amber-900">
                     <p className="font-bold mb-1">Important: Scheduled Medicines (S5 &amp; S6)</p>
                     <p className="leading-relaxed mb-2">
-                      If your prescription includes scheduled substances — such as certain painkillers, sleeping tablets, or controlled medicines — please note:
+                      If your prescription includes Schedule 5 or Schedule 6 substances, please note:
                     </p>
                     <ul className="space-y-1 mb-2 ml-1">
                       <li className="flex gap-2"><span className="font-bold shrink-0">·</span><span>An <strong>original, valid prescription</strong> is required — no copies, faxes, or photographs accepted.</span></li>

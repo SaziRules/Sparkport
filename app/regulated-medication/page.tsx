@@ -30,21 +30,15 @@ const schedules = [
     label: 'S5',
     title: 'Habit-forming substances',
     description:
-      'Examples: codeine >10 mg, tramadol, diazepam, temazepam. Prescription required. Up to 5 repeats allowed within 6 months.',
+      'Prescription required. Original script must be presented to the pharmacist. Up to 5 repeats allowed within 6 months.',
     highlight: 'amber',
   },
   {
     label: 'S6',
     title: 'Potentially dangerous substances',
     description:
-      'Examples: morphine, oxycodone, pethidine, methadone, ketamine. Prescription required. NO repeats — original retained by pharmacist.',
+      'Prescription required. Original script must be presented to the pharmacist and is retained after dispensing. No repeats.',
     highlight: 'red',
-  },
-  {
-    label: 'S7/S8',
-    title: 'Not dispensed in community pharmacies',
-    description: 'Restricted to specialised facilities only.',
-    highlight: null,
   },
 ];
 
@@ -187,8 +181,8 @@ export default function RegulatedMedicationPage() {
             {[
               'Our pharmacist reviews your submission and identifies any scheduled substances.',
               'We may contact your prescribing practitioner to verify authenticity.',
-              'For S6 substances, we request that you present the original prescription in person or via secure courier before dispensing.',
-              'Once dispensed, your S6 prescription is retained by us as required by law.',
+              'For S5 and S6 substances, your original prescription is required — no copies, photographs, or faxed prescriptions are accepted.',
+              'Once dispensed, your S6 prescription is retained by us as required by law. S5 prescriptions may be returned to allow for authorised repeats.',
             ].map((step, i) => (
               <div key={i} className="flex gap-4 items-start bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm">
                 <div className="w-9 h-9 bg-[#009eb9] rounded-full flex items-center justify-center shrink-0">
@@ -210,7 +204,7 @@ export default function RegulatedMedicationPage() {
               {[
                 'The prescription was issued by a registered South African healthcare practitioner (registered with the HPCSA)',
                 'You have not submitted the same prescription to another pharmacy for simultaneous dispensing',
-                'For S6 medications, you understand the original must be surrendered to the pharmacist',
+                'For S5 and S6 medications, you understand the original prescription must be presented to the pharmacist. S6 prescriptions are retained after dispensing.',
               ].map((item, i) => (
                 <li key={i} className="flex gap-3 items-start">
                   <div className="w-5 h-5 bg-[#009eb9]/15 rounded-full flex items-center justify-center shrink-0 mt-0.5">
