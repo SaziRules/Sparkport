@@ -11,19 +11,19 @@ const schedules = [
   {
     label: 'S0–S2',
     title: 'Over-the-counter medicines',
-    description: 'No prescription required.',
+    description: 'No prescription required. Issued at the discretion of the pharmacist',
     highlight: null,
   },
   {
     label: 'S3',
     title: 'Pharmacist-only medicines',
-    description: 'Requires a script by a registered practitioner.',
+    description: 'Requires a prescription issued by a registered practitioner.',
     highlight: null,
   },
   {
     label: 'S4',
     title: 'Prescription-required medicines (standard)',
-    description: 'Issued by a registered practitioner.',
+    description: 'Requires a prescription issued by a registered practitioner.',
     highlight: null,
   },
   {

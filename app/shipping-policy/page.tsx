@@ -134,7 +134,7 @@ export default function ShippingPolicyPage() {
             <ul className="list-none space-y-3 mb-4">
               {[
                 'A clear, legible photograph or digital copy of your original prescription must be submitted via our Fill Your Script form before your order is prepared.',
-                '…',
+                'The original prescription must be surrendered to our pharmacy for schedule 5 or 6 substances, as required by law.',
                 'Delivery of schedule 5 or 6 substances requires the signature of a person 18 years of age or older at the delivery address.',
                 'We are unable to leave prescription medication unattended at a delivery address. If no authorised person is present, a re-delivery will be arranged.',
                 'Repeat prescriptions will only be dispensed for the number of repeats authorised by the prescribing practitioner.',
@@ -210,7 +210,7 @@ export default function ShippingPolicyPage() {
               including but not limited to:
             </p>
             <ul className="list-disc list-inside space-y-2 text-neutral-600! mb-4 ml-2">
-              <li>Temperature-sensitive medications requiring cold chain management (available for collection only).</li>
+              <li>Temperature-sensitive medications requiring cold chain management — <span className="font-semibold">these items are strictly available for in-store collection only and cannot be delivered under any circumstances.</span></li>
               <li>Controlled substances where in-person identification or prescription surrender is legally required.</li>
               <li>Bulky or hazardous items as classified under relevant transport legislation.</li>
             </ul>
@@ -224,7 +224,7 @@ export default function ShippingPolicyPage() {
           <section>
             <h2 className="text-2xl font-bold! text-[#184363] mb-4">9. Delays and Force Majeure</h2>
             <p className="text-neutral-600!">
-              Sparkport Pharmacy takes all reasonable steps to meet advertised delivery timeframes. However, delays may occur
+              Sparkport Pharmacy takes all reasonable steps to meet advertised delivery time frames. However, delays may occur
               due to circumstances beyond our reasonable control, including but not limited to severe weather events, civil
               unrest, load shedding or extended power outages, national or regional lockdowns, courier disruptions, or acts
               of God. In such circumstances, we will communicate delays to affected customers as soon as reasonably

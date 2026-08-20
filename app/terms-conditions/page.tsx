@@ -191,12 +191,12 @@ export default function TermsConditionsPage() {
               delivery in accordance with the Consumer Protection Act 68 of 2008.
             </p>
             <p className="text-neutral-600! mt-4">
-              Certain pharmaceutical products require temperature-controlled storage and transport ("cold-chain" items).
-              Sparkport Pharmacy takes all reasonable steps to maintain product integrity during delivery; however, we cannot
-              guarantee cold-chain integrity for deliveries delayed due to circumstances beyond our control. If you receive
-              a temperature-sensitive product that appears compromised, please contact us immediately at{' '}
+              Certain pharmaceutical products require temperature-controlled storage and transport (&ldquo;cold-chain&rdquo; items).
+              Cold-chain items are <span className="font-semibold text-[#184363]">strictly available for in-store collection only</span> — Sparkport Pharmacy does not offer home delivery for these products under any circumstances.
+              When placing an order that includes cold-chain items, you will be required to collect from your chosen Sparkport branch.
+              If you are unsure whether your medication is a cold-chain item, please contact us at{' '}
               <a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline">online@sparkport.co.za</a>{' '}
-              and do not use the product.
+              before placing your order.
             </p>
           </section>
 
