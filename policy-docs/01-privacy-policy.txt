@@ -1,0 +1,284 @@
+PRIVACY POLICY
+Sparkport Pharmacy
+Last updated: 28 June 2026
+================================================================================
+
+Sparkport Pharmacy ("Sparkport", "we", "us" or "our") is committed to protecting
+your privacy and handling your personal information responsibly. This Privacy Policy
+describes how we collect, use, store, share, and safeguard your personal information
+when you visit our website at sparkport.co.za, use our online prescription service,
+or interact with us in any other way.
+
+This Policy is governed by the Protection of Personal Information Act 4 of 2013
+(POPIA) and the Electronic Communications and Transactions Act 25 of 2002 (ECT Act).
+By accessing our website or providing us with your personal information, you
+acknowledge that you have read and understood this Policy.
+
+────────────────────────────────────────────────────────────────────────────────
+
+1. WHO WE ARE
+────────────────────────────────────────────────────────────────────────────────
+
+Sparkport Pharmacy is the responsible party (as defined in POPIA) for personal
+information collected through this website and our services.
+
+Trading name:        Sparkport Pharmacy
+Registered address:  382 Corner Moses Kotane & Randles Road, Overport, Durban, 4091
+Email:               online@sparkport.co.za
+
+
+2. INFORMATION WE COLLECT
+────────────────────────────────────────────────────────────────────────────────
+
+We collect personal information that you provide to us directly and information
+collected automatically when you use our website.
+
+2.1 Information You Provide
+
+  • Identity information: Full name, South African ID number, date of birth
+  • Contact information: Email address, WhatsApp/mobile number, physical address
+  • Health and prescription information: Prescription files (photos/PDFs), doctor's
+    name, practice number, prescription date, medication details, chronic condition
+    status, allergy information
+  • Medical aid information: Medical aid provider, membership number, dependant code
+  • Payment information: Payment method preference. Card details are processed
+    directly by our payment gateway (PayGate) and are not stored on our servers
+  • Account credentials: Email address and password (stored in encrypted form)
+  • Communications: Records of any correspondence you send us
+
+2.2 Information Collected Automatically
+
+  • Usage data: Pages visited, time spent on pages, links clicked, referring URLs
+  • Device information: IP address, browser type, operating system, device identifiers
+  • Cookies and similar technologies: Session identifiers, preference cookies, and
+    analytics cookies (see Section 9)
+
+
+3. HOW WE USE YOUR INFORMATION
+────────────────────────────────────────────────────────────────────────────────
+
+We process your personal information for the following purposes:
+
+  • To fulfill prescription orders: Processing, dispensing, and delivering your
+    medication safely and accurately
+  • To manage your account: Creating and administering your Sparkport account,
+    tracking orders, and providing order history
+  • To communicate with you: Sending order confirmations, prescription status
+    updates, collection notifications, and responding to enquiries via WhatsApp,
+    email, or phone
+  • Medical aid claims: Processing claims with your nominated medical aid scheme
+    where applicable
+  • Legal and regulatory compliance: Meeting our obligations under the Pharmacy Act
+    53 of 1974, Medicines and Related Substances Act 101 of 1965, National Health
+    Act 61 of 2003, and related healthcare regulations
+  • Safety and fraud prevention: Verifying your identity and detecting or preventing
+    fraudulent or illegal activity
+  • Marketing (with consent): Sending promotional offers, health tips, and newsletters
+    where you have opted in. You may unsubscribe at any time
+  • Website improvement: Analysing usage patterns to improve our website and services
+
+
+4. LEGAL BASIS FOR PROCESSING
+────────────────────────────────────────────────────────────────────────────────
+
+Under POPIA, we process your personal information on the following grounds:
+
+  • Contractual necessity — To fulfil prescription orders and provide our pharmacy
+    services to you.
+  • Legal obligation — To comply with the Pharmacy Act, Medicines Act, SAPC
+    regulations, SARS requirements, and other applicable South African law.
+  • Legitimate interest — To improve our services, prevent fraud, and ensure the
+    safety of our customers and staff.
+  • Consent — For marketing communications and non-essential cookies. You may
+    withdraw consent at any time without affecting the lawfulness of processing
+    already carried out.
+  • Vital interest — In situations where processing is necessary to protect your
+    life or that of another person, particularly relevant for health emergencies.
+
+
+5. SHARING OF PERSONAL INFORMATION
+────────────────────────────────────────────────────────────────────────────────
+
+We do not sell your personal information. We may share it with trusted third parties
+in the following circumstances:
+
+  • Registered dispensing pharmacists: Our licensed pharmacists who process and
+    verify prescriptions
+  • Delivery partners: Courier services engaged to deliver your medication
+  • Payment processors: PayGate (Pty) Ltd for secure card payment processing
+  • Medical aid administrators: Your nominated medical aid scheme or its
+    administrator, solely for claims processing
+  • IT service providers: Hosting, database, and email providers who process data
+    on our behalf under binding data processing agreements
+  • Regulatory authorities: The South African Pharmacy Council (SAPC), Department
+    of Health, SAPS, or courts where required by law or legal process
+  • Professional advisers: Attorneys, auditors, and insurers bound by
+    confidentiality obligations
+
+Where we share personal information with third parties, we take reasonable steps to
+ensure that they handle it in accordance with POPIA and are bound by appropriate
+contractual obligations.
+
+We do not transfer personal information outside of the Republic of South Africa
+unless the recipient country provides an adequate level of protection substantially
+similar to POPIA, or you have consented to the transfer, or the transfer is
+necessary for the performance of a contract.
+
+
+6. HEALTH AND PRESCRIPTION INFORMATION
+────────────────────────────────────────────────────────────────────────────────
+
+Prescription data, diagnoses, and health-related information constitute special
+personal information under POPIA (Section 26) and are subject to heightened
+protection. We process this information only:
+
+  • With your explicit consent
+  • As required to provide pharmacy services and dispense medication safely
+  • As required by law (e.g., record-keeping obligations under the Pharmacy Act
+    and Medicines Act)
+  • To protect your vital health interests or those of another person
+
+Prescription records are retained for a minimum of five (5) years from the date of
+dispensing as required by the South African Pharmacy Council. Controlled substance
+records are retained for five (5) years from date of dispensing.
+
+All prescription files uploaded to our platform are transmitted using TLS encryption
+and stored in encrypted form. Access is strictly limited to licensed pharmacists and
+authorised personnel.
+
+
+7. DATA SECURITY
+────────────────────────────────────────────────────────────────────────────────
+
+We implement appropriate technical and organisational measures to protect your
+personal information against unauthorised access, accidental loss, destruction,
+disclosure, or misuse. These measures include:
+
+  • TLS/SSL encryption for all data transmitted to and from our website
+  • Encrypted storage of sensitive data at rest
+  • Access controls limiting data access to authorised personnel on a need-to-know
+    basis
+  • Regular security assessments and software updates
+  • Staff training on data protection and confidentiality obligations
+  • Incident response procedures in the event of a data breach
+
+In the event of a data breach that poses a risk to your rights and freedoms, we will
+notify the Information Regulator and affected data subjects as required by Section 22
+of POPIA without undue delay.
+
+While we take every reasonable step to secure your information, no transmission over
+the internet is completely secure. You share information with us at your own risk and
+should use a secure connection when accessing our website.
+
+
+8. RETENTION OF PERSONAL INFORMATION
+────────────────────────────────────────────────────────────────────────────────
+
+We retain personal information only for as long as necessary to fulfil the purposes
+for which it was collected, unless a longer retention period is required by law:
+
+  Category                        | Retention Period
+  --------------------------------+--------------------------------------------------
+  Account information             | 5 years after account closure
+  Prescription records            | 5 years from date of dispensing (SAPC requirement)
+  Controlled substance records    | 5 years from date of dispensing
+  Transaction records             | 5 years (SARS and financial reporting requirements)
+  Marketing preferences           | Until you withdraw consent
+  Website usage data              | 24 months
+  CCTV footage (in-store)         | 30 days unless required for investigation
+
+Upon expiry of the applicable retention period, personal information will be
+destroyed, deleted, or de-identified in a secure manner.
+
+
+9. COOKIES AND TRACKING TECHNOLOGIES
+────────────────────────────────────────────────────────────────────────────────
+
+Our website uses cookies and similar technologies to enhance your experience.
+Cookies are small text files stored on your device.
+
+  • Strictly necessary cookies: Required for the website to function (e.g., session
+    management, shopping cart). Cannot be disabled.
+  • Functional cookies: Remember your preferences such as language, location, and
+    logged-in status.
+  • Analytics cookies: Help us understand how visitors use our website so we can
+    improve it (e.g., Vercel Analytics). Data is anonymised where possible.
+  • Marketing cookies: Used to deliver relevant advertisements. Only set with your
+    consent.
+
+You can control cookies through your browser settings. Disabling certain cookies may
+affect the functionality of our website. For non-essential cookies we obtain your
+consent on first visit.
+
+
+10. YOUR RIGHTS UNDER POPIA
+────────────────────────────────────────────────────────────────────────────────
+
+As a data subject, you have the following rights under POPIA:
+
+  • Right of access (Section 23): Request confirmation of whether we hold your
+    personal information and obtain a copy of it
+  • Right to correction or deletion (Section 24): Request that inaccurate,
+    irrelevant, excessive, outdated, or misleading information be corrected or deleted
+  • Right to object (Section 11(3)): Object to processing of your personal
+    information where we rely on legitimate interest or consent
+  • Right to withdraw consent: Where processing is based on your consent, you may
+    withdraw it at any time without affecting the lawfulness of prior processing
+  • Right to complain: Lodge a complaint with the Information Regulator of South
+    Africa if you believe your rights have been violated
+
+Information Regulator Contact Details:
+  JD House, 27 Stiemens Street, Braamfontein, Johannesburg, 2001
+  Email:   enquiries@inforegulator.org.za
+  Website: www.inforegulator.org.za
+
+To exercise any of your rights, please contact our Information Officer at
+online@sparkport.co.za. We will respond within 30 days of receiving your request.
+
+
+11. CHILDREN'S PRIVACY
+────────────────────────────────────────────────────────────────────────────────
+
+Our website is not directed at children under the age of 18. We do not knowingly
+collect personal information from minors without verifiable parental or guardian
+consent. If you are a parent or guardian and believe your child has provided personal
+information without your consent, please contact us immediately and we will take
+steps to delete such information.
+
+Prescription orders for dependants (e.g., minor children covered on a medical aid)
+are processed on behalf of the account holder who bears responsibility for the
+accuracy of the information provided.
+
+
+12. THIRD-PARTY LINKS
+────────────────────────────────────────────────────────────────────────────────
+
+Our website may contain links to third-party websites (such as medical aid portals
+or health information resources). We are not responsible for the privacy practices
+of such websites and encourage you to review their privacy policies before providing
+any personal information.
+
+
+13. CHANGES TO THIS POLICY
+────────────────────────────────────────────────────────────────────────────────
+
+We may update this Privacy Policy from time to time to reflect changes in our
+practices, technology, legal requirements, or other factors. We will post the updated
+policy on this page with a revised "Last updated" date. Where changes are material,
+we will notify registered customers by email or a prominent notice on our website.
+Your continued use of our website after any changes constitutes your acceptance of
+the updated policy.
+
+
+14. CONTACT US
+────────────────────────────────────────────────────────────────────────────────
+
+If you have any questions about this Privacy Policy or wish to exercise your rights,
+please contact our Information Officer:
+
+  382 Corner Moses Kotane & Randles Road, Overport, Durban, 4091
+  Email: online@sparkport.co.za
+
+================================================================================
+END OF PRIVACY POLICY
+================================================================================

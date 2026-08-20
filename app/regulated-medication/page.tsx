@@ -15,15 +15,9 @@ const schedules = [
     highlight: null,
   },
   {
-    label: 'S3',
-    title: 'Pharmacist-only medicines',
-    description: 'Requires a prescription issued by a registered practitioner.',
-    highlight: null,
-  },
-  {
-    label: 'S4',
-    title: 'Prescription-required medicines (standard)',
-    description: 'Requires a prescription issued by a registered practitioner.',
+    label: 'S3–S4',
+    title: "Medicine requiring a Doctor's prescription",
+    description: 'Requires a valid prescription issued by a registered practitioner.',
     highlight: null,
   },
   {

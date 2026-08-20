@@ -1,0 +1,322 @@
+TERMS & CONDITIONS
+Sparkport Pharmacy
+Last updated: 2 July 2026 · Version 2.0
+================================================================================
+
+These Terms and Conditions ("Terms") govern your access to and use of the Sparkport
+Pharmacy website located at www.sparkport.co.za ("the Website") and all related
+services, including online prescription submissions, product purchases, and account
+registration ("Services"). By accessing the Website or placing an order, you agree
+to be bound by these Terms. If you do not agree, please do not use our Website or
+Services.
+
+────────────────────────────────────────────────────────────────────────────────
+
+1. DEFINITIONS
+────────────────────────────────────────────────────────────────────────────────
+
+  "Sparkport Pharmacy", "we", "us", "our"
+      Refers to Sparkport Pharmacy, a registered South African pharmacy operating
+      across KwaZulu-Natal.
+
+  "Customer", "you", "your"
+      Any natural or juristic person who accesses the Website or uses our Services.
+
+  "Order"
+      A request by a Customer to purchase products or have a prescription dispensed
+      via the Website.
+
+  "Prescription"
+      A valid written order issued by a registered healthcare practitioner authorising
+      the dispensing of scheduled medication.
+
+  "Products"
+      All goods offered for sale via the Website, including prescription medication,
+      over-the-counter medication, health products, and general wellness items.
+
+  "Business Day"
+      Any day other than a Saturday, Sunday, or South African public holiday.
+
+
+2. ELIGIBILITY
+────────────────────────────────────────────────────────────────────────────────
+
+You must be at least 18 years of age to register an account, place an order, or
+purchase products or prescription medication via our Website. By using the Website,
+you represent and warrant that you meet this age requirement.
+
+Prescription medication may only be dispensed to or on behalf of the patient named
+on a valid prescription issued by a practitioner registered with the Health
+Professions Council of South Africa ("HPCSA"). The ordering of prescription
+medication for purposes other than legitimate personal medical use is strictly
+prohibited.
+
+
+3. ACCOUNT REGISTRATION
+────────────────────────────────────────────────────────────────────────────────
+
+Certain features of our Website require you to create a registered account. When
+registering, you agree to provide accurate, current, and complete information. You
+are responsible for maintaining the confidentiality of your account credentials and
+for all activity that occurs under your account.
+
+You must notify us immediately at online@sparkport.co.za if you become aware of any
+unauthorised use of your account. Sparkport Pharmacy is not liable for any loss or
+damage arising from your failure to safeguard your account credentials.
+
+We reserve the right to suspend or terminate any account that violates these Terms,
+without prior notice.
+
+
+4. PRODUCTS AND PRICING
+────────────────────────────────────────────────────────────────────────────────
+
+All prices displayed on the Website are quoted in South African Rand (ZAR) and
+include Value Added Tax (VAT) at the applicable rate, unless otherwise stated. Prices
+are subject to change without notice. The price applicable to your order is the price
+displayed at the time you complete checkout.
+
+We make every effort to ensure that product information, descriptions, and prices
+displayed on the Website are accurate. However, errors may occasionally occur. In
+the event of a pricing error, we reserve the right to cancel or refuse an order.
+Where an order has been accepted and payment taken in error, we will refund the full
+amount paid.
+
+Certain products, including prescription medication, are regulated under the
+Medicines and Related Substances Act 101 of 1965 and may only be sold in accordance
+with applicable schedule controls. Advertised prices for prescription medication are
+indicative only and may vary based on the specific product dispensed, medical aid
+co-payments, or regulatory pricing controls.
+
+Product images displayed on the Website are for illustrative purposes only. Actual
+product packaging may differ from images shown, as manufacturers may update packaging
+without prior notice to us.
+
+
+5. PRESCRIPTION MEDICATION
+────────────────────────────────────────────────────────────────────────────────
+
+The dispensing of prescription medication is governed by the Pharmacy Act 53 of 1974,
+the Medicines and Related Substances Act 101 of 1965, and all regulations promulgated
+thereunder. Sparkport Pharmacy operates in full compliance with these laws and under
+the oversight of the South African Pharmacy Council ("SAPC").
+
+By submitting a prescription via our Website, you confirm that:
+
+  1. The prescription is valid, authentic, and was issued by a registered healthcare
+     practitioner for your personal use.
+
+  2. You have not submitted the same prescription to any other pharmacy for
+     simultaneous dispensing.
+
+  3. All personal and medical information provided is accurate and complete to the
+     best of your knowledge.
+
+  4. You understand that our pharmacists may contact your prescribing practitioner
+     to verify the prescription before dispensing.
+
+Sparkport Pharmacy reserves the right to refuse to dispense any prescription where
+we have reasonable grounds to believe it is invalid, fraudulent, or otherwise not in
+compliance with applicable law. The submission of a forged or fraudulent prescription
+is a criminal offence under South African law.
+
+SCHEDULED MEDICINES (SCHEDULE 5 & 6)
+  Certain medicines classified as Schedule 5 or Schedule 6 under the Medicines and
+  Related Substances Act are subject to additional dispensing controls:
+
+  • S5 medicines may be repeated up to 5 times within a 6-month period. An original
+    prescription is required.
+  • S6 medicines may not be repeated. The pharmacist is legally required to retain
+    the original prescription after dispensing.
+  • No copies, photographs, or faxed prescriptions are accepted for scheduled
+    substances.
+
+  For more information, visit: sparkport.co.za/regulated-medication
+
+
+6. ORDERS AND PAYMENT
+────────────────────────────────────────────────────────────────────────────────
+
+An order placed through the Website constitutes an offer to purchase. No binding
+contract is formed until we confirm acceptance of your order via email or
+notification. We reserve the right to decline any order at our sole discretion,
+including where stock is unavailable, a prescription cannot be verified, or payment
+is not successfully authorised.
+
+Payment is processed securely through PayFast, a registered payment service provider
+in South Africa. We accept major credit and debit cards as well as other payment
+methods displayed at checkout. All payment transactions are encrypted using SSL
+technology in accordance with the Electronic Communications and Transactions Act 25
+of 2002 ("ECT Act").
+
+Full payment is required before any order is processed or medication is dispensed.
+We do not offer credit facilities or deferred payment arrangements through the
+Website.
+
+
+7. DELIVERY AND COLLECTION
+────────────────────────────────────────────────────────────────────────────────
+
+Delivery and collection are governed by our Shipping & Delivery Policy, which forms
+part of these Terms and is incorporated herein by reference. Risk in goods passes to
+you upon delivery in accordance with the Consumer Protection Act 68 of 2008.
+
+Certain pharmaceutical products require temperature-controlled storage and transport
+("cold-chain" items). Cold-chain items are only eligible for delivery to addresses
+within a 5km radius of our Overport branch (sparkport.co.za/branches/overport).
+Long-distance delivery is not available for temperature-sensitive medications.
+Customers whose address falls outside this radius are required to collect their order
+in-store. If you are unsure whether your medication is a cold-chain item or whether
+your address qualifies for delivery, please contact our Overport branch directly
+before placing your order.
+
+
+8. RETURNS, REFUNDS, AND CONSUMER RIGHTS
+────────────────────────────────────────────────────────────────────────────────
+
+Your consumer rights are protected by the Consumer Protection Act 68 of 2008 ("CPA").
+Nothing in these Terms limits or excludes any right you are entitled to under the CPA.
+
+Cooling-Off Period (Online Purchases)
+  In accordance with Section 44 of the ECT Act, you have the right to cancel an
+  online order within 7 days of receiving goods, without reason, provided the goods
+  are returned in their original, unopened, and undamaged condition. This right does
+  not apply to prescription medication.
+
+Exclusions
+  We are unable to accept returns of: dispensed prescription medication; opened or
+  used health and hygiene products; products that have been tampered with; or
+  products returned beyond the applicable return period. Refunds will not be issued
+  for prescription medication.
+
+How to Return
+  To initiate a return or refund, please contact us at online@sparkport.co.za within
+  the applicable period, quoting your order number and reason for return. Approved
+  refunds are processed to the original payment method within 1–7 business days.
+
+
+9. INTELLECTUAL PROPERTY
+────────────────────────────────────────────────────────────────────────────────
+
+All content on the Website — including but not limited to text, graphics, logos,
+images, product descriptions, software, and the Website's overall design and
+compilation — is the property of Sparkport Pharmacy or its content licensors and is
+protected by South African copyright law and applicable international treaties.
+
+You may not copy, reproduce, distribute, publish, transmit, modify, or create
+derivative works from any content on the Website without our prior written
+permission. You are granted a limited, non-exclusive, non-transferable licence to
+access and use the Website for personal, non-commercial purposes only.
+
+
+10. MEDICAL DISCLAIMER
+────────────────────────────────────────────────────────────────────────────────
+
+Information provided on the Website, including product descriptions, health articles,
+and general wellness content, is for informational purposes only and does not
+constitute medical advice. It is not a substitute for professional medical advice,
+diagnosis, or treatment from a qualified healthcare practitioner.
+
+Always seek the advice of your doctor, pharmacist, or other qualified health provider
+with any questions you have regarding a medical condition or medication. Never
+disregard professional medical advice or delay seeking it because of something you
+have read on this Website.
+
+
+11. LIMITATION OF LIABILITY
+────────────────────────────────────────────────────────────────────────────────
+
+To the fullest extent permitted by applicable law, Sparkport Pharmacy shall not be
+liable for any indirect, incidental, special, consequential, or punitive damages
+arising out of or in connection with your use of the Website or Services, even if we
+have been advised of the possibility of such damages.
+
+Our total aggregate liability to you for any claim arising out of or relating to
+these Terms or the Services shall not exceed the total amount paid by you for the
+specific order giving rise to the claim.
+
+Nothing in these Terms excludes or limits our liability for death or personal injury
+caused by our negligence, fraud or fraudulent misrepresentation, or any liability
+that cannot be excluded or limited by South African law, including liability under
+the Consumer Protection Act 68 of 2008.
+
+
+12. INDEMNIFICATION
+────────────────────────────────────────────────────────────────────────────────
+
+You agree to indemnify, defend, and hold harmless Sparkport Pharmacy, its directors,
+employees, pharmacists, agents, and suppliers from and against any claims,
+liabilities, damages, losses, costs, and expenses (including reasonable legal fees)
+arising out of or in connection with: (a) your use of the Website or Services;
+(b) your breach of these Terms; (c) the submission of a false, fraudulent, or invalid
+prescription; or (d) your violation of any applicable law or the rights of any third
+party.
+
+
+13. PRIVACY AND DATA PROTECTION
+────────────────────────────────────────────────────────────────────────────────
+
+Your use of the Website is also governed by our Privacy Policy, which is incorporated
+into these Terms by reference. By using the Website, you consent to the collection,
+processing, and use of your personal information as described in our Privacy Policy,
+in accordance with the Protection of Personal Information Act 4 of 2013 ("POPIA").
+
+
+14. THIRD-PARTY WEBSITES AND SERVICES
+────────────────────────────────────────────────────────────────────────────────
+
+The Website may contain links to third-party websites or services, including medical
+aid portals, health information resources, and payment processors. These links are
+provided for your convenience only. Sparkport Pharmacy does not endorse, control, or
+accept responsibility for the content, privacy practices, or terms of any third-party
+website. Your use of third-party websites is at your own risk.
+
+
+15. CHANGES TO THESE TERMS
+────────────────────────────────────────────────────────────────────────────────
+
+Sparkport Pharmacy reserves the right to amend these Terms at any time. Updated
+Terms will be published on this page with a revised "Last updated" date. Your
+continued use of the Website after any changes constitutes your acceptance of the
+updated Terms. We encourage you to review these Terms periodically. Where changes
+are material, we will endeavour to notify registered users via email.
+
+
+16. GOVERNING LAW AND JURISDICTION
+────────────────────────────────────────────────────────────────────────────────
+
+These Terms are governed by and construed in accordance with the laws of the Republic
+of South Africa. You agree to submit to the exclusive jurisdiction of the courts of
+Durban, KwaZulu-Natal for any disputes arising out of or in connection with these
+Terms or the Services, without prejudice to our right to seek urgent or injunctive
+relief in any competent court.
+
+In the event of a dispute, the parties agree to first attempt to resolve the matter
+through good-faith negotiation. If the dispute is not resolved within 20 business
+days, either party may refer the matter to mediation or arbitration before a
+mutually agreed mediator/arbitrator. Nothing in this clause prevents a consumer from
+exercising their rights under the Consumer Protection Act 68 of 2008, including
+referral to the National Consumer Commission or Consumer Court.
+
+
+17. CONTACT US
+────────────────────────────────────────────────────────────────────────────────
+
+If you have any questions, concerns, or complaints regarding these Terms or our
+Services, please contact us:
+
+  Sparkport Pharmacy
+  Email:   online@sparkport.co.za
+  Website: www.sparkport.co.za
+  Registered with the South African Pharmacy Council (SAPC)
+  Operating across KwaZulu-Natal, South Africa
+
+Regulatory Bodies:
+  SAHPRA (SA Health Products Regulatory Authority) — www.sahpra.org.za
+  SAPC (South African Pharmacy Council)            — www.pharmcouncil.co.za
+  POPIA InfoRegulator                              — www.inforegulator.org.za
+  Dept. of Health (National)                       — www.health.gov.za
+
+================================================================================
+END OF TERMS & CONDITIONS
+================================================================================

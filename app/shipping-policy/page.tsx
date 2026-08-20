@@ -210,7 +210,7 @@ export default function ShippingPolicyPage() {
               including but not limited to:
             </p>
             <ul className="list-disc list-inside space-y-2 text-neutral-600! mb-4 ml-2">
-              <li>Temperature-sensitive medications requiring cold chain management — <span className="font-semibold">these items are strictly available for in-store collection only and cannot be delivered under any circumstances.</span></li>
+              <li>Temperature-sensitive medications requiring cold chain management — <span className="font-semibold">delivery is only available to addresses within a 5km radius of our <a href="/branches/overport" className="text-[#009eb9] hover:underline">Overport branch</a>. Long-distance delivery of cold chain items is not offered; if your address falls outside this radius you are required to collect in-store.</span></li>
               <li>Controlled substances where in-person identification or prescription surrender is legally required.</li>
               <li>Bulky or hazardous items as classified under relevant transport legislation.</li>
             </ul>
