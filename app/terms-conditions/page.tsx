@@ -191,10 +191,10 @@ export default function TermsConditionsPage() {
               delivery in accordance with the Consumer Protection Act 68 of 2008.
             </p>
             <p className="text-neutral-600! mt-4">
-              Certain pharmaceutical products require temperature-controlled storage and transport (&ldquo;cold-chain&rdquo; items).
-              Cold-chain items are only eligible for delivery to addresses <span className="font-semibold text-[#184363]">within a 5km radius of our <a href="/branches/overport" className="text-[#009eb9] hover:underline">Overport branch</a></span>. Long-distance delivery is not available for temperature-sensitive medications.
-              Customers whose address falls outside this radius are required to collect their order in-store.
-              If you are unsure whether your medication is a cold-chain item or whether your address qualifies for delivery, please contact our Overport branch directly before placing your order.
+              Certain pharmaceutical products require temperature-controlled storage and transport
+("cold-chain" items). Cold-chain items must be collected in-store from your preferred branch. 
+If you are unsure whether your medication is a cold-chain item, please contact us at 
+<a href="mailto:online@sparkport.co.za" className="text-[#009eb9] hover:underline"> online@sparkport.co.za</a>
             </p>
           </section>
 
