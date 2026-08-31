@@ -15,7 +15,7 @@ export default function TermsConditionsPage() {
           <p className="text-white/60 text-xs uppercase tracking-widest mb-3">Home / Terms &amp; Conditions</p>
           <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-3">Terms &amp; Conditions</h1>
           <p className="text-white/70">The rules governing your use of Sparkport Pharmacy&apos;s website and services</p>
-          <p className="text-white/50 text-sm mt-3">Last updated: 2 July 2026 · Version 2.0</p>
+          <p className="text-white/50 text-sm mt-3">Last updated: 31 August 2026 · Version 2.1</p>
         </div>
       </div>
 
@@ -295,9 +295,34 @@ If you are unsure whether your medication is a cold-chain item, please contact u
             </p>
           </section>
 
-          {/* 13. Privacy */}
+          {/* 13. Rewards Programme */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">13. Privacy and Data Protection</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">13. Sparkport+ Rewards Programme</h2>
+            <p className="text-neutral-600! mb-4">
+              The Sparkport+ Rewards Programme ("Programme") allows eligible customers to earn points on qualifying purchases
+              and prescription fulfilments. Participation in the Programme is voluntary and subject to the following terms:
+            </p>
+            <div className="space-y-3">
+              {[
+                'Membership is available to South African residents aged 18 years or older who hold a registered Sparkport customer account.',
+                'Points are awarded at our sole discretion and may not be earned on all products, promotions, or payment methods. Points earned are approximate and may be adjusted in the event of a return or dispute.',
+                'Points have no cash or monetary value and are non-transferable. They may not be redeemed for cash, bank transfer, or any cash equivalent.',
+                'Points and tier status may be redeemed against qualifying purchases as communicated through the Programme from time to time.',
+                'Sparkport Pharmacy reserves the right to modify, suspend, or terminate the Programme, or any aspect of it, at any time without prior notice. Unused points may be cancelled or adjusted upon Programme termination.',
+                'Any abuse of the Programme — including fraudulent earning of points, misuse of member benefits, or violation of these Terms — will result in immediate cancellation of membership and forfeiture of all accrued points.',
+                'Points expire 24 months from the date they were earned if not redeemed within that period, unless otherwise communicated.',
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-1 bg-[#009eb9] rounded-full mt-1" />
+                  <p className="text-neutral-600!">{item}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 14. Privacy */}
+          <section>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">14. Privacy and Data Protection</h2>
             <p className="text-neutral-600!">
               Your use of the Website is also governed by our{' '}
               <a href="/privacy-policy" className="text-[#009eb9] hover:underline font-medium">Privacy Policy</a>, which is
@@ -307,9 +332,9 @@ If you are unsure whether your medication is a cold-chain item, please contact u
             </p>
           </section>
 
-          {/* 14. Third-Party Links */}
+          {/* 15. Third-Party Links */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">14. Third-Party Websites and Services</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">15. Third-Party Websites and Services</h2>
             <p className="text-neutral-600!">
               The Website may contain links to third-party websites or services, including medical aid portals, health
               information resources, and payment processors. These links are provided for your convenience only. Sparkport
@@ -318,9 +343,9 @@ If you are unsure whether your medication is a cold-chain item, please contact u
             </p>
           </section>
 
-          {/* 15. Changes */}
+          {/* 16. Changes */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">15. Changes to These Terms</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">16. Changes to These Terms</h2>
             <p className="text-neutral-600!">
               Sparkport Pharmacy reserves the right to amend these Terms at any time. Updated Terms will be published on this
               page with a revised "Last updated" date. Your continued use of the Website after any changes constitutes your
@@ -329,9 +354,9 @@ If you are unsure whether your medication is a cold-chain item, please contact u
             </p>
           </section>
 
-          {/* 16. Governing Law */}
+          {/* 17. Governing Law */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">16. Governing Law and Jurisdiction</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">17. Governing Law and Jurisdiction</h2>
             <p className="text-neutral-600! mb-4">
               These Terms are governed by and construed in accordance with the laws of the Republic of South Africa. You
               agree to submit to the exclusive jurisdiction of the courts of Durban, KwaZulu-Natal for any disputes arising
@@ -347,9 +372,9 @@ If you are unsure whether your medication is a cold-chain item, please contact u
             </p>
           </section>
 
-          {/* 17. Contact */}
+          {/* 18. Contact */}
           <section>
-            <h2 className="text-2xl font-bold! text-[#184363] mb-4">17. Contact Us</h2>
+            <h2 className="text-2xl font-bold! text-[#184363] mb-4">18. Contact Us</h2>
             <p className="text-neutral-600! mb-6">
               If you have any questions, concerns, or complaints regarding these Terms or our Services, please contact us:
             </p>

@@ -13,6 +13,7 @@ import StoresSection from './sections/StoresSection'
 import EnquiriesSection from './sections/EnquiriesSection'
 import SubscribersSection from './sections/SubscribersSection'
 import PromotionsSection from './sections/PromotionsSection'
+import RewardsSection from './sections/RewardsSection'
 
 type Section = 'dashboard' | 'prescriptions' | 'orders' | 'stores' | 'promotions' | 'subscriptions' | 'enquiries' | 'rewards'
 
@@ -241,10 +242,7 @@ export default function FranchiseAdminDashboard({ initialManager }: { initialMan
           )}
 
           {activeSection === 'rewards' && (
-            <ComingSoon
-              title="Rewards"
-              description="Track and manage patient loyalty points, reward tiers, and redemption activity."
-            />
+            <RewardsSection />
           )}
         </div>
       </main>

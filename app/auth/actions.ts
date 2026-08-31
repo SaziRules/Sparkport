@@ -2,6 +2,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { calculateTier } from '@/lib/rewards';
+import { sendWelcomeEmail } from '@/lib/email';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -77,11 +79,35 @@ export async function signUp(data: SignUpData) {
     };
   }
 
-  // Match any anonymous prescriptions
-  // This will be handled by the database trigger we created earlier
-  
-  return { 
-    success: true, 
+  // Award 50-point welcome bonus + send welcome email — fire and forget
+  const SIGNUP_BONUS = 50;
+  const memberNumber = profileData?.member_number ?? undefined;
+  Promise.all([
+    supabase.from('rewards_transactions').insert({
+      user_id: authData.user.id,
+      points: SIGNUP_BONUS,
+      type: 'signup',
+      description: 'Welcome bonus',
+      reference: null,
+    }),
+    supabase.from('rewards').upsert({
+      user_id: authData.user.id,
+      points: SIGNUP_BONUS,
+      tier: calculateTier(SIGNUP_BONUS),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' }),
+    memberNumber
+      ? sendWelcomeEmail({
+          to: data.email,
+          firstName: data.firstName,
+          memberNumber,
+          points: SIGNUP_BONUS,
+        })
+      : Promise.resolve(),
+  ]).catch(err => console.error('Post-signup setup failed:', err));
+
+  return {
+    success: true,
     userId: authData.user.id,
     needsEmailVerification: !authData.user.email_confirmed_at
   };

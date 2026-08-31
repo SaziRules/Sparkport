@@ -230,7 +230,6 @@ export default function CheckoutPage() {
       }
 
       if (data.redirect) {
-        // Fire-and-forget profile save
         if (isLoggedIn && saveToProfile && !isInStore) {
           fetch('/api/account/profile', {
             method: 'PATCH',

@@ -15,7 +15,8 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
     pathname?.startsWith('/branches') ||
     pathname?.startsWith('/health-care-services') ||
     pathname?.startsWith('/get-rewarded') ||
-    pathname?.startsWith('/health-insurance');
+    pathname?.startsWith('/health-insurance') ||
+    pathname?.startsWith('/events');
 
   return (
     <main className={isFullWidth ? 'mx-auto max-w-full' : 'mx-auto max-w-385'}>

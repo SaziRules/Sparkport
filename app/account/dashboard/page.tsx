@@ -71,6 +71,16 @@ type Order = {
   items: { id: number; name: string; quantity: number }[];
 };
 
+type RewardsData = {
+  points: number;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  enrolled: boolean;
+  nextTier: string | null;
+  nextThreshold: number | null;
+  progressPct: number;
+  transactions: { id: string; points: number; type: string; description: string; created_at: string }[];
+};
+
 type JourneyEntry = {
   id: string;
   status: string;
@@ -341,6 +351,13 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 const SA_PROVINCES = ['Eastern Cape','Free State','Gauteng','KwaZulu-Natal','Limpopo','Mpumalanga','North West','Northern Cape','Western Cape'];
 
+const TIER_CONFIG = {
+  bronze:   { label: 'Bronze',   color: 'from-amber-600 to-amber-400',     ring: 'ring-amber-400',   text: 'text-amber-600',   bg: 'bg-amber-50' },
+  silver:   { label: 'Silver',   color: 'from-slate-500 to-slate-300',     ring: 'ring-slate-400',   text: 'text-slate-600',   bg: 'bg-slate-50' },
+  gold:     { label: 'Gold',     color: 'from-yellow-500 to-yellow-300',   ring: 'ring-yellow-400',  text: 'text-yellow-600',  bg: 'bg-yellow-50' },
+  platinum: { label: 'Platinum', color: 'from-cyan-600 to-teal-400',       ring: 'ring-cyan-400',    text: 'text-cyan-700',    bg: 'bg-cyan-50' },
+} as const;
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -368,6 +385,8 @@ export default function DashboardPage() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [journeyLog, setJourneyLog] = useState<JourneyEntry[]>([]);
   const [journeyLoading, setJourneyLoading] = useState(false);
+  const [rewards, setRewards] = useState<RewardsData | null>(null);
+  const [joiningRewards, setJoiningRewards] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -394,6 +413,11 @@ export default function DashboardPage() {
         .then(r => r.ok ? r.json() : [])
         .then((orders: Order[]) => setRecentOrders(orders.slice(0, 3)))
         .finally(() => setOrdersLoading(false));
+
+      fetch('/api/account/rewards')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => setRewards(data))
+        .catch(() => {});
 
       // Realtime: reflect status updates from manager immediately
       const channel = supabase
@@ -615,6 +639,128 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            {/* Rewards — opt-in prompt for unenrolled customers */}
+            {rewards && !rewards.enrolled && (
+              <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-[#009eb9]/40 bg-gradient-to-br from-[#009eb9]/5 to-[#184363]/5 p-6 lg:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#184363] to-[#009eb9] flex items-center justify-center shrink-0 shadow-lg">
+                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-black text-[#184363] mb-1">Join Sparkport+ Rewards</h3>
+                  <p className="text-sm text-neutral-600">Earn points on every purchase and unlock exclusive discounts. Get 50 bonus points just for joining — free, instant, no card needed.</p>
+                </div>
+                <button
+                  disabled={joiningRewards}
+                  onClick={async () => {
+                    setJoiningRewards(true);
+                    try {
+                      const res = await fetch('/api/account/rewards', { method: 'POST' });
+                      if (res.ok) {
+                        const data = await fetch('/api/account/rewards').then(r => r.json());
+                        setRewards(data);
+                      }
+                    } finally {
+                      setJoiningRewards(false);
+                    }
+                  }}
+                  className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-[#009eb9] hover:bg-[#184363] text-white font-bold rounded-xl transition-colors shadow-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {joiningRewards ? (
+                    <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Joining…</>
+                  ) : (
+                    <>Join & Earn 50 pts<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Rewards card — enrolled members */}
+            {rewards && rewards.enrolled && (() => {
+              const tc = TIER_CONFIG[rewards.tier];
+              return (
+                <div className="relative overflow-hidden rounded-2xl bg-[#184363] text-white shadow-xl">
+                  {/* Background glow */}
+                  <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[#009eb9]/20 blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+
+                  <div className="relative flex flex-col lg:flex-row gap-6 p-6 lg:p-8">
+
+                    {/* Left — points + tier */}
+                    <div className="flex items-center gap-5 lg:min-w-[220px]">
+                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${tc.color} flex items-center justify-center shadow-lg ring-2 ${tc.ring} ring-offset-2 ring-offset-[#184363] shrink-0`}>
+                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">My Points</p>
+                        <p className="text-5xl font-black leading-none">{rewards.points.toLocaleString()}</p>
+                        <span className={`inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-white/15 text-white`}>
+                          {tc.label} Member
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="hidden lg:block w-px bg-white/10 self-stretch" />
+                    <div className="lg:hidden h-px bg-white/10" />
+
+                    {/* Middle — tier progress */}
+                    <div className="flex-1 flex flex-col justify-center">
+                      {rewards.nextTier ? (
+                        <>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-white/80">{tc.label}</span>
+                            <span className="text-sm font-semibold text-white/80 capitalize">{rewards.nextTier}</span>
+                          </div>
+                          <div className="h-2.5 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full bg-gradient-to-r ${tc.color} rounded-full transition-all duration-700`}
+                              style={{ width: `${rewards.progressPct}%` }}
+                            />
+                          </div>
+                          <p className="text-white/50 text-xs mt-2">
+                            {(rewards.nextThreshold! - rewards.points).toLocaleString()} pts to {rewards.nextTier}
+                          </p>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          </div>
+                          <p className="text-white font-bold">Maximum tier reached!</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="hidden lg:block w-px bg-white/10 self-stretch" />
+
+                    {/* Right — recent transactions */}
+                    <div className="lg:w-56 shrink-0">
+                      <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">Recent Activity</p>
+                      {rewards.transactions.length === 0 ? (
+                        <p className="text-white/40 text-xs">No activity yet</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {rewards.transactions.slice(0, 4).map(tx => (
+                            <div key={tx.id} className="flex items-center justify-between gap-3">
+                              <p className="text-xs text-white/70 truncate">{tx.description}</p>
+                              <span className={`text-xs font-bold shrink-0 ${tx.points > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {tx.points > 0 ? '+' : ''}{tx.points}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Filter tabs + view toggle */}
             <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

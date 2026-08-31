@@ -255,11 +255,10 @@ export default function Footer() {
             </p>
 
             <div className="flex items-center gap-3">
-              <Image src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" width={48} height={24} className="h-6 w-auto" />
-              <Image src="https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" alt="Mastercard" width={48} height={24} className="h-6 w-auto" />
-              <div className="px-2 py-1 bg-white text-black text-xs font-semibold">
-                PayFast
-              </div>
+              <Image src="https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" alt="Mastercard" width={48} height={30} className="h-7 w-auto" />
+              <Image src="/images/payments/Visa.svg" alt="Visa" width={80} height={30} className="h-7 object-contain" />
+              <Image src="/images/payments/instant-eft.svg" alt="Instant EFT" width={80} height={30} className="h-7 object-contain" />
+              <Image src="/images/payments/payfast.png" alt="PayFast" width={80} height={30} className="h-7 w-auto" />
             </div>
 
           </div>

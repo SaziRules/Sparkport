@@ -12,6 +12,7 @@ import OrdersSection from './sections/OrdersSection'
 import EnquiriesSection from './sections/EnquiriesSection'
 import SubscribersSection from './sections/SubscribersSection'
 import PromotionsSection from './sections/PromotionsSection'
+import RewardsSection from './sections/RewardsSection'
 
 type Section = 'dashboard' | 'prescriptions' | 'orders' | 'promotions' | 'subscriptions' | 'enquiries' | 'rewards'
 
@@ -217,10 +218,7 @@ export default function StoreManagerDashboard({ initialManager }: { initialManag
           )}
 
           {activeSection === 'rewards' && (
-            <ComingSoon
-              title="Rewards"
-              description="Track patient loyalty points, reward tiers, and redemption activity."
-            />
+            <RewardsSection />
           )}
         </div>
       </main>
