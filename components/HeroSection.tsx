@@ -53,13 +53,14 @@ const FALLBACK_TILES = [
 export default function HeroSection() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [mainSlides, setMainSlides] = useState<typeof FALLBACK_SLIDES>([]);
+  const [mainSlides, setMainSlides] = useState<typeof FALLBACK_SLIDES>(FALLBACK_SLIDES);
   const [smallCards, setSmallCards] = useState<typeof FALLBACK_TILES>(FALLBACK_TILES);
 
   useEffect(() => {
     fetch('/api/banners')
       .then(r => r.json())
       .then((data: { image_url: string; title: string; description: string; cta_text: string; cta_link: string }[]) => {
+        setActiveSlide(0);
         setMainSlides(
           Array.isArray(data) && data.length > 0
             ? data.map(b => ({

@@ -41,7 +41,7 @@ function buildPayFastUrl(params: {
   const MERCHANT_ID  = process.env.PAYFAST_MERCHANT_ID  ?? '';
   const MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY ?? '';
   const PASSPHRASE   = process.env.PAYFAST_PASSPHRASE || undefined;
-  const SITE_URL     = (process.env.NEXT_PUBLIC_SITE_URL ?? '').replace(/\/$/, '');
+  const SITE_URL     = (process.env.SITE_URL ?? '').replace(/\/$/, '');
   const isSandbox    = process.env.PAYFAST_SANDBOX === 'true';
 
   const pfBase = isSandbox
