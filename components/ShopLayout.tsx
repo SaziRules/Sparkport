@@ -3,9 +3,13 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { isPromotionalCategory } from '@/lib/wordpress/filters';
 import type { Product, Category } from '@/lib/wordpress';
 import { useCart } from '@/contexts/CartContext';
+import WishlistHeart from './WishlistHeart';
+import ShopProductCard from './ShopProductCard';
+import ProductImagePlaceholder from './ProductImagePlaceholder';
 
 export type ShopProduct = Product;
 
@@ -47,11 +51,35 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
 }
 
 export default function ShopLayout({ products, categories, hero, linkSource, initialCategory, initialQuery }: Props) {
+  const router = useRouter();
+  const pathname = usePathname() ?? '/shop';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'All Products');
-  const [priceRange, setPriceRange] = useState([0, 500]);
+  // Sync URL-driven category changes on client-side navigation (useState init only runs on mount)
+  useEffect(() => {
+    setSelectedCategory(initialCategory || 'All Products');
+  }, [initialCategory]);
+  // Price slider bounds are derived from the actual prices in the current product set,
+  // not a hardcoded 0–500. Changes whenever products change (e.g. category switch).
+  const priceBounds = (() => {
+    const prices = products.map((p) => p.salePrice || 0).filter((p) => p > 0);
+    if (prices.length === 0) return { min: 0, max: 0 };
+    return { min: Math.floor(Math.min(...prices)), max: Math.ceil(Math.max(...prices)) };
+  })();
+  const [priceRange, setPriceRange] = useState<[number, number]>([priceBounds.min, priceBounds.max]);
+  // Reset the price range when the products set changes so previously-customised
+  // bounds don't hide products from a different catalogue slice.
+  useEffect(() => {
+    setPriceRange([priceBounds.min, priceBounds.max]);
+    // Re-sync only when the real bounds actually change (not on every render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceBounds.min, priceBounds.max]);
   const [searchQuery, setSearchQuery] = useState(initialQuery ?? '');
+  // Sync URL-driven search on client-side navigation
+  useEffect(() => {
+    setSearchQuery(initialQuery ?? '');
+  }, [initialQuery]);
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
@@ -96,7 +124,25 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
   const permanentCategories = categories
     ?.filter(c => c.slug !== 'uncategorized' && !isPromotionalCategory(c.slug))
     ?? [];
-  const categoryList = ['All Products', ...permanentCategories.map(c => c.name)];
+  const rawCategoryList = Array.from(
+    new Set(
+      ['All Products', ...permanentCategories.map((c) => c.name)]
+        .map((name) => name.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  // Pin the currently-selected category (if any) directly below "All Products"
+  // so the active filter stays visible at the top of a potentially long list.
+  const categoryList = (() => {
+    if (!selectedCategory || selectedCategory === 'All Products') return rawCategoryList;
+    const idx = rawCategoryList.indexOf(selectedCategory);
+    if (idx <= 1) return rawCategoryList; // already at the top (slot 0 or 1)
+    const copy = [...rawCategoryList];
+    const [picked] = copy.splice(idx, 1);
+    copy.splice(1, 0, picked);
+    return copy;
+  })();
 
   // Filter uses product.categories (all categories) not just the primary one
   const filtered = products.filter(product => {
@@ -122,18 +168,76 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
   }, [selectedCategory, searchQuery, priceRange[1], sortBy]);
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen bg-neutral-50">
 
-      <div
-        className="fixed inset-0 -z-10 bg-cover bg-center"
-        style={{ backgroundImage: "url('/images/heart-health.jpg')" }}
-      />
-      <div className="fixed inset-0 -z-10 bg-white/80" />
+      {/* Full-bleed hero, rendered outside the padded content container */}
+      {hero}
 
-      <main className="relative py-12 lg:py-16 px-4 lg:px-6">
-        <div className="max-w-full mx-auto">
+      {/* Breadcrumb / context bar */}
+      <div className="bg-white border-y border-neutral-200 shadow-sm">
+        <div className="max-w-385 mx-auto px-4 lg:px-6 py-3 lg:py-4 flex flex-wrap items-center justify-between gap-3">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-neutral-500 min-w-0">
+            <Link href="/" className="inline-flex items-center gap-1 hover:text-[#009eb9] transition-colors shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.5 1.5 0 012.122 0l8.954 8.955M4.5 9.75v10.125a1.125 1.125 0 001.125 1.125h2.25A1.125 1.125 0 009 19.875V15a1.125 1.125 0 011.125-1.125h3.75A1.125 1.125 0 0115 15v4.875a1.125 1.125 0 001.125 1.125h2.25a1.125 1.125 0 001.125-1.125V9.75" />
+              </svg>
+              <span className="font-semibold">Home</span>
+            </Link>
+            <span className="text-neutral-300" aria-hidden="true">/</span>
+            <Link href={pathname} className="font-semibold hover:text-[#009eb9] transition-colors shrink-0">
+              {pathname.includes('promotions') ? 'Promotions' : 'Shop'}
+            </Link>
+            {selectedCategory && selectedCategory !== 'All Products' && (
+              <>
+                <span className="text-neutral-300" aria-hidden="true">/</span>
+                <span className="font-extrabold text-[#184363] truncate">{selectedCategory}</span>
+              </>
+            )}
+            {searchQuery && (
+              <>
+                <span className="text-neutral-300" aria-hidden="true">/</span>
+                <span className="inline-flex items-center gap-1.5 text-[#184363] font-semibold min-w-0">
+                  <svg className="w-3 h-3 text-[#009eb9] shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                  </svg>
+                  <span className="truncate">&ldquo;{searchQuery}&rdquo;</span>
+                </span>
+              </>
+            )}
+          </nav>
 
-          {hero}
+          <div className="flex items-center gap-3 shrink-0">
+            {(selectedCategory !== 'All Products' || searchQuery || priceRange[0] !== priceBounds.min || priceRange[1] !== priceBounds.max) && (
+              <button
+                type="button"
+                onClick={() => {
+                  router.push(pathname);
+                  setSelectedCategory('All Products');
+                  setSearchQuery('');
+                  setPriceRange([priceBounds.min, priceBounds.max]);
+                  setSortBy('default');
+                  setDisplayLimit(PAGE_SIZE);
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-neutral-500 hover:text-rose-600 transition-colors"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear
+              </button>
+            )}
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-extrabold text-[#184363] tabular-nums leading-none">{sorted.length}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                {sorted.length === 1 ? 'result' : 'results'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative pt-8 pb-12 lg:pt-10 lg:pb-16 px-4 lg:px-6">
+        <div className="max-w-385 mx-auto">
 
           <div className="flex flex-col lg:flex-row gap-6">
 
@@ -162,7 +266,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                 <div className="mb-6">
                   <label className="block text-sm font-bold! text-[#184363] mb-3">Categories</label>
                   <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
-                    {categoryList.map((category) => {
+                    {categoryList.map((category, idx) => {
                       const count = category === 'All Products'
                         ? products.length
                         : (countByCategory.get(category) ?? 0);
@@ -170,7 +274,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                       return (
                         <button
                           type="button"
-                          key={category}
+                          key={`cat-${idx}-${category}`}
                           onClick={() => setSelectedCategory(category)}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
                             active
@@ -190,21 +294,69 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                   </div>
                 </div>
 
-                {/* Price Range */}
+                {/* Price Range — dual-handle */}
                 <div className="mb-6">
-                  <label className="block text-sm font-bold! text-[#184363] mb-3">Price Range</label>
-                  <div className="px-1">
-                    <input
-                      type="range"
-                      min="0"
-                      max="500"
-                      value={priceRange[1]}
-                      onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
-                      className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-[#009eb9]"
-                    />
-                    <div className="flex justify-between items-center mt-3">
-                      <span className="text-sm text-neutral-600">R0</span>
-                      <span className="text-sm font-bold! text-[#184363]">R{priceRange[1]}</span>
+                  <div className="flex items-baseline justify-between mb-4">
+                    <label className="block text-sm font-bold! text-[#184363]">Price Range</label>
+                    <span className="text-[10px] font-semibold text-neutral-400 tabular-nums">
+                      R{priceBounds.min}–R{priceBounds.max}
+                    </span>
+                  </div>
+                  {(() => {
+                    const span = Math.max(1, priceBounds.max - priceBounds.min);
+                    const leftPct = ((priceRange[0] - priceBounds.min) / span) * 100;
+                    const rightPct = 100 - ((priceRange[1] - priceBounds.min) / span) * 100;
+                    const disabled = priceBounds.max === priceBounds.min;
+                    return (
+                      <div className="relative h-5 px-1">
+                        {/* Base track */}
+                        <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 h-1 bg-neutral-200 rounded-full" />
+                        {/* Filled range between handles */}
+                        <div
+                          className="absolute top-1/2 -translate-y-1/2 h-1 bg-[#009eb9] rounded-full"
+                          style={{ left: `calc(${leftPct}% )`, right: `calc(${rightPct}%)` }}
+                        />
+                        {/* Min handle */}
+                        <input
+                          type="range"
+                          min={priceBounds.min}
+                          max={priceBounds.max}
+                          step={1}
+                          value={priceRange[0]}
+                          disabled={disabled}
+                          onChange={(e) => {
+                            const v = Math.min(parseInt(e.target.value), priceRange[1]);
+                            setPriceRange([v, priceRange[1]]);
+                          }}
+                          aria-label="Minimum price"
+                          className="dual-range"
+                        />
+                        {/* Max handle */}
+                        <input
+                          type="range"
+                          min={priceBounds.min}
+                          max={priceBounds.max}
+                          step={1}
+                          value={priceRange[1]}
+                          disabled={disabled}
+                          onChange={(e) => {
+                            const v = Math.max(parseInt(e.target.value), priceRange[0]);
+                            setPriceRange([priceRange[0], v]);
+                          }}
+                          aria-label="Maximum price"
+                          className="dual-range"
+                        />
+                      </div>
+                    );
+                  })()}
+                  <div className="flex justify-between items-center mt-4 gap-3">
+                    <div className="flex-1 flex flex-col items-start">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">Min</span>
+                      <span className="text-sm font-extrabold text-[#184363] tabular-nums">R{priceRange[0]}</span>
+                    </div>
+                    <div className="flex-1 flex flex-col items-end">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">Max</span>
+                      <span className="text-sm font-extrabold text-[#009eb9] tabular-nums">R{priceRange[1]}</span>
                     </div>
                   </div>
                 </div>
@@ -213,10 +365,16 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                 <button
                   type="button"
                   onClick={() => {
+                    // Reset every piece of filter state directly. router.push covers the
+                    // case where filters came from the URL; the explicit setters cover
+                    // the case where the user set filters via the sidebar (URL unchanged,
+                    // so the sync useEffects wouldn't fire).
+                    router.push(pathname);
                     setSelectedCategory('All Products');
-                    setPriceRange([0, 500]);
                     setSearchQuery('');
+                    setPriceRange([priceBounds.min, priceBounds.max]);
                     setSortBy('default');
+                    setDisplayLimit(PAGE_SIZE);
                   }}
                   className="w-full px-4 py-2 border-2 border-[#009eb9] text-[#009eb9] font-semibold! rounded-lg hover:bg-[#009eb9] hover:text-white transition-colors text-sm"
                 >
@@ -297,102 +455,12 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
               {viewMode === 'grid' && displayed.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {displayed.map((product, index) => (
-                    <div
-                      key={product.id ?? index}
-                      className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative"
-                    >
-                      {/* Left badge: Out of Stock > Hot Deal */}
-                      {!product.inStock && (
-                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
-                          Out of Stock
-                        </div>
-                      )}
-                      {product.inStock && product.onSale && product.originalPrice > product.salePrice && (
-                        <div className="absolute top-3 left-3 px-2.5 py-1 bg-black text-white text-[10px] font-bold! rounded-full z-10">
-                          Hot Deal
-                        </div>
-                      )}
-                      {/* Right badge: Low Stock — independent, shows alongside sale badge */}
-                      {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
-                        <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
-                          Low Stock
-                        </div>
-                      )}
-                      <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
-                        <div className="relative bg-white h-56 overflow-hidden">
-                          {product.image && (
-                            <Image
-                              src={product.image}
-                              alt={product.name}
-                              fill
-                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              className={`object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale' : ''}`}
-                              priority={index < 4}
-                            />
-                          )}
-                        </div>
-                      </Link>
-                      <div className="p-5 pt-4 border-t border-neutral-100">
-                        <p className="text-xs text-[#009eb9] font-medium! mb-1">{product.category}</p>
-                        <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
-                          <h3 className="text-sm font-bold! text-[#184363] mb-2 min-h-10 line-clamp-2 hover:text-[#009eb9] transition-colors">
-                            {product.name}
-                          </h3>
-                        </Link>
-                        <StarRating rating={product.averageRating} count={product.ratingCount} />
-                        <div className="flex items-baseline gap-2 mb-2">
-                          {product.onSale && product.originalPrice > product.salePrice && (
-                            <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
-                          )}
-                          <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
-                        </div>
-                        {product.onSale && product.originalPrice > product.salePrice && (
-                          <div className="mb-2">
-                            <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold! rounded-full">
-                              You save R{(product.originalPrice - product.salePrice).toFixed(2)}
-                            </span>
-                          </div>
-                        )}
-                        {!product.inStock ? (
-                          <div className="flex-1 flex flex-col gap-1.5">
-                            <button disabled className="flex-1 px-4 py-2.5 bg-neutral-200 text-neutral-500 font-semibold! rounded-xl cursor-not-allowed text-sm">
-                              Out of Stock
-                            </button>
-                            <a href="/contact" className="text-[10px] text-[#009eb9] text-center hover:underline">
-                              Notify me when available →
-                            </a>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 bg-neutral-50 rounded-lg px-3 py-2.5 transition-all duration-150 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 visible lg:invisible lg:group-hover:visible">
-                              <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) - 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">−</button>
-                              <span className="font-semibold! text-[#184363] w-6 text-center text-sm">{getQty(product.id)}</span>
-                              <button onClick={(e) => { e.preventDefault(); setQty(product.id, getQty(product.id) + 1); }} className="text-neutral-600 hover:text-[#184363] font-bold! text-lg leading-none">+</button>
-                            </div>
-                            <button
-                              onClick={(e) => handleAdd(e, product)}
-                              disabled={addingIds.has(product.id) || addedIds.has(product.id)}
-                              className={`flex-1 px-4 py-2.5 font-semibold! rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
-                                addedIds.has(product.id)
-                                  ? 'bg-green-600 text-white'
-                                  : 'bg-[#e8f5f7] text-[#184363] hover:bg-[#009eb9] hover:text-white'
-                              }`}
-                            >
-                              {addedIds.has(product.id) ? (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : addingIds.has(product.id) ? (
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                              ) : (
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>
-                              )}
-                              {addedIds.has(product.id) ? 'Added!' : addingIds.has(product.id) ? 'Adding...' : product.onSale ? 'Grab This Deal' : 'Add to Basket'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <ShopProductCard
+                      key={`p-${index}`}
+                      product={product}
+                      linkSource={linkSource}
+                      priority={index < 4}
+                    />
                   ))}
                 </div>
               )}
@@ -402,38 +470,43 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                 <div className="space-y-4">
                   {displayed.map((product, index) => (
                     <div
-                      key={product.id ?? index}
+                      key={`p-${index}`}
                       className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-lg transition-all group"
                     >
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 p-6 relative">
-                        {/* Left badge: Out of Stock > Hot Deal */}
-                        {!product.inStock && (
-                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
-                            Out of Stock
-                          </div>
-                        )}
-                        {product.inStock && product.onSale && product.originalPrice > product.salePrice && (
-                          <div className="absolute top-3 left-3 px-2.5 py-1 bg-black text-white text-[10px] font-bold! rounded-full z-10">
-                            Hot Deal
-                          </div>
-                        )}
-                        {/* Right badge: Low Stock — independent */}
-                        {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
-                          <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
-                            Low Stock
-                          </div>
-                        )}
-                        <Link href={`/product/${product.id}?from=${linkSource}`} className="relative w-full sm:w-36 h-28 shrink-0 pt-6 sm:pt-0 block">
-                          {product.image && (
-                            <Image
-                              src={product.image}
-                              alt={product.name}
-                              fill
-                              sizes="144px"
-                              className={`object-contain mix-blend-multiply${!product.inStock ? ' grayscale' : ''}`}
-                            />
+                        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
+                          {product.inStock && product.onSale && product.originalPrice > product.salePrice && (
+                            <span key="hot-deal" className="px-2.5 py-1 bg-black text-white text-[10px] font-bold! rounded-full">
+                              Hot Deal
+                            </span>
                           )}
-                        </Link>
+                          {!product.inStock && (
+                            <span key="out-of-stock" className="px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full">
+                              Out of Stock
+                            </span>
+                          )}
+                          {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+                            <span key="low-stock" className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full">
+                              Low Stock
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative w-full sm:w-36 h-28 shrink-0 pt-6 sm:pt-0">
+                          <WishlistHeart product={product} />
+                          <Link href={`/product/${product.id}?from=${linkSource}`} className="relative block w-full h-full">
+                            {product.image ? (
+                              <Image
+                                src={product.image}
+                                alt={product.name}
+                                fill
+                                sizes="144px"
+                                className={`object-contain mix-blend-multiply${!product.inStock ? ' grayscale' : ''}`}
+                              />
+                            ) : (
+                              <ProductImagePlaceholder name={product.name} size="sm" />
+                            )}
+                          </Link>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-[#009eb9] font-medium! mb-1">{product.category}</p>
                           <Link href={`/product/${product.id}?from=${linkSource}`} className="block">
@@ -444,14 +517,17 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
                           <StarRating rating={product.averageRating} count={product.ratingCount} />
                           <div className="flex items-baseline gap-2">
                             {product.onSale && product.originalPrice > product.salePrice && (
-                              <span className="text-sm text-neutral-400 line-through">R{product.originalPrice.toFixed(2)}</span>
+                              <span className="text-sm text-neutral-400 line-through">R{(product.originalPrice * getQty(product.id)).toFixed(2)}</span>
                             )}
-                            <span className="text-xl font-extrabold! text-[#009eb9]">R{product.salePrice.toFixed(2)}</span>
+                            <span className="text-xl font-extrabold! text-[#009eb9]">R{(product.salePrice * getQty(product.id)).toFixed(2)}</span>
                           </div>
+                          {getQty(product.id) > 1 && (
+                            <p className="text-[10px] text-neutral-500 mt-0.5">R{product.salePrice.toFixed(2)} × {getQty(product.id)}</p>
+                          )}
                           {product.onSale && product.originalPrice > product.salePrice && (
                             <div className="mt-1">
                               <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold! rounded-full">
-                                You save R{(product.originalPrice - product.salePrice).toFixed(2)}
+                                You save R{((product.originalPrice - product.salePrice) * getQty(product.id)).toFixed(2)}
                               </span>
                             </div>
                           )}
@@ -520,7 +596,7 @@ export default function ShopLayout({ products, categories, hero, linkSource, ini
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

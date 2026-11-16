@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, League_Spartan } from "next/font/google";
 import "./globals.css";
 import KlaasHeader from "@/components/KlaasHeader";
 import { Analytics } from "@vercel/analytics/next";
@@ -15,6 +15,13 @@ const inter = Inter({
   display: "swap",
 });
 
+const leagueSpartan = League_Spartan({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "900",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Sparkport Pharmacy",
   description: "Quality healthcare products and services delivered to your door.",
@@ -27,7 +34,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} antialiased bg-background text-foreground relative`}>
+      <body className={`${inter.variable} ${leagueSpartan.variable} antialiased bg-background text-foreground relative`}>
         <ClientProviders>
 
           {/* FULL-BLEED HEADER */}

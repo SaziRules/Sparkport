@@ -18,7 +18,10 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
     pathname?.startsWith('/health-insurance') ||
     pathname?.startsWith('/events') ||
     pathname?.startsWith('/store-locator') ||
-    pathname?.startsWith('/contact');
+    pathname?.startsWith('/contact') ||
+    pathname?.startsWith('/compare') ||
+    pathname?.startsWith('/wishlist') ||
+    pathname?.startsWith('/shop');
 
   return (
     <main className={isFullWidth ? 'mx-auto max-w-full' : 'mx-auto max-w-385'}>

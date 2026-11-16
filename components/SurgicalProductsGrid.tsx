@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/wordpress';
 import { useCart } from '@/contexts/CartContext';
+import WishlistHeart from './WishlistHeart';
+import ProductImagePlaceholder from './ProductImagePlaceholder';
 
 export default function SurgicalProductsGrid({ products }: { products: Product[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -49,34 +51,41 @@ export default function SurgicalProductsGrid({ products }: { products: Product[]
             key={product.id}
             className="bg-white rounded-2xl shadow-md border border-neutral-200 overflow-hidden hover:shadow-xl transition-all group relative flex-none w-72 snap-start"
           >
-            {product.onSale && (
-              <div className="absolute top-3 left-3 px-3 py-1 bg-black text-white text-xs font-bold! rounded-full z-10">
-                Sale
-              </div>
-            )}
-            {!product.inStock && (
-              <div className="absolute top-3 right-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
-                Out of Stock
-              </div>
-            )}
-            {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
-              <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
-                Low Stock
-              </div>
-            )}
-            <Link href={`/product/${product.id}`} className="block">
-              <div className="relative bg-white h-56 overflow-hidden">
-                {product.image && (
-                  <Image
-                    src={product.image}
-                    alt={product.imageAlt}
-                    fill
-                    sizes="288px"
-                    className={`object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale opacity-60' : ''}`}
-                  />
-                )}
-              </div>
-            </Link>
+            <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
+              {product.onSale && (
+                <span key="sale" className="px-3 py-1 bg-black text-white text-xs font-bold! rounded-full">
+                  Sale
+                </span>
+              )}
+              {!product.inStock && (
+                <span key="out-of-stock" className="px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full">
+                  Out of Stock
+                </span>
+              )}
+              {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+                <span key="low-stock" className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full">
+                  Low Stock
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <WishlistHeart product={product} />
+              <Link href={`/product/${product.id}`} className="block">
+                <div className="relative bg-white h-56 overflow-hidden">
+                  {product.image ? (
+                    <Image
+                      src={product.image}
+                      alt={product.imageAlt}
+                      fill
+                      sizes="288px"
+                      className={`object-contain p-8 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale opacity-60' : ''}`}
+                    />
+                  ) : (
+                    <ProductImagePlaceholder name={product.name} size="md" />
+                  )}
+                </div>
+              </Link>
+            </div>
             <div className="p-5 pt-4 border-t border-neutral-100">
               <p className="text-xs text-[#009eb9] font-medium! mb-1">{product.category}</p>
               <Link href={`/product/${product.id}`} className="block">

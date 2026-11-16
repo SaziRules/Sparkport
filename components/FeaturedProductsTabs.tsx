@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/wordpress';
 import { useCart } from '@/contexts/CartContext';
+import WishlistHeart from './WishlistHeart';
+import ProductImagePlaceholder from './ProductImagePlaceholder';
 
 type TabType = 'hot-deals' | 'bestsellers' | 'new-arrivals';
 
@@ -105,8 +107,17 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
 
   return (
     <>
-      <div className="flex justify-center mb-8">
-        <div className="inline-flex bg-white rounded-xl shadow-md border border-neutral-200 p-1">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 lg:gap-8 mb-6">
+        <div className="text-left">
+          <h2 className="text-3xl lg:text-4xl font-extrabold! text-[#184363] mb-2 leading-tight">
+            Featured Products
+          </h2>
+          <p className="text-neutral-600 text-base lg:text-lg max-w-xl">
+            Discover our most popular items and exclusive deals
+          </p>
+        </div>
+
+        <div className="inline-flex self-start lg:self-end bg-white rounded-xl shadow-md border border-neutral-200 p-1">
           {tabs.map((tab) => (
             <button
               type="button"
@@ -132,27 +143,28 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
             href={`/product/${product.id}`}
             className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 hover:border-[#009eb9]/25 transition-all duration-200 group relative"
           >
-            {/* Left-side tab badge */}
-            <div className={`absolute top-3 left-3 px-3 py-1 text-white text-xs font-bold! rounded-full z-10 ${
-              active.badge === 'Hot Deal' ? 'bg-black' : 'bg-[#009eb9]'
-            }`}>
-              {active.badge}
+            {/* Left-side badge row: tab badge + stock state */}
+            <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
+              <span key="tab-badge" className={`px-3 py-1 text-white text-xs font-bold! rounded-full ${
+                active.badge === 'Hot Deal' ? 'bg-black' : 'bg-[#009eb9]'
+              }`}>
+                {active.badge}
+              </span>
+              {!product.inStock && (
+                <span key="out-of-stock" className="px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full">
+                  Out of Stock
+                </span>
+              )}
+              {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+                <span key="low-stock" className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full">
+                  Low Stock
+                </span>
+              )}
             </div>
 
-            {/* Right-side stock badge */}
-            {!product.inStock && (
-              <div className="absolute top-3 right-3 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
-                Out of Stock
-              </div>
-            )}
-            {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
-              <div className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
-                Low Stock
-              </div>
-            )}
-
             <div className="relative bg-white p-6 h-52 overflow-hidden">
-              {product.image && (
+              <WishlistHeart product={product} />
+              {product.image ? (
                 <Image
                   src={product.image}
                   alt={product.imageAlt}
@@ -160,6 +172,8 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   className={`object-contain p-6 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale opacity-60' : ''}`}
                 />
+              ) : (
+                <ProductImagePlaceholder name={product.name} size="md" />
               )}
             </div>
 
@@ -172,17 +186,20 @@ export default function FeaturedProductsTabs({ hotDeals, bestsellers, newArrival
               <div className="flex items-baseline gap-2 mb-1">
                 {product.originalPrice !== product.salePrice && (
                   <span className="text-sm text-neutral-400 line-through">
-                    R{product.originalPrice.toFixed(2)}
+                    R{(product.originalPrice * getQty(product.id)).toFixed(2)}
                   </span>
                 )}
                 <span className="text-xl font-extrabold! text-[#009eb9]">
-                  R{product.salePrice.toFixed(2)}
+                  R{(product.salePrice * getQty(product.id)).toFixed(2)}
                 </span>
               </div>
+              {getQty(product.id) > 1 && (
+                <p className="text-[10px] text-neutral-500 mb-1">R{product.salePrice.toFixed(2)} × {getQty(product.id)}</p>
+              )}
               {product.onSale && product.originalPrice > product.salePrice && (
                 <div className="mb-2">
                   <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold! rounded-full">
-                    You save R{(product.originalPrice - product.salePrice).toFixed(2)}
+                    You save R{((product.originalPrice - product.salePrice) * getQty(product.id)).toFixed(2)}
                   </span>
                 </div>
               )}

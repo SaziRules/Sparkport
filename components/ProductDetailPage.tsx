@@ -7,6 +7,10 @@ import Link from 'next/link';
 import type { Product } from '@/lib/wordpress';
 import type { ProductReview } from '@/lib/wordpress/products';
 import { useCart } from '@/contexts/CartContext';
+import { useCompare, COMPARE_MAX_ITEMS } from '@/contexts/CompareContext';
+import { useWishlist } from '@/contexts/WishlistContext';
+import WishlistHeart from './WishlistHeart';
+import ProductImagePlaceholder from './ProductImagePlaceholder';
 import DeliveryEstimate from '@/components/DeliveryEstimate';
 import ValuePropositionStrip from '@/components/ValuePropositionStrip';
 
@@ -183,8 +187,17 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
   const [isAdded, setIsAdded] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const mainButtonRef = useRef<HTMLButtonElement>(null);
   const { addToCart } = useCart();
+  const { isInCompare, addToCompare, removeFromCompare, isFull } = useCompare();
+  const inCompare = isInCompare(product.id);
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const saved = isInWishlist(product.id);
+
+  useEffect(() => {
+    setShareUrl(window.location.href);
+  }, []);
 
   const handleAdd = async () => {
     if (!product.inStock || isAdding || isAdded) return;
@@ -278,18 +291,22 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
               {/* Main Image */}
               <div className="bg-white rounded-3xl shadow-2xl shadow-neutral-200/50 overflow-hidden border border-neutral-100">
                 <div className="relative bg-linear-to-br from-neutral-50 to-white p-12 aspect-square">
-                  <div className={`absolute inset-0 transition-opacity duration-700 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`}>
-                    <div className="absolute inset-0 bg-linear-to-br from-neutral-100 to-neutral-50 animate-pulse"></div>
-                  </div>
-                  {product.image && (
-                    <Image
-                      src={product.image}
-                      alt={product.imageAlt}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                      onLoad={() => setImageLoaded(true)}
-                      className="object-contain p-12 transform transition-transform duration-700 hover:scale-105 mix-blend-multiply"
-                    />
+                  {product.image ? (
+                    <>
+                      <div className={`absolute inset-0 transition-opacity duration-700 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`}>
+                        <div className="absolute inset-0 bg-linear-to-br from-neutral-100 to-neutral-50 animate-pulse"></div>
+                      </div>
+                      <Image
+                        src={product.image}
+                        alt={product.imageAlt}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        onLoad={() => setImageLoaded(true)}
+                        className="object-contain p-12 transform transition-transform duration-700 hover:scale-105 mix-blend-multiply"
+                      />
+                    </>
+                  ) : (
+                    <ProductImagePlaceholder name={product.name} size="lg" />
                   )}
                 </div>
               </div>
@@ -351,13 +368,18 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
 
             {/* Price */}
             <div className="space-y-2">
-              <div className="flex items-baseline gap-4">
+              <div className="flex items-baseline gap-4 flex-wrap">
                 <span className="text-5xl font-black! bg-linear-to-r from-[#009eb9] to-[#00c9d7] bg-clip-text text-transparent">
-                  R{product.salePrice.toFixed(2)}
+                  R{(product.salePrice * quantity).toFixed(2)}
                 </span>
                 {product.onSale && product.originalPrice > product.salePrice && (
-                  <span className="text-base text-neutral-400 font-medium!">
-                    was R{product.originalPrice.toFixed(2)}
+                  <span className="text-base text-neutral-400 font-medium! line-through">
+                    R{(product.originalPrice * quantity).toFixed(2)}
+                  </span>
+                )}
+                {quantity > 1 && (
+                  <span className="text-sm text-neutral-500">
+                    R{product.salePrice.toFixed(2)} × {quantity}
                   </span>
                 )}
               </div>
@@ -515,6 +537,43 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                     </span>
                   </div>
                 </button>
+
+                {/* Compare toggle — same row as Add to Basket */}
+                <button
+                  type="button"
+                  onClick={() => inCompare ? removeFromCompare(product.id) : addToCompare(product)}
+                  disabled={!inCompare && isFull}
+                  title={!inCompare && isFull ? `Compare full (max ${COMPARE_MAX_ITEMS})` : inCompare ? 'Remove from Compare' : 'Add to Compare'}
+                  className={`flex items-center justify-center gap-2 px-5 py-4 rounded-xl border-2 text-sm font-bold transition-all ${
+                    inCompare
+                      ? 'bg-[#009eb9]/10 border-[#009eb9] text-[#009eb9] hover:bg-[#009eb9]/15'
+                      : isFull
+                        ? 'bg-neutral-50 border-neutral-200 text-neutral-400 cursor-not-allowed'
+                        : 'bg-white border-neutral-200 text-[#184363] hover:border-[#009eb9] hover:text-[#009eb9]'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 16.758 8.729" aria-hidden="true">
+                    <path d="M16.537 6.252 14.26 8.51a.719.719 0 0 1-.51.219.689.689 0 0 1-.51-.219l-2.313-2.258a.72.72 0 0 1-.018-1.02.683.683 0 0 1 1 0l1 1.038V1.462H6.538a.729.729 0 1 1 0-1.457h7.194a.656.656 0 0 1 .656.71v5.537l1.093-1.038a.788.788 0 0 1 1.075 0 .742.742 0 0 1-.019 1.038Zm-6.32 1.038H3.825V2.463l1 1.038a.679.679 0 0 0 .492.219.729.729 0 0 0 .51-1.238L3.533.205a.76.76 0 0 0-1.038 0L.219 2.463a.7.7 0 0 0 0 1.02.77.77 0 0 0 1.075 0l1.092-1.038v5.537a.677.677 0 0 0 .656.747h7.194a.72.72 0 1 0-.018-1.439Z"/>
+                  </svg>
+                  <span>{inCompare ? 'Added' : 'Compare'}</span>
+                </button>
+
+                {/* Wishlist toggle — icon-only, same row */}
+                <button
+                  type="button"
+                  onClick={() => saved ? removeFromWishlist(product.id) : addToWishlist(product)}
+                  aria-label={saved ? 'Remove from wishlist' : 'Save to wishlist'}
+                  title={saved ? 'Remove from wishlist' : 'Save to wishlist'}
+                  className={`flex items-center justify-center w-14 py-4 rounded-xl border-2 transition-all ${
+                    saved
+                      ? 'bg-rose-50 border-rose-300 text-rose-600 hover:bg-rose-100'
+                      : 'bg-white border-neutral-200 text-[#184363] hover:border-rose-300 hover:text-rose-600'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </button>
               </div>
 
               {/* Pharmacy trust bar */}
@@ -575,7 +634,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                 </svg>
               </a>
               <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Share on Facebook"
@@ -586,7 +645,7 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                 </svg>
               </a>
               <a
-                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&text=${encodeURIComponent(product.name)}`}
+                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(product.name)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Share on X"
@@ -815,30 +874,26 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
               {relatedProducts.map((related) => (
                 <a key={related.id} href={`/product/${related.id}`} className="group relative">
                   <div className="bg-white rounded-3xl shadow-lg shadow-neutral-200/50 overflow-hidden border border-neutral-100 transition-all duration-500 hover:shadow-2xl hover:shadow-neutral-300/50 hover:-translate-y-2">
-                    {/* Left badge: Sale */}
-                    {related.onSale && (
-                      <div className="absolute top-4 left-4 z-10">
-                        <div className="relative">
-                          <div className="absolute inset-0 bg-black/20 blur-lg rounded-full"></div>
-                          <div className="relative px-3 py-1.5 bg-linear-to-br from-black to-neutral-800 text-white text-xs font-bold! rounded-full">
-                            Sale
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {/* Right badge: Out of Stock or Low Stock */}
-                    {!related.inStock && (
-                      <div className="absolute top-4 right-4 z-10 px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full">
-                        Out of Stock
-                      </div>
-                    )}
-                    {related.inStock && related.stockQuantity !== null && related.stockQuantity <= 5 && (
-                      <div className="absolute top-4 right-4 z-10 px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full">
-                        Low Stock
-                      </div>
-                    )}
+                    <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5">
+                      {related.onSale && (
+                        <span key="sale" className="px-3 py-1.5 bg-linear-to-br from-black to-neutral-800 text-white text-xs font-bold! rounded-full">
+                          Sale
+                        </span>
+                      )}
+                      {!related.inStock && (
+                        <span key="out-of-stock" className="px-2.5 py-1 bg-neutral-600 text-white text-[10px] font-bold! rounded-full">
+                          Out of Stock
+                        </span>
+                      )}
+                      {related.inStock && related.stockQuantity !== null && related.stockQuantity <= 5 && (
+                        <span key="low-stock" className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold! rounded-full">
+                          Low Stock
+                        </span>
+                      )}
+                    </div>
                     <div className="relative bg-linear-to-br from-neutral-50 to-white aspect-square overflow-hidden">
-                      {related.image && (
+                      <WishlistHeart product={related} />
+                      {related.image ? (
                         <Image
                           src={related.image}
                           alt={related.imageAlt}
@@ -846,6 +901,8 @@ function ProductDetailInner({ product, relatedProducts, reviews = [] }: Props) {
                           sizes="(max-width: 768px) 50vw, 25vw"
                           className={`object-contain p-8 transform transition-transform duration-700 group-hover:scale-110 mix-blend-multiply${!related.inStock ? ' grayscale opacity-60' : ''}`}
                         />
+                      ) : (
+                        <ProductImagePlaceholder name={related.name} size="md" />
                       )}
                     </div>
                     <div className="p-5 border-t border-neutral-100">

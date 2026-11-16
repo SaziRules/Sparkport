@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { BlogPost, Product } from '@/lib/wordpress';
+import ProductImagePlaceholder from './ProductImagePlaceholder';
 
 function parseHeadings(html: string): { id: string; text: string; level: number }[] {
   const matches = [...html.matchAll(/<h([23])[^>]*>(.*?)<\/h\1>/gi)];
@@ -597,7 +598,7 @@ export default function ArticleContent({ post, relatedPosts, saleProducts }: Pro
                               className="object-contain p-1.5 mix-blend-multiply group-hover:scale-110 transition-transform duration-300"
                             />
                           ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-[#184363] to-[#009eb9]" />
+                            <ProductImagePlaceholder name={product.name} size="xs" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">

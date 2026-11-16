@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Image from "next/image";
 import Link from "next/link";
 import CategoryMegaMenu from './CategoryMegaMenu';
 import ShopMegaMenu from './ShopMegaMenu';
 import { useCart } from '@/contexts/CartContext';
+import { useCompare } from '@/contexts/CompareContext';
+import { useWishlist } from '@/contexts/WishlistContext';
 import { useSearch } from '@/lib/hooks/useSearch';
 import { useSearchKeyboard } from '@/lib/hooks/useSearchKeyboard';
 import SearchDropdown from '@/components/SearchDropdown';
@@ -20,8 +22,49 @@ interface SessionUser {
 export default function SparkportHeader() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isShopMenuOpen, setIsShopMenuOpen] = useState(false);
+  const [isNavStuck, setIsNavStuck] = useState(false);
+  const [isNavHidden, setIsNavHidden] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const UPPER_HEADER = 72; // h-18 upper bar
+    const handleScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastScrollY.current;
+      const stuck = y > UPPER_HEADER;
+      setIsNavStuck(stuck);
+      if (stuck) {
+        if (delta > 5) setIsNavHidden(true);
+        else if (delta < -5) setIsNavHidden(false);
+      } else {
+        setIsNavHidden(false);
+      }
+      lastScrollY.current = y;
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  const pathname = usePathname() ?? '';
+  const isActive = (href: string) => {
+    if (href === '/shop') return pathname === '/shop' || (pathname.startsWith('/shop/') && !pathname.startsWith('/shop/promotions'));
+    return pathname === href || pathname.startsWith(href + '/');
+  };
+  const isHealthActive = pathname.startsWith('/health-care-services') || pathname.startsWith('/health-insurance');
   const [isHealthMenuOpen, setIsHealthMenuOpen] = useState(false);
   const { count: cartCount, openDrawer } = useCart();
+  const { count: compareCount } = useCompare();
+  const { items: wishlistItems, count: wishlistCount, removeFromWishlist } = useWishlist();
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const wishlistCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isWishlistActive = pathname.startsWith('/wishlist');
+  const handleWishlistEnter = () => {
+    if (wishlistCloseTimer.current) clearTimeout(wishlistCloseTimer.current);
+    setIsWishlistOpen(true);
+  };
+  const handleWishlistLeave = () => {
+    wishlistCloseTimer.current = setTimeout(() => setIsWishlistOpen(false), 80);
+  };
   const shopCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const healthCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCountRef = useRef(cartCount);
@@ -146,7 +189,7 @@ export default function SparkportHeader() {
       {/* Main Header - Sparkport style white background */}
       <div className="w-full bg-white border-b border-neutral-200">
         <div className="mx-auto max-w-385 px-6">
-          <div className="flex items-center justify-between h-22">
+          <div className="flex items-center justify-between h-18">
             
             {/* Logo */}
             <Link href="/" className="shrink-0">
@@ -156,7 +199,7 @@ export default function SparkportHeader() {
                 width={200}
                 height={60}
                 priority
-                className="h-14 w-auto"
+                className="h-11 w-auto"
               />
             </Link>
 
@@ -223,17 +266,49 @@ export default function SparkportHeader() {
             </div>
 
             {/* Right Icons - Sparkport style */}
-            <div className="flex items-center gap-6">
-              <Link href="https://facebook.com" target="_blank" className="text-neutral-600 hover:text-[#009eb9] transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            <div className="flex items-center gap-3">
+              {/* Facebook */}
+              <Link
+                href="https://facebook.com/sparkport"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="w-9 h-9 rounded-full ring-1 ring-[#009eb9]/30 flex items-center justify-center text-[#009eb9] hover:text-[#184363] hover:bg-[#009eb9]/8 transition-colors duration-200"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
               </Link>
-              <Link href="https://instagram.com" target="_blank" className="text-neutral-600 hover:text-[#009eb9] transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+
+              {/* Instagram */}
+              <Link
+                href="https://instagram.com/sparkport"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="w-9 h-9 rounded-full ring-1 ring-[#009eb9]/30 flex items-center justify-center text-[#009eb9] hover:text-[#184363] hover:bg-[#009eb9]/8 transition-colors duration-200"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                 </svg>
               </Link>
+
+              {/* WhatsApp */}
+              <Link
+                href="https://wa.me/27312071011"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp"
+                className="w-9 h-9 rounded-full ring-1 ring-[#009eb9]/30 flex items-center justify-center text-[#009eb9] hover:text-[#184363] hover:bg-[#009eb9]/8 transition-colors duration-200"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                </svg>
+              </Link>
+
+              {/* Divider between socials and primary CTA */}
+              <div className="w-px h-6 bg-[#009eb9]/30 mx-1" aria-hidden="true" />
+
               <Link href="/fill-script" className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#009eb9] text-white text-sm font-semibold rounded-full hover:bg-[#184363] transition-all duration-200 group">
                 Fill Your Script Online
                 <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -245,38 +320,59 @@ export default function SparkportHeader() {
         </div>
       </div>
 
-      {/* Navigation Bar - Sparkport style dark blue */}
-      <div className="w-full bg-[#184363] relative">
+      {/* Spacer to prevent layout jump when the nav becomes fixed */}
+      {isNavStuck && <div className="h-12" aria-hidden="true" />}
+      {/* Navigation Bar — fixed to viewport top once upper header scrolls out; slides away on scroll down, back in on scroll up */}
+      <div className={`w-full bg-[#184363] shadow-md transition-transform duration-300 ease-out ${
+        isNavStuck ? 'fixed top-0 left-0 right-0 z-50' : 'relative z-30'
+      } ${
+        isNavHidden ? '-translate-y-full' : 'translate-y-0'
+      }`}>
         <div className="mx-auto max-w-385 px-6">
-          <nav className="flex items-center justify-between h-14">
+          <nav className="flex items-center justify-between h-12">
             {/* Main Navigation */}
             <div className="flex items-center">
               <Link
                 href="/shop"
                 onMouseEnter={handleShopEnter}
                 onMouseLeave={handleShopLeave}
-                className="h-14 flex items-center px-6 bg-white text-[#184363] text-sm font-semibold border-t-2 border-t-[#009eb9] hover:bg-[#009eb9]/10 transition-colors"
+                className={`relative h-12 flex items-center px-6 text-sm font-medium transition-colors after:absolute after:bottom-0 after:left-0 after:h-[3px] after:bg-[#009eb9] after:transition-all after:duration-300 ${
+                  isActive('/shop')
+                    ? 'text-[#009eb9] after:w-0'
+                    : 'text-white hover:text-[#009eb9] after:w-0 hover:after:w-full'
+                }`}
               >
                 Shop
               </Link>
-              <Link href="/shop/promotions" className="h-14 flex items-center px-6 bg-[#009eb9] text-white text-sm font-semibold hover:bg-[#007a94] transition-colors">
+              <Link
+                href="/shop/promotions"
+                className="h-12 flex items-center px-6 text-sm font-semibold text-white bg-[#009eb9] hover:bg-[#007a94] transition-colors"
+              >
                 Promotions
               </Link>
-              <div className="flex items-center gap-8 ml-8">
+              <div className="flex items-center ml-4">
                 <Link
                   href="/get-rewarded"
-                  className="relative text-white text-sm font-medium transition-colors hover:text-[#009eb9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#009eb9] after:transition-all after:duration-300 hover:after:w-full"
+                  className={`relative h-12 flex items-center px-5 text-sm font-medium transition-colors after:absolute after:bottom-0 after:left-0 after:h-[3px] after:bg-[#009eb9] after:transition-all after:duration-300 ${
+                    isActive('/get-rewarded')
+                      ? 'text-[#009eb9] after:w-full'
+                      : 'text-white hover:text-[#009eb9] after:w-0 hover:after:w-full'
+                  }`}
                 >
                   Get Rewarded
                 </Link>
 
                 {/* Healthcare dropdown */}
                 <div
-                  className="relative h-14 flex items-center"
+                  className="relative h-12 flex items-center"
                   onMouseEnter={handleHealthEnter}
                   onMouseLeave={handleHealthLeave}
                 >
-                  <button type="button" className="flex items-center gap-1 text-white text-sm font-medium transition-colors hover:text-[#009eb9]">
+                  <button type="button" className={`relative h-12 flex items-center gap-1 px-5 text-sm font-medium transition-colors after:absolute after:bottom-0 after:left-0 after:h-[3px] after:bg-[#009eb9] after:transition-all after:duration-300 ${
+                    isHealthActive
+                      ? 'text-[#009eb9] after:w-full'
+                      : 'text-white hover:text-[#009eb9] after:w-0 hover:after:w-full'
+                  }`}>
                     Healthcare
                     <svg
                       className={`w-3.5 h-3.5 transition-transform duration-200 ${isHealthMenuOpen ? 'rotate-180' : ''}`}
@@ -320,7 +416,11 @@ export default function SparkportHeader() {
                   <Link
                     key={href}
                     href={href}
-                    className="relative text-white text-sm font-medium transition-colors hover:text-[#009eb9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#009eb9] after:transition-all after:duration-300 hover:after:w-full"
+                    className={`relative h-12 flex items-center px-5 text-sm font-medium transition-colors after:absolute after:bottom-0 after:left-0 after:h-[3px] after:bg-[#009eb9] after:transition-all after:duration-300 ${
+                      isActive(href)
+                        ? 'text-[#009eb9] after:w-full'
+                        : 'text-white hover:text-[#009eb9] after:w-0 hover:after:w-full'
+                    }`}
                   >
                     {label}
                   </Link>
@@ -331,7 +431,7 @@ export default function SparkportHeader() {
             {/* Right Icons - With labels and dividers */}
             <div className="flex items-center">
               {sessionUser ? (
-                <div ref={userMenuRef} className="relative flex items-center border-r border-white/20">
+                <div ref={userMenuRef} className="relative h-12 flex items-center border-r border-white/20">
                   <button
                     type="button"
                     onClick={() => setIsUserMenuOpen(v => !v)}
@@ -382,7 +482,7 @@ export default function SparkportHeader() {
                   )}
                 </div>
               ) : (
-                <Link href="/account" className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
+                <Link href="/account" className="h-12 flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -390,19 +490,109 @@ export default function SparkportHeader() {
                 </Link>
               )}
               
-              <button type="button" className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
+              <Link href="/compare" className="relative h-12 flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
                 <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16.758 8.729">
                   <path d="M16.537 6.252 14.26 8.51a.719.719 0 0 1-.51.219.689.689 0 0 1-.51-.219l-2.313-2.258a.72.72 0 0 1-.018-1.02.683.683 0 0 1 1 0l1 1.038V1.462H6.538a.729.729 0 1 1 0-1.457h7.194a.656.656 0 0 1 .656.71v5.537l1.093-1.038a.788.788 0 0 1 1.075 0 .742.742 0 0 1-.019 1.038Zm-6.32 1.038H3.825V2.463l1 1.038a.679.679 0 0 0 .492.219.729.729 0 0 0 .51-1.238L3.533.205a.76.76 0 0 0-1.038 0L.219 2.463a.7.7 0 0 0 0 1.02.77.77 0 0 0 1.075 0l1.092-1.038v5.537a.677.677 0 0 0 .656.747h7.194a.72.72 0 1 0-.018-1.439Z"/>
                 </svg>
                 <span className="text-xs font-medium">Compare</span>
-              </button>
+                {compareCount > 0 && (
+                  <span className="absolute -top-1 right-2 flex items-center justify-center min-w-4.5 h-4.5 px-1 bg-[#009eb9] text-white text-[10px] font-bold rounded-full">
+                    {compareCount}
+                  </span>
+                )}
+              </Link>
               
-              <button type="button" className="flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors border-r border-white/20">
-                <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14.747 13.358">
-                  <path d="M14.352 2.572A4.189 4.189 0 0 0 10.596 0a3.954 3.954 0 0 0-3.224 1.458A3.954 3.954 0 0 0 4.149 0 4.189 4.189 0 0 0 .396 2.572a4.362 4.362 0 0 0 .84 4.835 74.128 74.128 0 0 0 5.693 5.779.711.711 0 0 0 .926 0c.034-.017 2.675-2.418 5.693-5.779a4.413 4.413 0 0 0 .804-4.835ZM12.496 6.5a90.1 90.1 0 0 1-5.127 5.264A86.88 86.88 0 0 1 2.246 6.5a3.085 3.085 0 0 1-.617-3.378 2.894 2.894 0 0 1 2.52-1.75 2.447 2.447 0 0 1 2.555 1.715.661.661 0 0 0 .652.514.715.715 0 0 0 .669-.514 2.465 2.465 0 0 1 2.555-1.715 2.882 2.882 0 0 1 2.516 1.766 3.026 3.026 0 0 1-.6 3.362Zm-.171-1.989a.6.6 0 0 1-.566.634h-.034a.6.6 0 0 1-.6-.566c-.069-.977-.7-1.132-.823-1.149a.609.609 0 0 1-.514-.669.626.626 0 0 1 .686-.514 2.3 2.3 0 0 1 1.854 2.263Zm-.823.995a.757.757 0 0 1 .206.48.623.623 0 0 1-.206.48.663.663 0 0 1-.96 0 .721.721 0 0 1-.206-.48.649.649 0 0 1 .206-.48.721.721 0 0 1 .48-.206.862.862 0 0 1 .483.2Z"/>
-                </svg>
-                <span className="text-xs font-medium">Wishlist</span>
-              </button>
+              <div
+                className="relative h-12 flex items-center border-r border-white/20"
+                onMouseEnter={handleWishlistEnter}
+                onMouseLeave={handleWishlistLeave}
+              >
+                <button
+                  type="button"
+                  className={`relative h-12 flex items-center gap-1 px-5 text-sm font-medium transition-colors after:absolute after:bottom-0 after:left-0 after:h-[3px] after:bg-[#009eb9] after:transition-all after:duration-300 ${
+                    isWishlistActive
+                      ? 'text-[#009eb9] after:w-full'
+                      : 'text-white hover:text-[#009eb9] after:w-0 hover:after:w-full'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14.747 13.358">
+                    <path d="M14.352 2.572A4.189 4.189 0 0 0 10.596 0a3.954 3.954 0 0 0-3.224 1.458A3.954 3.954 0 0 0 4.149 0 4.189 4.189 0 0 0 .396 2.572a4.362 4.362 0 0 0 .84 4.835 74.128 74.128 0 0 0 5.693 5.779.711.711 0 0 0 .926 0c.034-.017 2.675-2.418 5.693-5.779a4.413 4.413 0 0 0 .804-4.835ZM12.496 6.5a90.1 90.1 0 0 1-5.127 5.264A86.88 86.88 0 0 1 2.246 6.5a3.085 3.085 0 0 1-.617-3.378 2.894 2.894 0 0 1 2.52-1.75 2.447 2.447 0 0 1 2.555 1.715.661.661 0 0 0 .652.514.715.715 0 0 0 .669-.514 2.465 2.465 0 0 1 2.555-1.715 2.882 2.882 0 0 1 2.516 1.766 3.026 3.026 0 0 1-.6 3.362Zm-.171-1.989a.6.6 0 0 1-.566.634h-.034a.6.6 0 0 1-.6-.566c-.069-.977-.7-1.132-.823-1.149a.609.609 0 0 1-.514-.669.626.626 0 0 1 .686-.514 2.3 2.3 0 0 1 1.854 2.263Zm-.823.995a.757.757 0 0 1 .206.48.623.623 0 0 1-.206.48.663.663 0 0 1-.96 0 .721.721 0 0 1-.206-.48.649.649 0 0 1 .206-.48.721.721 0 0 1 .48-.206.862.862 0 0 1 .483.2Z"/>
+                  </svg>
+                  Wishlist
+                  {wishlistCount > 0 && (
+                    <span className="flex items-center justify-center min-w-4.5 h-4.5 px-1 bg-[#009eb9] text-white text-[10px] font-bold rounded-full ml-1">
+                      {wishlistCount}
+                    </span>
+                  )}
+                  <svg
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${isWishlistOpen ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isWishlistOpen && (
+                  <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-0 ${wishlistCount === 0 ? 'w-72' : 'w-52'} bg-white rounded-xl shadow-xl border border-neutral-100 py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150`}>
+                    {wishlistCount === 0 ? (
+                      <div className="px-5 pt-4 pb-5">
+                        <p className="text-sm font-bold text-[#184363] mb-3">Save products to your wishlist</p>
+                        <ul className="space-y-2 mb-4 text-sm text-neutral-600">
+                          <li className="flex items-start gap-2">
+                            <span className="w-1 h-1 rounded-full bg-[#009eb9] mt-2 shrink-0" />
+                            Save items you want to come back to
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="w-1 h-1 rounded-full bg-[#009eb9] mt-2 shrink-0" />
+                            Kept for 30 days on this device
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="w-1 h-1 rounded-full bg-[#009eb9] mt-2 shrink-0" />
+                            Sign in to sync across devices
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="w-1 h-1 rounded-full bg-[#009eb9] mt-2 shrink-0" />
+                            View all your saved products in one place
+                          </li>
+                        </ul>
+                        <Link
+                          href="/shop"
+                          onClick={() => setIsWishlistOpen(false)}
+                          className="block w-full text-center px-4 py-2.5 bg-[#009eb9] text-white text-sm font-bold rounded-full hover:bg-[#007f95] transition-colors"
+                        >
+                          Browse the shop
+                        </Link>
+                      </div>
+                    ) : (
+                      <>
+                        {wishlistItems.slice(0, 5).map((p) => (
+                          <Link
+                            key={p.id}
+                            href={`/product/${p.id}`}
+                            onClick={() => setIsWishlistOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-neutral-700 hover:bg-[#009eb9]/8 hover:text-[#009eb9] transition-colors"
+                          >
+                            <svg className="w-4 h-4 shrink-0 text-[#009eb9]" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                            <span className="truncate">{p.name}</span>
+                          </Link>
+                        ))}
+                        <Link
+                          href="/wishlist"
+                          onClick={() => setIsWishlistOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-3 text-sm text-neutral-700 hover:bg-[#009eb9]/8 hover:text-[#009eb9] transition-colors border-t border-neutral-100"
+                        >
+                          <svg className="w-4 h-4 shrink-0 text-[#009eb9]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                          </svg>
+                          View all ({wishlistCount})
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               
               <button type="button" onClick={openDrawer} className="relative flex items-center gap-2 px-4 text-white hover:text-[#009eb9] transition-colors">
                 <svg className="w-4 h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 17.426 13.695">

@@ -18,7 +18,7 @@ const FALLBACKS: Banner[] = [
   {
     slot: 'surgical',
     image_url: 'https://sparkport.co.za/wp-content/uploads/SURGICAL-BANNER.png',
-    link: '/surgical-catalogue',
+    link: '/shop?category=surgical',
     badge_text: '', title: '', title_line2: '', cta_text: '',
   },
   {
@@ -61,9 +61,9 @@ export default function PromotionalBanners() {
     <section className="py-12 lg:py-16">
       <div className="lg:px-6 space-y-6">
 
-        {/* Full-width surgical banner */}
+        {/* Full-width surgical banner — always links to the surgical category */}
         <Link
-          href={surgical.link}
+          href="/shop?category=surgical"
           className="block relative overflow-hidden lg:rounded-3xl group h-75 lg:h-87.5 shadow-xl hover:shadow-2xl transition-shadow"
         >
           <Image

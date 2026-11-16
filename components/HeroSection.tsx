@@ -113,8 +113,8 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="w-full bg-neutral-50 py-8 mt-10">
-      <div className="mx-auto max-w-385 px-4 lg:px-6">
+    <section className="w-full">
+      <div className="mx-auto max-w-385 px-4 lg:px-6 pt-6">
         <div className="grid grid-cols-12 gap-6">
           
           {/* Main Hero Card - Left */}

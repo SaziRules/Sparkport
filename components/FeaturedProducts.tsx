@@ -13,15 +13,6 @@ export default async function FeaturedProducts() {
     <section className="py-12 lg:py-16 px-4 lg:px-6">
       <div className="max-w-full mx-auto">
 
-        <div className="text-center mb-8">
-          <h2 className="text-3xl lg:text-4xl font-extrabold! text-[#184363] mb-3">
-            Featured Products
-          </h2>
-          <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
-            Discover our most popular items and exclusive deals
-          </p>
-        </div>
-
         <FeaturedProductsTabs
           hotDeals={hotDeals}
           bestsellers={bestsellers}

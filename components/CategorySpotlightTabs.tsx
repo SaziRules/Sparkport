@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Category, Product } from '@/lib/wordpress';
 import { useCart } from '@/contexts/CartContext';
+import WishlistHeart from './WishlistHeart';
+import ProductImagePlaceholder from './ProductImagePlaceholder';
 
 export interface Spotlight {
   category: Category;
@@ -184,23 +186,26 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
                 href={`/product/${product.id}`}
                 className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 hover:border-[#009eb9]/25 transition-all duration-200 group relative"
               >
-                {product.onSale && (
-                  <div className="absolute top-2 left-2 px-2 py-1 bg-black text-white text-xs font-bold! rounded-full z-10">
-                    Sale
-                  </div>
-                )}
-                {!product.inStock && (
-                  <div className="absolute top-2 right-2 px-2 py-0.5 bg-neutral-600 text-white text-[10px] font-bold! rounded-full z-10">
-                    Out of Stock
-                  </div>
-                )}
-                {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
-                  <div className="absolute top-2 right-2 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold! rounded-full z-10">
-                    Low Stock
-                  </div>
-                )}
+                <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
+                  {product.onSale && (
+                    <span key="sale" className="px-2 py-1 bg-black text-white text-xs font-bold! rounded-full">
+                      Sale
+                    </span>
+                  )}
+                  {!product.inStock && (
+                    <span key="out-of-stock" className="px-2 py-0.5 bg-neutral-600 text-white text-[10px] font-bold! rounded-full">
+                      Out of Stock
+                    </span>
+                  )}
+                  {product.inStock && product.stockQuantity !== null && product.stockQuantity <= 5 && (
+                    <span key="low-stock" className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold! rounded-full">
+                      Low Stock
+                    </span>
+                  )}
+                </div>
                 <div className="relative bg-white p-4 h-40 overflow-hidden">
-                  {product.image && (
+                  <WishlistHeart product={product} />
+                  {product.image ? (
                     <Image
                       src={product.image}
                       alt={product.imageAlt}
@@ -208,6 +213,8 @@ export default function CategorySpotlightTabs({ spotlights }: Props) {
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
                       className={`object-contain p-4 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply${!product.inStock ? ' grayscale opacity-60' : ''}`}
                     />
+                  ) : (
+                    <ProductImagePlaceholder name={product.name} size="sm" />
                   )}
                 </div>
                 <div className="p-3 border-t border-neutral-100">
