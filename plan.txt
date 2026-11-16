@@ -1,349 +1,486 @@
-SPARKPORT — ACTION PLAN
-===================================
-Last updated: 02 July 2026
-===================================
+# Sparkport.co.za Production Cutover Plan
+
+> **For agentic workers:** Steps use `- [ ]` syntax for tracking. This is an ops/deployment plan — tasks are phases of a DNS cutover, not code modules. Do phases in order; a failure in one blocks the next.
+
+**Goal:** Replace the current WordPress site at `sparkport.co.za` with the Next.js app in this repo, without breaking checkout, email, product data, or search ranking.
+
+**Architecture:** The Next.js app stays server-rendered (not static). WordPress is not retired — it continues to serve the WooCommerce REST API and remain the source of truth for product and order data, but moves to a subdomain (`shop.sparkport.co.za`). The apex domain is pointed at a Node-capable host (Vercel recommended; Axxess Cloud VPS is the fallback — see Task 2). Axxess continues to own DNS and email.
+
+**Tech Stack:** Next.js 16.1.6 (Node runtime, API routes, `proxy.ts`), Supabase (auth + DB + storage), WooCommerce REST (products/orders), PayFast / PayGate (payments), Brevo (transactional email), Google Maps JS API.
+
+**Spec:** This file. (No prior design doc — the spec is the user's ask: "make Next.js serve sparkport.co.za, replacing WordPress; hosting is Axxess.")
+
+## Global Constraints
+
+- The live store must never be unreachable for more than the DNS TTL window. Lower TTL to 300s at least 48h before cutover.
+- MX, SPF, DKIM, DMARC records at the apex MUST be preserved — email runs through Axxess and must keep working.
+- WooCommerce stays the product/order system of record. No product data is migrated out of WP in this plan.
+- PayFast/PayGate notify URLs and WC webhook destinations MUST be updated in the same change window as DNS, or payments will land on the old WP host and orders will be lost.
+- No step may touch the live apex `A` record until Task 7 (pre-cutover QA green on the preview URL).
+- Keep a full pre-cutover WP backup (files + DB) for at least 30 days. This is the rollback floor.
+
+## Review Focus
+
+Five things the tasks below do not individually test but will bite you if ignored:
+
+1. **Email silently dies** if the apex `A` swap also wipes MX/TXT records. Check the full zone diff before applying. (Task 7, Step 4.)
+2. **PayFast ITN hits the old server** if notify_url isn't updated in the PayFast dashboard before cutover. Orders go into a limbo state. (Task 6, Step 2.)
+3. **Supabase auth links break** if the SITE_URL env var still points at `localhost` or the preview URL after cutover. Reset emails and OAuth callbacks fail. (Task 5, Step 2.)
+4. **Google loses existing product/blog URLs** if 301s aren't in place. Rankings drop. (Task 9.)
+5. **WP admin on the apex breaks** the moment DNS swaps, because the admin now resolves to Vercel. Admin access must move to `shop.sparkport.co.za/wp-admin` (Task 1) *before* cutover, not after.
+
+---
+
+## Task 1: Create shop.sparkport.co.za as a PARALLEL path to WP
+
+**BLOCKED (2026-11-16):** Axxess has disabled the "Share document root" option in cPanel → Domains → Create a New Domain for this plan. A support ticket is required to enable it, OR we use a fallback (SSH symlink / move WP to a new hosted location at cutover). Testing is proceeding against the apex (`sparkport.co.za/wp-json`) in the meantime — see Task 1.5.
 
 
-================================================================
-WHAT'S DONE (don't revisit)
-================================================================
-✅ Auth (login, signup, Google, Facebook, forgot password)
-✅ Header auth state (KlaasHeader + SparkportMobileHeader with mega menu images)
-✅ Login flash bug fixed (createBrowserClient, middleware cookies)
-✅ Prescription submit (server action, service role bypasses RLS)
-✅ Prescription image upload (server action)
-✅ /fill-script — session detection, step skip for logged-in users
-✅ /prescription-success — auth-aware CTA (logged-in vs anonymous)
-✅ /account/dashboard — world-class UX, status timeline, image viewer,
-     status filter tabs, rich cards, signed image URLs, copy Rx number,
-     profile save, recent orders strip
-✅ getUserPrescriptions — claims anonymous prescriptions on load
-✅ Manager login + dashboard (FranchiseAdmin + StoreManager)
-✅ Migrations 001–015 written (015_promotions.sql is the one to apply;
-     015_hero_banners.sql must NOT be run — superseded)
-✅ Profile save (PATCH /api/account/profile)
-✅ Dashboard recent orders (3 cards, fetches /api/account/orders)
-✅ WC sync: lib/supabase/wc-sync.ts, /api/webhooks/woocommerce,
-     scripts/wc-backfill.ts
-✅ Manager analytics: lib/supabase/analytics.ts, /api/manager/analytics
-✅ Manager dashboard sections: Overview, Prescriptions, Orders (analytics),
-     Stores, Promotions (full CRUD + image upload + live preview + LinkPicker),
-     Subscriptions, Enquiries
-✅ HeroSection — live banners from `promotions` table via /api/banners
-     with static fallback slides
-✅ CategoryMegaMenu + ShopMegaMenu with images
-✅ Product pages — real WC data, reviews, ratings, SKU, social share
-✅ Search — live dropdown in desktop + mobile header, URL-driven shop filter
-✅ CartDrawer — optimistic UI, toast, coupon, WC session via cookie
-✅ Checkout + PayFast integration
-✅ /shop/promotions — on-sale products from WC
+**Why:** The Next.js app consumes `NEXT_PUBLIC_WP_API_URL` (WooCommerce REST). To avoid any downtime, we make WP reachable at *both* the apex (where real customers are) and `shop.sparkport.co.za` (where Next.js will fetch from) — same WP install, two hostnames. The apex WP frontend continues serving live customers throughout testing. **We do NOT change WP's Site Address in this task** — that would break the apex. The Site Address change is deferred to the cutover window (Task 8).
 
+**Guiding principle:** Until Task 8, the apex MUST keep serving the live WP frontend exactly as it does today. Every step here is additive.
 
-================================================================
-KEY FACTS (always check before editing these areas)
-================================================================
-- `promotions` table = the hero slider. /api/banners reads from it.
-  015_promotions.sql is the migration. 015_hero_banners.sql is OBSOLETE.
-- `BannersSection.tsx` in manager/dashboard/sections is DEAD CODE —
-  it points to the old `hero_banners` table and is not wired into any
-  dashboard. Do not confuse it with PromotionsSection (the live one).
-- WC API prices are in minor units (cents) — divide by 100 for display.
-- `wc_cart_token` HttpOnly cookie for WC session; nonceRef in CartContext.
-- Brand: #009eb9 teal, #184363 dark blue.
-- Supabase service role key must be in .env.local for analytics/sync to work.
+**Files:**
+- Modify: Axxess cPanel → Subdomains → create `shop.sparkport.co.za` pointing at the current WP document root
+- No changes to WP Admin settings in this task
+- No changes to `wp-config.php` in this task
 
+**Interfaces produced for later tasks:**
+- `https://shop.sparkport.co.za/wp-json/wc/v3` — WooCommerce REST base (used by `NEXT_PUBLIC_WP_API_URL`)
+- `https://shop.sparkport.co.za/wp-json/wc/store/v1` — WC Store API (used by checkout)
+- `https://shop.sparkport.co.za/wp-admin` — admin console (also still reachable at apex)
 
-================================================================
-PENDING MIGRATIONS (run in Supabase SQL editor in order)
-================================================================
-These may or may not have been applied — run only if the table/column
-doesn't already exist (Supabase will error on duplicate, which is fine):
+- [ ] **Step 1:** Take a full WP backup (files via cPanel File Manager → Compress, DB via phpMyAdmin → Export). Store off-host. Record backup filename and date here:
 
-  011_drop_security_definer_functions.sql  ← fixes manager RLS recursion
-  012_prescription_images_insert_policy.sql ← INSERT policies belt-and-suspenders
-  013_fix_managers_rls.sql                 ← manager RLS fix
-  013_profiles_add_address.sql             ← adds address columns to profiles
-  014_enquiries_subscribers.sql            ← enquiries + subscribers tables
-  015_promotions.sql                       ← hero_slider promotions table + seed data
-  (DO NOT run 015_hero_banners.sql — it is obsolete)
+  ```
+  WP backup file: __________
+  Date taken:     __________
+  ```
 
+- [ ] **Step 2:** In Axxess cPanel → **Domains** section → click the orange **Domains** tile (NOT "WordPress Management"). This is cPanel's unified Domains page — the old "Subdomains" icon is merged in here.
 
-================================================================
-TASK 1 — Remove dead BannersSection (15 min)
-================================================================
-`BannersSection.tsx` is dead code — it manages a `hero_banners` table
-that was superseded by the `promotions` table and PromotionsSection.
-It is NOT wired into FranchiseAdminDashboard or StoreManagerDashboard.
+  Click **Create A New Domain** (top-right). Fill in:
+  - **Domain:** `shop.sparkport.co.za`
+  - **Share document root (/public_html) with "sparkport.co.za":** ☑ TICKED. We want the subdomain to serve the *same files* as the apex, not a new empty directory.
 
-DELETE: app/manager/dashboard/sections/BannersSection.tsx
-DELETE: app/api/manager/banners/route.ts
-DELETE: app/api/manager/banners/[id]/route.ts
+  Submit. The new domain appears in the list within seconds.
 
-Verify nothing imports BannersSection after deletion (grep to confirm).
+- [ ] **Step 3:** Confirm propagation:
 
+  ```
+  nslookup shop.sparkport.co.za
+  ```
 
-================================================================
-TASK 2 — Signup Bonus Points (20 min)
-================================================================
-Check app/account/page.tsx — the signup handler has NO rewards_transactions
-insert. Add it after successful Supabase user creation:
+  Should resolve to the Axxess shared hosting IP. Then open `http://shop.sparkport.co.za/` in a browser — expect it to load *something* (may be the WP homepage, may be a redirect to apex, may be a mixed-content error — any is fine, we fix next).
 
-In the signUp server action (app/auth/actions.ts or wherever it lives):
-  After user created + profile inserted, insert:
-    supabase.from('rewards_transactions').insert({
-      user_id: newUser.id,
-      points: 50,
-      type: 'signup',
-      description: 'Welcome bonus',
-      reference: null,
-    })
-    supabase.from('rewards').insert({
-      user_id: newUser.id,
-      points: 50,
-      tier: 'bronze',
-    })
+- [ ] **Step 4:** Issue SSL: cPanel → SSL/TLS Status → check `shop.sparkport.co.za` → Run AutoSSL. Wait 1–5 minutes. Confirm `https://shop.sparkport.co.za/` returns 200 with a valid cert (browser lock icon, no warnings).
 
-Use calculateTier from lib/rewards.ts if it exists; otherwise hardcode 'bronze'
-for 50 pts (first tier). Don't block signup on failure — fire and forget.
+- [ ] **Step 5:** Verify the WC REST endpoints respond at the subdomain WITHOUT any WP config change:
 
+  ```bash
+  # Public products endpoint
+  curl -i "https://shop.sparkport.co.za/wp-json/wc/v3/products?per_page=1" \
+       -u "$WC_CONSUMER_KEY:$WC_CONSUMER_SECRET"
 
-================================================================
-TASK 3 — Dynamic Mid-Page Promotional Banners (1 hr)
-================================================================
-`PromotionalBanners.tsx` on the home page is still fully hardcoded with
-static Unsplash + sparkport.co.za images. Manager promotions (competitions,
-articles, announcements, seasonal) from the `promotions` table are NOT
-surfaced anywhere on the customer site.
+  # Store API cart endpoint (no auth)
+  curl -i "https://shop.sparkport.co.za/wp-json/wc/store/v1/cart"
+  ```
 
-Plan:
-3a. Add a public GET /api/promotions endpoint:
-  - Reads from `promotions` table
-  - Filter: is_active = true AND category != null (exclude hero slides if needed,
-    or query by specific categories — discuss with user)
-  - Returns: id, image_url, title, description, cta_text, cta_link, category
-  - Uses service role (no auth required, it's public content)
-  - On click, POST /api/banners/track with { id, type: 'click' }
+  Both must return `HTTP/2 200` with JSON. If either returns a 301/302 redirect to `https://sparkport.co.za/...`, it means WP's Site Address canonicalisation is redirecting the REST path — see Step 6 remedy.
 
-3b. Rewrite PromotionalBanners.tsx as a client component:
-  - On mount: fetch /api/promotions
-  - If no promotions returned: render nothing (or keep 1 hardcoded fallback)
-  - Layout: large card + 2-column grid (same visual structure as today)
-  - First item fills the large hero slot; items 2–3 fill the two side cards
-  - Empty-guard: if < 2 items, render full-width for each
+- [ ] **Step 6 (only if Step 5 shows a redirect to apex):** The usual cause is a canonical-redirect plugin or `.htaccess` rule rewriting the host. Options, in order of preference:
 
-NOTE: Decide with user whether to separate hero slider items from mid-page
-promotions by category (e.g. category = 'promotion'/'competition'/'article'
-for mid-page; hero slider uses all active items). Currently they share one table.
+  1. In `wp-config.php`, add BEFORE `/* That's all, stop editing! */`:
 
+     ```php
+     // Allow the REST API to respond on any host that resolves to this install.
+     // Does NOT change Site Address — public pages still canonicalise to the apex.
+     if ( defined('REST_REQUEST') && REST_REQUEST ) {
+         $host = $_SERVER['HTTP_HOST'] ?? '';
+         if ( $host === 'shop.sparkport.co.za' ) {
+             define('WP_HOME',    'https://shop.sparkport.co.za');
+             define('WP_SITEURL', 'https://shop.sparkport.co.za');
+         }
+     }
+     ```
 
-================================================================
-TASK 4 — Manager Rewards Section (2–3 hrs)
-================================================================
-Currently "Coming Soon" in the dashboard. Replace with real data.
+     This makes the REST endpoint honor the Host header *only for REST requests*, leaving normal pageviews canonicalising to the apex.
 
-4a. Add public-facing rewards data to /api/account/rewards (or extend dashboard):
-  - GET: user's points balance, tier, transaction history (last 20)
-  - Need rewards + rewards_transactions tables to be seeded (see migrations)
+  2. If you cannot edit `wp-config.php`, install the free plugin **"Multiple Domains"** (by Straightforward) and add `shop.sparkport.co.za` as a secondary domain. Lighter touch, same effect.
 
-4b. Manager RewardsSection component:
-  - KPI cards: total active members, total points issued, avg points/member
-  - Top earners table: user email, tier, points balance
-  - Recent transactions table: user, action type, points, date
-  - Filter by tier (bronze/silver/gold/platinum)
-  - Data from: /api/manager/rewards (new endpoint, reads rewards + rewards_transactions)
+  Re-run Step 5. Must be `200` with JSON on both endpoints, no redirect.
 
-4c. Wire into FranchiseAdminDashboard (remove ComingSoon, add RewardsSection)
-  - StoreManager sees same view (read-only, they don't award points manually)
+- [ ] **Step 7:** Verify WC webhooks list in WP Admin → WooCommerce → Settings → Advanced → Webhooks. Note the current Delivery URL for each active webhook — you'll update these in Task 6 (at cutover, not now).
 
+  ```
+  Webhook name: __________  Current URL: __________
+  Webhook name: __________  Current URL: __________
+  ```
 
-================================================================
-TASK 5 — WC Webhook + Backfill (manual steps)
-================================================================
-5a. WC Admin webhook setup (manual):
-  WC Admin → Settings → Advanced → Webhooks → Add 4 webhooks:
-    Order created   → https://[domain]/api/webhooks/woocommerce
-    Order updated   → same
-    Customer created → same
-    Customer updated → same
-  Secret: value of WC_WEBHOOK_SECRET in .env.local
-  API version: WP REST API Integration v3
-  Click Test on each, verify 200.
+- [ ] **Step 8:** Sanity-check the apex is untouched. Load `https://sparkport.co.za/` in a fresh incognito window — the live WP homepage must look exactly as it did before Task 1 began. If anything has shifted, stop and investigate before continuing.
 
-5b. Run backfill:
-  npx ts-node scripts/wc-backfill.ts
-  (Run AFTER webhooks confirmed working so historical data syncs once)
+---
 
+## Task 1.5: Verify Vercel + local dev can consume WP — DONE against apex
 
-================================================================
-TASK 6 — /account/orders page (30 min)
-================================================================
-Verify app/account/orders is fully functional:
-  - Fetches from /api/account/orders (WC proxy)
-  - Shows all WC orders with status badge, date, total, items
-  - Handles loading, error, empty states
-  - "View order" links to /account/orders/[id] if detail page exists,
-    or links to WC order directly (acceptable fallback)
+**Status (2026-11-16):** User has confirmed products and posts render on both `localhost:3000` and `https://sparkport-flax.vercel.app/` when `NEXT_PUBLIC_WP_API_URL=https://sparkport.co.za/wp-json`. The subdomain was not used for this verification because Axxess has shared document roots disabled on this plan (see Task 1 revised status). The apex WP serves the REST endpoints today and will continue to serve them until the moment of DNS cutover.
 
-If the page shell exists but is incomplete, finish it now.
+**Implication:** All Next.js → WP integration is proven. The remaining subdomain question is purely *where WP lives after cutover*, not whether the app works.
 
+**Why (original rationale, kept for reference):** The point of Task 1 was to prove the Next.js app can read products from the subdomain. Prove it on both environments before touching anything else.
 
-================================================================
-TASK 7 — Prescription Journey Roadmap (3–4 hrs)
-================================================================
-Client feedback: every status change must be recorded with a timestamp
-and actor (pharmacist name/role), forming a downloadable, printable,
-shareable audit trail. The current "Process" button is repurposed to
-open this roadmap.
+**Files:**
+- Modify (local only): `.env.local` → point `NEXT_PUBLIC_WP_API_URL` at the subdomain
+- Modify (Vercel): Project → Settings → Environment Variables → `NEXT_PUBLIC_WP_API_URL`
 
-7a. Migration — prescription_status_log table:
-  CREATE TABLE prescription_status_log (
- 
-    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
-    status          TEXT NOT NULL,
-    actor_name      TEXT,          -- pharmacist/manager name
-    actor_role      TEXT,          -- 'franchise_admin' | 'store_manager' | 'system'
-    note            TEXT,          -- optional note added at transition
-    created_at      TIMESTAMPTZ DEFAULT now()
-  );
-  RLS: managers can INSERT; owner user + managers can SELECT.
+- [ ] **Step 1 (LOCAL):** Edit `.env.local`:
 
-7b. Log every status change in /api/manager/prescriptions/[id]:
-  On every PATCH that changes `status`, INSERT a row into
-  prescription_status_log with the new status, actor name (from managers
-  table), actor role, and timestamp.
+  ```
+  NEXT_PUBLIC_WP_API_URL=https://shop.sparkport.co.za/wp-json
+  ```
 
-7c. Customer dashboard — "View Journey" button:
-  - Replace (or rename) the existing "Process" button with "View Journey"
-  - Opens a modal or bottom sheet showing the full status log timeline
-  - Each entry: status label, timestamp (formatted), actor role (not name —
-    patient should see "Pharmacist" not the staff member's name)
-  - Terminal state (completed/rejected/cancelled): highlighted at the top
-  - Download as PDF: use window.print() with a print-only stylesheet
-    (simplest, no external library needed)
-  - Share: Web Share API (navigator.share) with fallback copy-link button
-  - Print: window.print() button
+  Restart dev server: `npm run dev`. Open `http://localhost:3000/shop`. Products must load — same products, same images, same prices as the live site. Add a product to the cart, step through to `/checkout` (do NOT submit a real payment). If cart + checkout display correctly, the Store API works.
 
-7d. Manager dashboard — show log in PrescriptionModal:
-  - Fetch logs for the open prescription alongside the prescription data
-  - Show compact timeline at the bottom of the modal (internal view —
-    shows actor name + role + note)
-  - Add optional "Note" field to status update form so pharmacists can
-    annotate each transition
+- [ ] **Step 2 (VERCEL):** In Vercel → Project → Settings → Environment Variables, update `NEXT_PUBLIC_WP_API_URL` to `https://shop.sparkport.co.za/wp-json` for **Preview** scope only (NOT Production yet — Production scope stays on whatever it is until we're confident, so any accidental production deploy doesn't break anything).
 
-7e. API:
-  GET /api/manager/prescriptions/[id]/log — returns status log for managers
-  GET /api/account/prescriptions/[id]/log — returns log for the patient
-    (actor_name omitted, shows actor_role as friendly label)
+  Trigger a redeploy of the current branch. Wait for build. Open `https://sparkport-flax.vercel.app/shop`. Repeat the smoke test from Step 1.
 
+  If the preview has ONLY a Production env var (not Preview), either add a Preview-scope override, or accept the risk and switch Production — but note the Production URL right now is `sparkport-flax.vercel.app`, not the apex, so switching Production scope is actually fine here. The apex-hosted WP is unaffected.
 
-================================================================
-TASK 8 — Regulated Medication Notice (S5/S6) (2 hrs)
-================================================================
-South African law (Medicines and Related Substances Act 101 of 1965,
-amended by Act 72 of 2008) classifies medicines into schedules:
-  S5 — habit-forming substances (e.g. codeine >10mg, tramadol, diazepam)
-       Require valid original prescription; repeats allowed (max 5 in 6 months)
-  S6 — potentially dangerous substances (e.g. morphine, oxycodone, ketamine)
-       Require original prescription; NO repeats allowed; pharmacist must
-       retain the prescription after dispensing
-  S7/S8 — not sold in community pharmacies
+- [ ] **Step 3:** Note the next.config.ts image remotePatterns. The current config already allows `sparkport.co.za` — but product image URLs in WC REST responses may still reference the apex even when fetched from the subdomain (because WP's Site Address is still the apex). This is **expected and fine** during testing; images will still load from the apex. At cutover we'll revisit.
 
-Regulated by SAHPRA (sahpra.org.za) and PCSA (pcsapharmacy.co.za).
+  Open a product detail page on `sparkport-flax.vercel.app/product/<id>`. If product images show, image loading works. If they 404 or blocked, check:
 
-8a. Warning block on /fill-script:
-  Add a collapsible info notice above (or within) the prescription upload step:
-  "Important: Scheduled Medicines (S5/S6)
-   If your prescription includes scheduled substances (e.g. certain painkillers,
-   sleeping tablets, or controlled medicines), please note:
-   • An original, valid prescription is required — no copies or faxes accepted.
-   • S6 medications cannot be repeated — the original is retained by the pharmacist.
-   • Our pharmacist may contact you to verify your prescription before dispensing.
-   Learn more → /regulated-medication"
-  Style: amber/warning tone. Not alarming — informational.
+  1. Browser devtools → Network → image URL — is it from `sparkport.co.za` or `shop.sparkport.co.za`?
+  2. If `shop.sparkport.co.za`, add it to `remotePatterns` in `next.config.ts`:
 
-8b. Create /regulated-medication page:
-  Full explainer page covering:
-  - What are scheduled medicines (S0–S6 overview, focus on S5/S6)
-  - What patients need to bring / submit
-  - S5 repeat rules (max 5 repeats, 6-month window)
-  - S6 rules (no repeats, original retained)
-  - What Sparkport does to comply (pharmacist verification step)
-  - SAHPRA link, PCSA link, DoH medicines act link
-  - Contact CTA: "Not sure if your medication is scheduled? Contact us →"
-  Style: clean, informational, trustworthy. Not legal-heavy prose — scannable.
+     ```ts
+     { protocol: 'https', hostname: 'shop.sparkport.co.za' },
+     ```
 
-8c. Add disclaimer to prescription confirmation/success page:
-  "By submitting this prescription you confirm it is valid, authentic, and
-   prescribed by a registered South African medical practitioner. Submission
-   of fraudulent prescriptions is a criminal offence under the Medicines Act."
+     Commit + push.
 
-8d. is_chronic flag on /fill-script:
-  If user selects "chronic" (repeat), add a note:
-  "Chronic repeat prescriptions for S5 substances are limited to 5 repeats
-   within 6 months as per South African law."
+- [ ] **Step 4:** Confirm Supabase-backed features still work on the preview (promotions, manager login, prescriptions) — these are unaffected by the subdomain change but worth confirming nothing collateral broke.
 
+- [ ] **Step 5:** Decision gate. Before continuing to Task 3+, you should be able to say "yes" to all of:
 
-================================================================
-TASK 9 — Terms & Conditions Rewrite (2–3 hrs)
-================================================================
-Research competitors (Clicks, Dischem, Medirite) and align to SA standards:
-POPIA, Consumer Protection Act (CPA), Medicines Act, PCSA regulations.
+  - [ ] Products load on `localhost:3000` via subdomain
+  - [ ] Products load on `sparkport-flax.vercel.app` via subdomain
+  - [ ] Cart + checkout UI works end-to-end (minus live payment)
+  - [ ] Apex `sparkport.co.za` still serves live WP, unchanged
 
-Sections to cover:
-  1. Acceptance of Terms
-  2. About Sparkport (registered pharmacy details, PCSA registration number)
-  3. Prescription Policy
-     - Valid prescriptions only; fraud = criminal offence
-     - S5/S6 handling (link to /regulated-medication)
-     - Right to refuse dispensing
-  4. Online Ordering & Payment
-     - PayFast payment terms
-     - Order confirmation vs. acceptance distinction
-     - Pricing errors clause
-  5. Delivery & Collection
-     - Delivery timeframes (best-effort, not guaranteed)
-     - Cold-chain notice for temperature-sensitive meds
-     - Risk of loss passes on delivery
-  6. Returns & Refunds (CPA-compliant)
-     - Medicines cannot be returned once dispensed (health & safety)
-     - Non-medicine products: 7-day return window (CPA s56)
-     - Defective goods process
-  7. Privacy & Data (POPIA)
-     - What data is collected and why
-     - Health data as special personal information (s26 POPIA)
-     - Third-party sharing (WooCommerce, Supabase, PayFast)
-     - Right to access/delete data → contact details
-  8. Rewards Programme
-     - Points not redeemable for cash
-     - Sparkport reserves right to adjust/terminate
-  9. Intellectual Property
-  10. Limitation of Liability
-  11. Governing Law (Republic of South Africa, Western Cape courts)
-  12. Contact & Complaints (include PCSA complaints link)
+  If any "no", resolve before moving on.
 
-Regulatory links to include:
-  - SAHPRA: https://www.sahpra.org.za
-  - PCSA: https://www.pcsapharmacy.co.za
-  - POPIA InfoRegulator: https://inforegulator.org.za
-  - Consumer Protection Act: (link to gov.za gazette)
+---
 
-Implementation:
-  - Update app/terms-conditions/page.tsx (already exists)
-  - Use clean section headings, last-updated date, version number
-  - Link from footer, /fill-script, checkout, and /regulated-medication
+## Task 2: Vercel project — ALREADY DONE
 
+**Status:** Deployed at `https://sparkport-flax.vercel.app/`. Build pipeline is live.
 
-================================================================
-EXECUTION ORDER
-================================================================
-1. Pending migrations (manual, Supabase SQL editor)
-2. Task 1  — Delete dead BannersSection (fast, no risk)
-3. Task 2  — Signup bonus (quick check + fix)
-4. Task 5  — WC webhook + backfill (manual steps, do while building Task 3)
-5. Task 3  — Dynamic promotional banners (main feature work)
-6. Task 6  — Verify /account/orders
-7. Task 8  — Regulated medication notice (high legal value, relatively fast)
-8. Task 9  — T&C rewrite (research-heavy, do after Task 8)
-9. Task 7  — Prescription journey roadmap (largest build, do with full focus)
-10. Task 4  — Manager Rewards section (last, needs data from backfill to test)
+**What still needs verifying before moving on:**
+
+- [ ] **Step 1:** Confirm which Vercel project/team owns `sparkport-flax.vercel.app` and that the user has admin access (needed in Tasks 4, 7, 8).
+
+- [ ] **Step 2:** Confirm deployment region. Open Vercel → Project → Settings → Functions. If region is `iad1` (US East) or similar, change to `fra1` (Frankfurt) or `cdg1` (Paris) for better latency to ZA users. Redeploy.
+
+- [ ] **Step 3:** Record the current env-var surface in Vercel → Settings → Environment Variables. Tasks 3 and 4 may already be partially or fully complete — if so, mark them done without redoing them.
+
+---
+
+## Task 3: Catalogue every environment variable
+
+**Why:** The plan can't ship if a single env var is missing. Grepping `process.env.` in the repo gives us 18+ distinct keys spread across API routes, server actions, `proxy.ts`, scripts, and `lib/`. Each one needs a prod value and a home in Vercel's env settings before Task 4.
+
+**Files:**
+- Create: `.env.production.example` at repo root — committed, values stubbed
+- Reference: `C:\Users\scorp\Desktop\AppDev\sparkport\.env.local` (local dev; not committed)
+
+**Interfaces produced:**
+- A frozen list of required env keys for Task 4 to populate in Vercel.
+
+- [ ] **Step 1:** Grep the repo for every env var the app reads at runtime:
+
+  ```
+  grep -rhoE "process\.env\.[A-Z_]+" app lib proxy.ts scripts | sort -u
+  ```
+
+  Expected keys (from the current repo state — verify this list is complete):
+
+  | Key | Scope | Notes |
+  |---|---|---|
+  | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
+  | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Supabase anon key |
+  | `SUPABASE_SERVICE_ROLE_KEY` | secret | Server-only; never public |
+  | `NEXT_PUBLIC_WP_API_URL` | public | `https://shop.sparkport.co.za/wp-json` after Task 1 |
+  | `WC_CONSUMER_KEY` | secret | WooCommerce REST key |
+  | `WC_CONSUMER_SECRET` | secret | WooCommerce REST secret |
+  | `WC_WEBHOOK_SECRET` | secret | Shared secret on WC webhook |
+  | `PAYFAST_MERCHANT_ID` | secret | Prod merchant ID |
+  | `PAYFAST_MERCHANT_KEY` | secret | Prod merchant key |
+  | `PAYFAST_PASSPHRASE` | secret | Optional; set if configured in PayFast |
+  | `PAYFAST_SANDBOX` | public | `false` in prod |
+  | `PAYGATE_ID` | secret | If PayGate is used |
+  | `PAYGATE_ENCRYPTION_KEY` | secret | PayGate checksum key |
+  | `BREVO_API_KEY` | secret | Transactional email |
+  | `SITE_URL` | public | `https://sparkport.co.za` in prod |
+  | `NEXT_PUBLIC_SITE_URL` | public | `https://sparkport.co.za` in prod |
+  | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | public | If used (verify) |
+
+- [ ] **Step 2:** Create `.env.production.example` with each key present and the value stubbed (`<fill-me>` / `https://sparkport.co.za`). Commit this file. It is the contract; `.env.local` with real values is never committed.
+
+- [ ] **Step 3:** Collect the real production values from the authoritative sources:
+  - Supabase: Dashboard → Project Settings → API
+  - WooCommerce: WP Admin → WooCommerce → Settings → Advanced → REST API (reuse existing key or generate a new read/write key for production)
+  - PayFast: Dashboard → Settings → Integration (prod, not sandbox)
+  - Brevo: Dashboard → SMTP & API → API Keys
+  - WC Webhook secret: WP Admin → WooCommerce → Settings → Advanced → Webhooks → (your webhook) → Secret
+
+  Store these in a password manager, not in chat.
+
+---
+
+## Task 4: Populate Vercel env vars and redeploy
+
+**Files:**
+- Modify: Vercel → Project → Settings → Environment Variables (production + preview scopes)
+
+**Interfaces consumed:** The frozen key list from Task 3.
+
+**Interfaces produced:** `https://sparkport-flax.vercel.app/` rendering home, shop, cart, product detail, and manager login without `500`s.
+
+- [ ] **Step 1:** In Vercel → Settings → Env Variables, add every key from Task 3. Scope:
+  - Public (`NEXT_PUBLIC_*`, `SITE_URL`, `PAYFAST_SANDBOX`) → Production, Preview, Development
+  - Secrets → Production + Preview only. Never Development.
+  - Service role, PayFast keys, PayGate keys, WC secrets, Brevo key → Production **only** if you want to keep preview deploys from touching prod. Use separate sandbox PayFast creds for Preview.
+
+- [ ] **Step 2:** Trigger a redeploy (Deployments → ⋯ → Redeploy). Build must succeed with zero red logs.
+
+- [ ] **Step 3:** Visit the preview URL. Spot-check:
+  - `/` → renders promotional tiles (hits Supabase)
+  - `/shop` → renders products (hits WC REST via `shop.sparkport.co.za`)
+  - `/product/<id>` → renders a product page
+  - `/manager/login` → renders login form (no 500)
+
+  Any `500` here is a missing env var or a CORS/WC auth issue. Fix before continuing.
+
+---
+
+## Task 5: Supabase — allow the new origin
+
+**Why:** Supabase auth rejects redirect targets not on the allowlist, and emailed links (reset password, magic link, email confirmation) bake the `SITE_URL` into them. Without this, login appears to work locally but password reset emails on prod point at `localhost`.
+
+**Files:**
+- Modify: Supabase Dashboard → Authentication → URL Configuration
+
+- [ ] **Step 1:** Set **Site URL** to `https://sparkport.co.za`.
+
+- [ ] **Step 2:** Add to **Redirect URLs** allowlist (comma-separated):
+  - `https://sparkport.co.za/**`
+  - `https://www.sparkport.co.za/**`
+  - `https://sparkport-flax.vercel.app/**`
+  - `http://localhost:3000/**` (keep for dev)
+
+- [ ] **Step 3:** Test password reset from the preview URL:
+  - Submit reset form → receive email → inspect link
+  - Expected: link target starts with `https://sparkport.co.za/auth/reset-password?...`
+  - If it still points at localhost, `SITE_URL` in Vercel is wrong — fix Task 4.
+
+---
+
+## Task 6: PayFast and WooCommerce webhook endpoints
+
+**Why:** Both PayFast and WooCommerce call *our* server on events (payment notify, order created). Those URLs are stored *with the external service*, not in the repo. If they point at the old WP host after cutover, payments complete at PayFast but orders never land in Supabase, and manual reconciliation is required.
+
+**Files:**
+- Modify: PayFast Dashboard → Merchant Settings → notify_url / return_url / cancel_url
+- Modify: WP Admin → WooCommerce → Settings → Advanced → Webhooks (each active webhook)
+
+- [ ] **Step 1:** In PayFast (prod merchant), update:
+  - `notify_url` → `https://sparkport.co.za/api/payfast/notify`
+  - `return_url` → `https://sparkport.co.za/checkout/success`
+  - `cancel_url` → `https://sparkport.co.za/checkout/cancelled`
+
+  **Timing:** Set these *immediately before* the DNS swap in Task 7, not days before. If you set them now, PayFast will send ITN to the new domain while DNS still resolves to WP — the ITN will fail until cutover completes.
+
+- [ ] **Step 2:** For each WooCommerce webhook (noted in Task 1 Step 6), update **Delivery URL** to `https://sparkport.co.za/api/webhooks/woocommerce`. Also set in the same window as DNS.
+
+- [ ] **Step 3:** If PayGate is also active, repeat Step 1 against PayGate's merchant portal with matching routes.
+
+- [ ] **Step 4:** Record the previous (old) URL for each service in this file as a rollback reference:
+
+  ```
+  Previous PayFast notify_url: __________
+  Previous PayFast return_url: __________
+  Previous WC webhook URL:     __________
+  Previous PayGate notify_url: __________
+  ```
+
+---
+
+## Task 7: Pre-cutover QA on sparkport-flax.vercel.app
+
+**Why:** The Vercel preview URL is the exact bundle that will serve the apex. Every bug you don't catch here is one you catch in production during cutover.
+
+- [ ] **Step 1 — Home + navigation:** Load `/`, confirm hero, promo tiles, nav, footer render with no client errors (browser devtools → Console).
+
+- [ ] **Step 2 — Shop + search:** `/shop` shows paginated products. Search box returns results (hits `/api/products/search`). Filter by category (hits `/api/categories`).
+
+- [ ] **Step 3 — Product detail:** `/product/<slug or id>` shows price, images, add-to-cart. Note: pre-cutover, product image URLs in the WC REST response still reference the apex (`sparkport.co.za/wp-content/...`), and the apex still serves WP, so images load from there. That's expected. Post-cutover (Task 8 Step 4), Site Address flips and image URLs come from the subdomain.
+
+- [ ] **Step 4 — Cart + checkout (SANDBOX PayFast):**
+  - Add product → cart badge updates
+  - Checkout → submit a sandbox order
+  - PayFast sandbox returns to `/checkout/success`
+  - Order appears in WC admin AND in Supabase `orders` table (if that's where orders are mirrored)
+
+- [ ] **Step 5 — Auth:** register a test account → receive confirmation email → confirm → log in → visit `/account` → see profile.
+
+- [ ] **Step 6 — Manager:** `/manager/login` with a real manager account → redirects to `/manager/dashboard`. Confirm `proxy.ts` routing works (e.g. non-managers hitting `/manager/dashboard` are bounced to `/`).
+
+- [ ] **Step 7 — Prescription upload:** `/fill-script` → upload a PDF/image → file lands in Supabase Storage.
+
+- [ ] **Step 8 — Store locator:** `/store-locator` → Google Maps loads and markers render. If map is blank, the Maps API key referrer allowlist is missing the preview URL — add it.
+
+- [ ] **Step 9 — Lighthouse / mobile:** Run Lighthouse mobile audit on `/` and `/shop`. Record LCP, CLS, TBT. These are baselines you measure against after cutover.
+
+- [ ] **Step 10 — Error pages:** 404 at `/does-not-exist` returns a styled page, not a stack trace.
+
+Any red in Steps 1–10 → fix before Task 8. Do not proceed with a yellow in payments or auth.
+
+---
+
+## Task 8: DNS cutover
+
+**Why:** This is the irreversible step from the user's perspective — once apex DNS flips, customers hit Next.js. Everything above exists to make this step boring.
+
+**Files:**
+- Modify: Axxess → DNS Zone Editor for `sparkport.co.za`
+- Modify: Vercel → Project → Settings → Domains
+
+**Pre-cutover checklist:**
+- Task 1–7 all green
+- WP backup from Task 1 Step 1 is recent (< 48h old) — if not, take a fresh one
+- Scheduled cutover window communicated to stakeholders (low-traffic hours)
+
+- [ ] **Step 1 (T–48h):** In Axxess DNS Zone Editor, lower TTL on the apex `A` (and `AAAA` if present) and the `www` `CNAME` to **300 seconds**. Save. Confirm with `dig sparkport.co.za` from a clean resolver — TTL on the answer should drop to 300 over the next hour.
+
+- [ ] **Step 2 (T–0, in cutover window):** In Vercel → Project → Settings → Domains, add `sparkport.co.za` and `www.sparkport.co.za`. Vercel will display the required DNS records (usually an `A` record pointing at `76.76.21.21` for apex, or ALIAS/ANAME, and a `CNAME` for `www` pointing at `cname.vercel-dns.com`).
+
+- [ ] **Step 3:** In Axxess DNS Zone Editor, **snapshot the full zone before editing.** Export or screenshot. Then:
+  - Change the apex `A` to the Vercel address
+  - Change the `www` `CNAME` to Vercel's target (or set up as apex alias)
+  - **Do NOT touch** `MX`, `SPF` (`TXT` starting with `v=spmf1`), `DKIM`, `DMARC` (`_dmarc` `TXT`), or any `TXT` ownership records
+  - Save
+
+- [ ] **Step 4:** Flip WordPress to be the subdomain's identity. In WP Admin → Settings → General (log in via `https://shop.sparkport.co.za/wp-admin` since the apex is now Vercel):
+  - **WordPress Address (URL):** `https://shop.sparkport.co.za`
+  - **Site Address (URL):** `https://shop.sparkport.co.za`
+
+  Save. This makes WC REST responses emit image URLs under the subdomain, so Next.js product images stop pointing at the apex (which no longer serves WP).
+
+  Also run the "Better Search Replace" plugin to rewrite any absolute URLs in post/product content: find `https://sparkport.co.za` → replace `https://shop.sparkport.co.za`, dry-run first, then live. Exclude `wp_options` table rows for `siteurl` and `home` (we just set those).
+
+  If the `wp-config.php` snippet from Task 1 Step 6 was added, it becomes redundant now but harmless — leave it.
+
+- [ ] **Step 5:** Immediately execute Task 6 Steps 1–3: update PayFast and WC webhook URLs to the new apex. Do these back-to-back with the DNS change — minutes, not hours.
+
+- [ ] **Step 6:** Watch Vercel → Domains. The custom domain status should go from "Invalid Configuration" → "Valid Configuration" within 2–10 minutes. Vercel auto-provisions the TLS cert when DNS is right.
+
+- [ ] **Step 7:** Verify from multiple vantage points:
+  - `https://sparkport.co.za` loads Next.js (not WP)
+  - `https://www.sparkport.co.za` loads Next.js and the canonical redirect behaves (www → apex or whichever you chose)
+  - `https://shop.sparkport.co.za/wp-admin` loads WP admin
+  - `https://sparkport.co.za/shop` shows products with images loading successfully (images now come from `shop.sparkport.co.za`)
+
+- [ ] **Step 8:** Send a test email through the site (password reset or contact form) and confirm it arrives. If it bounces, email DNS was damaged — restore from the snapshot in Step 3.
+
+---
+
+## Task 9: SEO — 301 redirects from legacy WP URLs
+
+**Why:** WordPress permalinks (`/product/<slug>/`, `/product-category/<slug>/`, `/?p=123`) likely differ from the Next.js routes. Letting them 404 drops rankings. Next.js serves the new routes; the redirects live in `next.config.ts` so they ship with the app.
+
+**Files:**
+- Modify: `C:\Users\scorp\Desktop\AppDev\sparkport\next.config.ts`
+
+- [ ] **Step 1:** Inventory legacy URLs that have traffic. Pull the top 50–200 landing pages from Google Search Console → Performance → Pages (last 90 days) for `sparkport.co.za` (filter by existing WP host before cutover for fairest data).
+
+- [ ] **Step 2:** For each legacy URL that has a direct Next.js equivalent, add an entry to `redirects()` in `next.config.ts`:
+
+  ```ts
+  async redirects() {
+    return [
+      { source: '/product-category/:slug', destination: '/categories/:slug', permanent: true },
+      { source: '/shop/', destination: '/shop', permanent: true },
+      // ...
+    ];
+  }
+  ```
+
+  For URLs with no 1:1 target, redirect to the closest ancestor (category → `/categories`, blog post → `/blog`, unknown → `/`).
+
+- [ ] **Step 3:** Commit, push, Vercel auto-deploys. Spot-check 5 redirects in a browser — each should return a 301 and land on the Next.js target.
+
+- [ ] **Step 4:** Resubmit `sitemap.xml` (if the app serves one) in Google Search Console. Submit a change-of-address if the hostname is actually changing (it's not — apex is unchanged — so just the sitemap).
+
+---
+
+## Task 10: Hardening and monitoring
+
+**Why:** The site is live. Now make the next incident findable without a customer email.
+
+- [ ] **Step 1 — Uptime monitoring:** Set up a free check (UptimeRobot, BetterStack, or Vercel's built-in) hitting `https://sparkport.co.za/` every 5 minutes. Alert the user's email on 2 consecutive failures.
+
+- [ ] **Step 2 — Error tracking:** Add Sentry (or Vercel's built-in Observability) and wrap the app. Verify a thrown error in a server action lands in the dashboard.
+
+- [ ] **Step 3 — Supabase backups:** Confirm Daily Backups are on (Dashboard → Database → Backups). Supabase Free retains 7 days; Pro retains more.
+
+- [ ] **Step 4 — WP backups:** Confirm Axxess cPanel → JetBackup (or equivalent) runs daily on `shop.sparkport.co.za`'s document root. This is the product/order data's backup.
+
+- [ ] **Step 5 — Secrets rotation calendar:** Add a 90-day reminder to rotate `WC_CONSUMER_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `PAYFAST_PASSPHRASE`.
+
+- [ ] **Step 6 — Raise TTL back to normal:** 7 days after cutover, raise apex TTL from 300s back to 3600s or 86400s in Axxess DNS.
+
+---
+
+## Rollback plan
+
+If the site is broken post-cutover and the fix isn't quick:
+
+1. In Axxess DNS, restore the apex `A` and `www` `CNAME` to their pre-cutover values (from the snapshot in Task 8 Step 3). Propagation takes up to 300s thanks to the lowered TTL.
+2. In PayFast + WC webhooks, revert the URLs noted in Task 6 Step 4.
+3. In WP Admin → Settings → General, if you also changed WordPress Address to the subdomain, revert it to the apex.
+4. Take a new incident snapshot: which Vercel deploy was live, what the first error was, which page failed. Fix on preview, re-run Task 7, re-cut.
+
+Rollback is cheap because WP never stopped running on `shop.sparkport.co.za` — it still serves the same document root the apex used to.
+
+---
+
+## Alternative: Axxess Cloud VPS instead of Vercel
+
+Use this if the user requires hosting to stay on Axxess billing.
+
+Replace Task 2 Steps 2–5 with:
+
+- [ ] Provision an Ubuntu 22.04 or 24.04 VPS from Axxess Cloud (2 vCPU / 4 GB RAM minimum for Next.js 16 + build).
+- [ ] SSH in, `apt update && apt install -y nodejs npm nginx certbot python3-certbot-nginx`. Install Node 20 via NodeSource if the apt version is older than 20.
+- [ ] Clone the repo into `/var/www/sparkport`. `npm ci && npm run build`.
+- [ ] Create `/etc/systemd/system/sparkport.service` running `npm run start` on port 3000. Enable + start.
+- [ ] Configure Nginx reverse-proxy on 443 → `localhost:3000` for `sparkport.co.za` and `www.sparkport.co.za`. Use `certbot --nginx` for TLS.
+- [ ] Set env vars in `/etc/systemd/system/sparkport.service.d/env.conf` (same list as Task 3).
+- [ ] CI/CD: install `git` hook or a `cron` that pulls main every 5 min and restarts if the SHA changed. Or install the Vercel-like alternative Coolify / Dokploy on the VPS for a real deploy UI.
+- [ ] Automate TLS renewal: `certbot renew` runs via systemd timer by default — verify with `systemctl list-timers | grep certbot`.
+
+Then Task 8 Step 2 becomes: point the apex `A` at the VPS's public IPv4 (not Vercel's).
+
+The rest of the plan (Tasks 5–10) is unchanged.
+
+---
+
+## Open questions for the user before Task 1
+
+- Does `sparkport.co.za` currently have email hosted at Axxess? If yes, confirm the MX record targets before touching DNS.
+- Is there a staging WordPress we should mirror the subdomain move against first, or is the live WP the only instance?
+- PayFast or PayGate — which is actually the production processor? The repo has code paths for both.
+- Should `www.sparkport.co.za` canonicalise to apex, or vice versa? (Convention: apex.)
+- Any paid Vercel account, or is the free Hobby tier acceptable? (Hobby forbids commercial use — a store is commercial; Pro at $20/mo is required for compliance.)

@@ -1,10 +1,19 @@
+export interface StructuredHours {
+  weekdays: string;        // 'HH:MM – HH:MM' or 'Closed'
+  friday?: string;         // set when friday differs from weekdays
+  saturday: string;
+  sunday: string;
+  publicHolidays?: string;
+  fridayNote?: string;
+}
+
 export interface Store {
   id: string;
   name: string;
   address: string;
   phone: string;
   email: string;
-  hours: string;
+  hours: string;                   // legacy free-form string used by /branches/[slug]
   coordinates: { lat: number; lng: number };
   slug: string;
   area: string;
@@ -12,7 +21,15 @@ export interface Store {
     gettingHere: string;
     seoWriteUp: string;
   };
+
+  // added for the new store locator
+  suburb: string;
+  image: string;
+  services: string[];
+  structuredHours: StructuredHours;
 }
+
+const PLACEHOLDER_IMAGE = '/images/branch-hero.jpg';
 
 export const STORES: Store[] = [
   {
@@ -25,6 +42,14 @@ export const STORES: Store[] = [
     coordinates: { lat: -29.8765, lng: 31.0131 },
     slug: 'overport',
     area: 'Overport, Durban',
+    suburb: 'Overport',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'Schedule 5 & 6', 'Script Upload', 'Late-night Trading'],
+    structuredHours: {
+      weekdays: '08:00 – 22:00',
+      saturday: '08:00 – 22:00',
+      sunday: '09:00 – 22:00',
+    },
     content: {
       gettingHere:
         'The flagship branch is situated on the corner of Moses Kotane Avenue and Randles Road in Overport, easily accessible from the M13. On-street parking is available on both roads. The branch is served by multiple taxi routes and is within walking distance of the Overport City shopping centre.',
@@ -42,6 +67,14 @@ export const STORES: Store[] = [
     coordinates: { lat: -29.8587, lng: 31.0295 },
     slug: 'city-centre',
     area: 'Durban CBD',
+    suburb: 'Durban CBD',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'Wholesale Enquiries', 'Script Upload', 'Early Opening'],
+    structuredHours: {
+      weekdays: '07:30 – 19:30',
+      saturday: '07:30 – 19:00',
+      sunday: '09:00 – 16:00',
+    },
     content: {
       gettingHere:
         'Located on the corner of Yusuf Dadoo Street (Grey Street) and Anton Lembede Street in the heart of the Durban CBD. Accessible via the city\'s major arterial routes and within walking distance of the Durban Station taxi rank and bus terminal. Paid parking is available in several nearby facilities.',
@@ -59,6 +92,14 @@ export const STORES: Store[] = [
     coordinates: { lat: -29.8389, lng: 30.9987 },
     slug: 'musgrave',
     area: 'Berea, Durban',
+    suburb: 'Musgrave',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'Pharmacist Consult', 'Script Upload'],
+    structuredHours: {
+      weekdays: '08:00 – 18:00',
+      saturday: '08:00 – 14:00',
+      sunday: 'Closed',
+    },
     content: {
       gettingHere:
         'Situated on Musgrave Road on the Berea ridge, easily accessible from the M13 and Florida Road interchange. Metered street parking and nearby paid parking facilities are available. The branch is within walking distance of Musgrave Centre and several medical suites.',
@@ -76,6 +117,14 @@ export const STORES: Store[] = [
     coordinates: { lat: -29.8854, lng: 30.9838 },
     slug: 'quality-street',
     area: 'Jacobs, Durban',
+    suburb: 'Jacobs',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'Schedule 5 & 6', 'Script Upload'],
+    structuredHours: {
+      weekdays: '09:00 – 17:30',
+      saturday: '09:00 – 14:00',
+      sunday: 'Closed',
+    },
     content: {
       gettingHere:
         'Located on Quality Street in Jacobs, directly accessible from the M4 South Coast Road. Street parking is available directly outside the pharmacy. The branch is well signposted and situated near several industrial and residential estates in the South Durban Basin.',
@@ -93,6 +142,14 @@ export const STORES: Store[] = [
     coordinates: { lat: -30.0850, lng: 30.8567 },
     slug: 'warner-beach',
     area: 'Kingsburgh, KZN South Coast',
+    suburb: 'Warner Beach',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'Pharmacist Consult', 'Script Upload'],
+    structuredHours: {
+      weekdays: '08:30 – 17:30',
+      saturday: '09:00 – 14:00',
+      sunday: 'Closed',
+    },
     content: {
       gettingHere:
         'Located on Kingsway Street in Warner Beach, conveniently placed along the main road serving the coastal suburbs south of Durban. Ample parking is available outside the branch. Easily reached from the N2 South via the Warner Beach off-ramp.',
@@ -101,15 +158,27 @@ export const STORES: Store[] = [
     },
   },
   {
-    id: '4',
+    id: '9',
     name: 'Sparkport Chatsworth',
     address: 'Shop 3, Ayesha Centre, 50 Tranquil St, Chatsworth, 4092',
     phone: '(031) 401-0010',
     email: 'chatsdispensary@sparkport.co.za',
+    // NOTE: source string says "Mon-Sun: 9AM-8PM • Fri: 9AM-6PM" — self-contradictory.
+    // Treating Fri as the differentiated day (hence called out separately).
+    // Confirm with branch and update if wrong.
     hours: 'Mon-Sun: 9AM-8PM • Fri: 9AM-6PM',
     coordinates: { lat: -29.9197, lng: 30.8970 },
     slug: 'chatsworth',
     area: 'Chatsworth, Durban',
+    suburb: 'Chatsworth',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'ARV/HIV Management', 'Script Upload', '7-Day Trading'],
+    structuredHours: {
+      weekdays: '09:00 – 20:00',
+      friday: '09:00 – 18:00',
+      saturday: '09:00 – 20:00',
+      sunday: '09:00 – 20:00',
+    },
     content: {
       gettingHere:
         'Located in the Ayesha Centre on Tranquil Street in Chatsworth. The centre offers ample free parking. Accessible from the M7 Chatsworth Road and multiple public transport routes serving the township.',
@@ -118,7 +187,7 @@ export const STORES: Store[] = [
     },
   },
   {
-    id: '5',
+    id: '10',
     name: 'Sparkport Umlazi',
     address: 'Shop 4 Ithala Centre, Existing Main Road, Umlazi, 4031',
     phone: '(031) 906-8118',
@@ -127,6 +196,15 @@ export const STORES: Store[] = [
     coordinates: { lat: -29.9589, lng: 30.8841 },
     slug: 'umlazi',
     area: 'Umlazi, Durban',
+    suburb: 'Umlazi',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'ARV/HIV Management', 'Script Upload'],
+    structuredHours: {
+      weekdays: '09:00 – 18:00',
+      friday: '09:00 – 17:00',
+      saturday: '09:00 – 14:00',
+      sunday: 'Closed',
+    },
     content: {
       gettingHere:
         'Situated in the Ithala Centre on Existing Main Road in Umlazi. The centre has parking available for customers. The branch is accessible via multiple taxi routes and public transport connections serving the township.',
@@ -144,6 +222,14 @@ export const STORES: Store[] = [
     coordinates: { lat: -29.6186, lng: 30.3802 },
     slug: 'pietermaritzburg',
     area: 'Pietermaritzburg, KZN',
+    suburb: 'Raisethorpe',
+    image: PLACEHOLDER_IMAGE,
+    services: ['Dispensary', 'Chronic Meds', 'Script Upload', 'Extended Hours', '7-Day Trading'],
+    structuredHours: {
+      weekdays: '09:00 – 20:00',
+      saturday: '09:00 – 20:00',
+      sunday: '10:00 – 18:00',
+    },
     content: {
       gettingHere:
         'Located on Dr Chota Motala Road in Raisethorpe, Pietermaritzburg. Street and off-road parking is available in the vicinity. The branch is centrally accessible within the PMB metro, close to major arterial routes serving Raisethorpe and the broader city.',

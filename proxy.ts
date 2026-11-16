@@ -24,7 +24,7 @@ function isCustomerRoute(path: string) {
   return CUSTOMER_ROUTES.some(r => path === r || path.startsWith(r + '/'));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
